@@ -30,8 +30,8 @@ Base package: `com.ademola.esm`
 |---|---|---|
 | `common` | Error model (`ErrorCode`, `DomainException`, `GlobalExceptionHandler`), web (`CorrelationIdFilter`, `PageResponse`, `SortableFields`), persistence (`BaseEntity`), injectable `Clock` | Implemented (M0–M1) |
 | `config` | Cross-cutting Spring configuration (OpenAPI, later Jackson/web) | Implemented (M0) |
-| `auth` | Security filter chain, role hierarchy; login, JWT issuing, refresh tokens (M2) | Filter chain + hierarchy (M0–M1) |
-| `user` | Users, roles, password hashing, admin user API | Implemented (M1) |
+| `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
+| `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
 | `ticket` | Work-item kernel plus `incident`, `request`, `workflow`, `priority`, `assignment`, `comment`, `category`, `query`, `access` sub-packages | Planned (M3–M7) |
 | `audit` | Append-only audit trail | Planned (M3) |
@@ -58,7 +58,9 @@ Base package: `com.ademola.esm`
 flowchart LR
     team -->|calls| user
     user -. "UserRoleChangedEvent (same tx)" .-> team
-    auth -->|Role| user
+    auth -->|calls| user
+    auth -->|teamsOf| team
+    user -. "PasswordChangedEvent (same tx)" .-> auth
     user & team --> common
 ```
 
@@ -66,8 +68,10 @@ flowchart LR
 
 1. `CorrelationIdFilter` (highest precedence) accepts a safe `X-Request-Id` or generates one, stores
    it in the SLF4J MDC, and echoes it in the response.
-2. The Spring Security filter chain runs. It is stateless, with public health and docs endpoints and
-   authentication required for everything else.
+2. The Spring Security filter chain runs. `BearerTokenAuthenticationFilter` verifies the JWT, and
+   `CurrentUserJwtConverter` turns its claims into a `CurrentUser` principal. URL rules then apply
+   (public: health, docs, `/api/auth/*`; ADMIN: `/api/admin/**`; everything else needs
+   authentication).
 3. Spring MVC dispatches to a controller.
 4. Any exception, including authentication and access-denied failures delegated from Spring
    Security, is rendered by `GlobalExceptionHandler` as `application/problem+json`.
@@ -86,6 +90,11 @@ flowchart LR
 
 | Method & path | Who | Notes |
 |---|---|---|
+| `POST /api/auth/login` | anyone | `{email, password}` → `{accessToken, tokenType, expiresIn, user}` + refresh cookie |
+| `POST /api/auth/refresh` | refresh cookie | Rotates the cookie, returns a new access token |
+| `POST /api/auth/logout` | refresh cookie | 204; revokes the session family, clears the cookie |
+| `GET /api/users/me` | any signed-in user | Profile + active teams |
+| `POST /api/users/me/password` | any signed-in user | `{currentPassword, newPassword}`; 204; ends all sessions |
 | `POST /api/admin/users` | ADMIN | 201 + `Location`; 409 `EMAIL_ALREADY_EXISTS` |
 | `GET /api/admin/users?q&role&active&page&size&sort` | ADMIN | Paged; sort by `email`, `displayName`, `role`, `createdAt` |
 | `GET /api/admin/users/{id}` | ADMIN | |
@@ -106,8 +115,8 @@ flowchart LR
 |---|---|---|
 | M0 | Bootstrap: monorepo, Spring Boot, Flyway, Compose, error handling, correlation IDs, Testcontainers | **Done** |
 | M1 | Users & teams, role hierarchy, admin APIs | **Done** |
-| M2 | Authentication: login, JWT, refresh-token rotation, `/users/me`, bootstrap admin | Next |
-| M3 | Ticket core + audit foundation | |
+| M2 | Authentication: login, JWT, refresh-token rotation, `/users/me`, bootstrap admin | **Done** |
+| M3 | Ticket core + audit foundation | Next |
 | M4 | Workflow engine | |
 | M5 | Assignment & routing | |
 | M6 | Comments & internal notes, history endpoint | |

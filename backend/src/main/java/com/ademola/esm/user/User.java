@@ -53,6 +53,10 @@ public class User extends BaseEntity {
         this.displayName = newDisplayName.trim();
     }
 
+    void changePasswordHash(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
+
     void changeRole(Role newRole) {
         this.role = newRole;
     }

@@ -107,6 +107,27 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    /**
+     * Self-service password change. The user id comes from the authenticated principal, never from
+     * the request, so a user can only change their own password. Publishes
+     * {@link PasswordChangedEvent} so that other sessions are revoked.
+     */
+    @PreAuthorize("isAuthenticated()")
+    public void changeOwnPassword(UUID userId, String currentPassword, String newPassword) {
+        User user = require(userId);
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BusinessRuleException(ErrorCode.CURRENT_PASSWORD_INCORRECT, "Current password is incorrect");
+        }
+        if (currentPassword.equals(newPassword)) {
+            throw new BusinessRuleException(
+                    ErrorCode.VALIDATION_FAILED, "New password must be different from the current password");
+        }
+        requireBcryptCompatible(newPassword);
+        user.changePasswordHash(passwordEncoder.encode(newPassword));
+        events.publishEvent(new PasswordChangedEvent(userId));
+        log.info("Password changed for user id={}", userId);
+    }
+
     /** For other modules: loads a user or fails with 404. Callers apply their own authorization. */
     @Transactional(readOnly = true)
     public User require(UUID id) {
@@ -131,7 +152,7 @@ public class UserService {
         }
     }
 
-    private static void requireBcryptCompatible(String password) {
+    static void requireBcryptCompatible(String password) {
         if (password.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES) {
             throw new BusinessRuleException(
                     ErrorCode.VALIDATION_FAILED, "Password is too long (maximum 72 bytes when UTF-8 encoded)");

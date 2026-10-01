@@ -81,3 +81,48 @@ version, health probes, actuator exposure, OpenAPI, and the full error contract 
 **Tests:** 34 new unit tests (role hierarchy, user and team business rules with Mockito, sort
 allow-list, LIKE escaping) and 37 new integration tests (schema constraints, admin user API, team
 API, cross-module demotion, concurrency). Total: 41 unit + 51 integration, all against PostgreSQL 17.
+
+---
+
+## M2: Authentication (2026-10-01)
+
+**What was built**
+- Login, refresh, logout, `/api/users/me` and self-service password change on Spring Security's
+  OAuth2 Resource Server support: Nimbus `JwtEncoder`/`JwtDecoder`, HS256, 15-minute access tokens,
+  and a custom converter that turns JWT claims into a typed `CurrentUser` principal.
+- Rotating refresh tokens in an HttpOnly/Secure/SameSite=Strict cookie. Only SHA-256 hashes are
+  stored. Reuse detection revokes the whole token family, with an absolute 7-day session.
+- First-admin bootstrap from environment variables (idempotent, safe with multiple instances).
+- A controllable test clock (`MutableClock`) and real-login test helpers, so security tests use
+  real tokens instead of mocked principals.
+
+**Decisions worth discussing**
+- *Revocation must survive a failed request.* When a reused token is detected, we revoke the family
+  and then return 401. A thrown exception normally rolls the transaction back, undoing the
+  revocation. Fixed with `@Transactional(noRollbackFor = InvalidRefreshTokenException.class)` and by
+  keeping the calling service **non-transactional**, because an outer transaction would roll back
+  anyway. **Verified both ways:** with `noRollbackFor` removed, the reuse-detection test fails (the
+  "revoked" session still refreshes).
+- *Multi-tab refresh race vs theft.* Two tabs refreshing at once present the same token. A
+  `SELECT … FOR UPDATE` row lock makes exactly one rotate (concurrency test, 5 repeats). The loser
+  falls inside a 30 s grace window and is rejected without revoking the session.
+- *Account-enumeration resistance.* Identical error for unknown email, wrong password and inactive
+  account, and a BCrypt comparison against a dummy hash for unknown emails so the timing is equal.
+- *JWT hardening, verified by tests:* only HS256 is accepted (an `alg: none` token is rejected),
+  plus wrong-key, tampered-payload, wrong-issuer and expired tokens (via the test clock), and
+  startup fails on a missing or short secret.
+- *Revocation lag trade-off* (ADR-005). Stateless access tokens mean role changes and deactivation
+  apply at the next refresh (at most 15 min), because refresh re-reads the user.
+
+**Bugs caught by tests**
+- `ddl-auto=validate` rejected the V3 migration at startup: `char(64)` vs the entity's `varchar`.
+  Fixed before the migration was ever applied, keeping the fixed length as a regex CHECK.
+- `expiresIn` returned 899 instead of 900, and cookie `Max-Age` 604799 instead of 604800, because
+  the code re-read the clock after issuing the token. Fixed by deriving both from the token's own
+  issue and expiry timestamps.
+
+**Tests:** 16 new unit tests (secret validation, login enumeration resistance, bootstrap rules,
+password change) and 33 new integration tests (`AuthApiIT` 14, `JwtSecurityIT` 14,
+`RefreshConcurrencyIT` 5). Total: 57 unit + 84 integration. Also smoke-tested manually against the
+docker-compose database with curl (bootstrap → login → `/me` → admin create → refresh → logout →
+refresh rejected).

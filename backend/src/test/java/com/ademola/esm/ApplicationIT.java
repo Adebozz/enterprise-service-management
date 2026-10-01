@@ -71,5 +71,9 @@ class ApplicationIT {
                 .bodyJson()
                 .extractingPath("$.info.title")
                 .isEqualTo("Enterprise Service Management API");
+        assertThat(mvc.get().uri("/v3/api-docs"))
+                .bodyJson()
+                .extractingPath("$.components.securitySchemes.bearer-jwt.scheme")
+                .isEqualTo("bearer");
     }
 }

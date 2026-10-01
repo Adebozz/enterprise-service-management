@@ -40,6 +40,25 @@ server:
     include-message: never
   shutdown: graceful
 
+esm:
+  security:
+    jwt:
+      secret: ${ESM_JWT_SECRET:}          # base64, >= 32 bytes; startup fails if missing or weak
+      issuer: esm
+      access-token-ttl: 15m
+    refresh-token:
+      session-lifetime: 7d             # absolute: rotation never extends a session
+      reuse-grace-period: 30s
+      cookie-name: esm_refresh
+      cookie-secure: true
+    # Browser origins allowed to call the cookie-authenticated endpoints (refresh/logout).
+    allowed-origins: ${ESM_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}
+  bootstrap:
+    admin:
+      email: ${ESM_BOOTSTRAP_ADMIN_EMAIL:}
+      password: ${ESM_BOOTSTRAP_ADMIN_PASSWORD:}
+      display-name: ${ESM_BOOTSTRAP_ADMIN_NAME:Administrator}
+
 springdoc:
   # Explicit so the choice is visible; production disables both (see application-prod.yml).
   api-docs:

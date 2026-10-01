@@ -18,7 +18,8 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Actuator health / liveness / readiness (public), everything else closed | Done (M0) |
 | Testcontainers integration tests against real PostgreSQL | Done (M0) |
 | Users & teams: admin APIs, role hierarchy, optimistic locking, last-admin protection | Done (M1) |
-| JWT login, incidents, workflow, assignment, comments, audit, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Authentication: JWT access tokens, rotating refresh-token cookie with reuse detection, logout, password change, first-admin bootstrap | Done (M2) |
+| Incidents, workflow, assignment, comments, audit, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 
@@ -57,7 +58,23 @@ Useful URLs:
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 - Swagger UI: http://localhost:8080/swagger-ui.html
 
-There's no database setup step. Flyway applies migrations automatically on startup.
+There's no database setup step. Flyway applies migrations automatically on startup, and the first
+admin account is created from the `ESM_BOOTSTRAP_ADMIN_*` values in `.env`.
+
+### Development credentials (local only)
+
+| Account | Password | Source |
+|---|---|---|
+| `admin@esm.local` (ADMIN) | `ChangeMe-LocalAdmin-2026` | `.env.example` bootstrap values. Local development only; never deploy them |
+
+```bash
+curl -s -c cookies.txt -H 'Content-Type: application/json' \
+  -d '{"email":"admin@esm.local","password":"ChangeMe-LocalAdmin-2026"}' \
+  http://localhost:8080/api/auth/login
+```
+
+Use the returned `accessToken` as `Authorization: Bearer <token>`. In Swagger UI, click
+**Authorize**.
 
 Alternative with no docker-compose: `./mvnw spring-boot:test-run` starts the app against a
 throwaway Testcontainers PostgreSQL.

@@ -65,6 +65,12 @@ public class TeamService {
         return members.findMembers(teamId);
     }
 
+    /** Active teams the user belongs to. Internal API (callers pass the authenticated user's id). */
+    @Transactional(readOnly = true)
+    public List<TeamSummary> teamsOf(UUID userId) {
+        return members.findActiveTeamsOf(userId);
+    }
+
     // ----- administration -----------------------------------------------------------------------
 
     @PreAuthorize("hasRole('ADMIN')")

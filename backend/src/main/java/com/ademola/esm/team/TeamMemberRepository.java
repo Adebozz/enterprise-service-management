@@ -20,6 +20,14 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, TeamMemb
             """)
     List<TeamMemberResponse> findMembers(UUID teamId);
 
+    @Query("""
+            select new com.ademola.esm.team.TeamSummary(t.id, t.name)
+            from TeamMember m join Team t on t.id = m.id.teamId
+            where m.id.userId = :userId and t.active = true
+            order by t.name
+            """)
+    List<TeamSummary> findActiveTeamsOf(UUID userId);
+
     /** Bulk delete: one SQL statement, no need to load the rows first. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from TeamMember m where m.id.userId = :userId")

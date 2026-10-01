@@ -158,6 +158,42 @@ class UserServiceTest {
     }
 
     @Test
+    void changeOwnPasswordRequiresTheCurrentPassword() {
+        User user = persisted(new User("ada@example.com", "Ada", "{bcrypt}old", Role.AGENT));
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("not-my-password", "{bcrypt}old")).thenReturn(false);
+
+        assertErrorCode(
+                () -> service.changeOwnPassword(user.getId(), "not-my-password", "a-brand-new-password"),
+                ErrorCode.CURRENT_PASSWORD_INCORRECT);
+        verify(events, never()).publishEvent(any());
+    }
+
+    @Test
+    void changeOwnPasswordRejectsReusingTheSamePassword() {
+        User user = persisted(new User("ada@example.com", "Ada", "{bcrypt}old", Role.AGENT));
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("same-password-123", "{bcrypt}old")).thenReturn(true);
+
+        assertErrorCode(
+                () -> service.changeOwnPassword(user.getId(), "same-password-123", "same-password-123"),
+                ErrorCode.VALIDATION_FAILED);
+    }
+
+    @Test
+    void changeOwnPasswordStoresNewHashAndAnnouncesIt() {
+        User user = persisted(new User("ada@example.com", "Ada", "{bcrypt}old", Role.AGENT));
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("current-password", "{bcrypt}old")).thenReturn(true);
+        when(passwordEncoder.encode("a-brand-new-password")).thenReturn("{bcrypt}new");
+
+        service.changeOwnPassword(user.getId(), "current-password", "a-brand-new-password");
+
+        assertThat(user.getPasswordHash()).isEqualTo("{bcrypt}new");
+        verify(events).publishEvent(new PasswordChangedEvent(user.getId()));
+    }
+
+    @Test
     void unknownUserIsNotFound() {
         UUID id = UUID.randomUUID();
         when(users.findById(id)).thenReturn(Optional.empty());

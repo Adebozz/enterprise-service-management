@@ -15,6 +15,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Optional<User> findByEmail(String normalisedEmail);
 
+    boolean existsByRoleAndActiveTrue(Role role);
+
     /**
      * Locks every active user with the given role ({@code SELECT ... FOR UPDATE}).
      *

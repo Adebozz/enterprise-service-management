@@ -9,6 +9,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 |---|---|
 | `V1__baseline.sql` | No tables. Proves the migration pipeline end to end |
 | `V2__users_and_teams.sql` | `users`, `teams`, `team_members` (M1) |
+| `V3__refresh_tokens.sql` | `refresh_tokens` (M2) |
 
 ### users
 
@@ -36,6 +37,19 @@ can't be blank.
 `team_id → teams`, `user_id → users`, `joined_at`; **PK `(team_id, user_id)`**, plus an index on
 `user_id` for "teams of a user". Foreign keys use the default `RESTRICT`, so a user or team with
 memberships can't be hard-deleted.
+
+### refresh_tokens
+
+| Column | Notes |
+|---|---|
+| `id` uuid PK, `user_id` → users | |
+| `family_id` uuid | All tokens from one login. Revocation is per family |
+| `token_hash` varchar(64) | SHA-256 hex of the cookie value; `UNIQUE`; `CHECK` hex format |
+| `issued_at`, `expires_at` | `CHECK (expires_at > issued_at)`; successors inherit `expires_at` (absolute session) |
+| `used_at` | Set on rotation; a used token presented again means reuse |
+| `revoked_at`, `revocation_reason` | Both null or both set (CHECK); reason in `LOGOUT, REUSE_DETECTED, PASSWORD_CHANGED, USER_INACTIVE` |
+
+Indexes: `family_id`, `user_id`, `expires_at` (for the future purge job).
 
 ## Conventions
 
