@@ -1,0 +1,68 @@
+# Base configuration shared by every environment.
+# Environment-specific values come from environment variables (12-factor). For local development
+# they are read from the repository-root .env file (copied from .env.example, git-ignored).
+spring:
+  application:
+    name: esm-backend
+  config:
+    import:
+      - optional:file:../.env[.properties]   # running from backend/ (IDE, ./mvnw spring-boot:run)
+      - optional:file:.env[.properties]      # running from repo root
+  datasource:
+    url: ${ESM_DB_URL:}
+    username: ${ESM_DB_USERNAME:}
+    password: ${ESM_DB_PASSWORD:}
+  jpa:
+    # Schema is owned by Flyway. Hibernate only checks that entities match it, and fails fast if not.
+    hibernate:
+      ddl-auto: validate
+    # Disable lazy loading during JSON rendering: it hides N+1 queries and holds DB connections
+    # for the whole request. Services must load what the response needs, inside the transaction.
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+  shutdown: graceful
+
+springdoc:
+  # Explicit so the choice is visible; production disables both (see application-prod.yml).
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true   # /actuator/health/liveness and /actuator/health/readiness for ECS/ALB
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Enterprise Service Management
+    version: '@project.version@'
+
+logging:
+  pattern:
+    # Every log line carries the request correlation id (see CorrelationIdFilter).
+    correlation: '[%X{correlationId:-}] '

@@ -1,0 +1,9 @@
+-- V1: baseline.
+--
+-- Intentionally contains no tables. It proves the Flyway pipeline (local, Testcontainers, CI and,
+-- later, RDS) before any domain schema exists. Domain tables arrive in V2+ (users and teams in M1).
+--
+-- Rule: migrations are immutable once merged to main. Fixes go in a new migration.
+--
+-- Convention: all timestamps are timestamptz; the application reads/writes UTC
+-- (spring.jpa.properties.hibernate.jdbc.time_zone=UTC).

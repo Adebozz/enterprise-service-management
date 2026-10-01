@@ -1,0 +1,16 @@
+# Production profile (activated with SPRING_PROFILES_ACTIVE=prod in the container).
+# Database credentials and secrets are injected as environment variables from AWS Secrets Manager.
+logging:
+  structured:
+    format:
+      # JSON logs (Elastic Common Schema) so CloudWatch Logs Insights can query fields,
+      # including the MDC correlationId.
+      console: ecs
+
+# API docs are not published from production by default (reduces attack surface).
+# The OpenAPI contract is versioned in docs/ and available from any non-prod environment.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
