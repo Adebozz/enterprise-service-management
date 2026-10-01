@@ -1,8 +1,12 @@
 package com.ademola.esm.auth;
 
+import com.ademola.esm.user.Role;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -12,15 +16,16 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 /**
  * HTTP security rules.
  *
- * <p>M0 (bootstrap): health and API docs are public; everything else requires authentication, and
- * since no login mechanism exists yet, all other requests are rejected with 401. JWT authentication
- * replaces this in M2.
+ * <p>Health and API docs are public; {@code /api/admin/**} requires ADMIN; everything else requires
+ * authentication. No login mechanism exists until M2 (JWT), so for now only tests (with mock users)
+ * get past the 401.
  *
  * <p>Authentication/authorization failures are delegated to the MVC {@link HandlerExceptionResolver}
  * so they are rendered by {@code GlobalExceptionHandler} in the same ProblemDetail format as every
  * other error, instead of Spring Security's default HTML/blank responses.
  */
 @Configuration
+@EnableMethodSecurity // activates @PreAuthorize on service methods
 public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
@@ -47,6 +52,9 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth.requestMatchers(PUBLIC_ENDPOINTS)
                         .permitAll()
+                        // Coarse URL rule as a first layer; services repeat the check with @PreAuthorize.
+                        .requestMatchers("/api/admin/**")
+                        .hasRole(Role.ADMIN.name())
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, e) ->
@@ -54,5 +62,15 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, e) ->
                                 exceptionResolver.resolveException(request, response, null, e)))
                 .build();
+    }
+
+    /**
+     * ADMIN > TEAM_LEAD > AGENT > REQUESTER, generated from the {@link Role} enum. Spring Security
+     * applies this bean to both URL rules and {@code @PreAuthorize}, so {@code hasRole('AGENT')} also
+     * admits team leads and admins without listing every role at every check.
+     */
+    @Bean
+    static RoleHierarchy roleHierarchy() {
+        return RoleHierarchyImpl.fromHierarchy(Role.springSecurityHierarchy());
     }
 }

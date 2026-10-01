@@ -12,12 +12,13 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Area | State |
 |---|---|
 | Monorepo, Spring Boot 4.1 / Java 21 backend, Maven Wrapper | Done (M0) |
-| PostgreSQL 17 + Flyway migration pipeline | Done (M0), baseline migration only |
+| PostgreSQL 17 + Flyway migration pipeline | Done (M0) |
 | Consistent RFC 9457 error responses (`application/problem+json`) | Done (M0) |
 | Request correlation IDs in logs and responses | Done (M0) |
 | Actuator health / liveness / readiness (public), everything else closed | Done (M0) |
 | Testcontainers integration tests against real PostgreSQL | Done (M0) |
-| Users, teams, JWT auth, incidents, workflow, assignment, comments, audit, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Users & teams: admin APIs, role hierarchy, optimistic locking, last-admin protection | Done (M1) |
+| JWT login, incidents, workflow, assignment, comments, audit, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 

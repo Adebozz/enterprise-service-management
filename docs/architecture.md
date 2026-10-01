@@ -28,11 +28,11 @@ Base package: `com.ademola.esm`
 
 | Module | Responsibility | Status |
 |---|---|---|
-| `common` | Error model (`ErrorCode`, `DomainException`, `GlobalExceptionHandler`), web infrastructure (`CorrelationIdFilter`) | Implemented (M0) |
+| `common` | Error model (`ErrorCode`, `DomainException`, `GlobalExceptionHandler`), web (`CorrelationIdFilter`, `PageResponse`, `SortableFields`), persistence (`BaseEntity`), injectable `Clock` | Implemented (M0–M1) |
 | `config` | Cross-cutting Spring configuration (OpenAPI, later Jackson/web) | Implemented (M0) |
-| `auth` | Security filter chain; login, JWT issuing, refresh tokens (M2) | Filter chain only (M0) |
-| `user` | Users and roles | Planned (M1) |
-| `team` | Teams and membership | Planned (M1) |
+| `auth` | Security filter chain, role hierarchy; login, JWT issuing, refresh tokens (M2) | Filter chain + hierarchy (M0–M1) |
+| `user` | Users, roles, password hashing, admin user API | Implemented (M1) |
+| `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
 | `ticket` | Work-item kernel plus `incident`, `request`, `workflow`, `priority`, `assignment`, `comment`, `category`, `query`, `access` sub-packages | Planned (M3–M7) |
 | `audit` | Append-only audit trail | Planned (M3) |
 | `sla`, `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
@@ -47,8 +47,20 @@ Base package: `com.ademola.esm`
   response DTO. Business rules live in services and entities.
 - **JPA entities never leave the service layer.** Controllers return Java `record` DTOs.
 - **No Lombok or MapStruct.** Records and explicit mapping methods keep the code transparent.
-- **Cross-module side effects use Spring application events (planned, Phase 2).** For example,
-  ticket status changes notify the SLA module, so `ticket` never depends on `sla`.
+- **Modules reference each other's aggregates by ID**, not JPA associations. For example,
+  `TeamMember` stores a `userId`.
+- **Dependencies point one way, and events carry the reverse direction.** `team` depends on `user`.
+  When `user` needs `team` to react (a user demoted to REQUESTER must leave all teams), it publishes
+  `UserRoleChangedEvent` and `team` listens. Listeners are synchronous and run in the same
+  transaction, so the change is atomic. Phase 2 uses the same pattern for ticket → SLA.
+
+```mermaid
+flowchart LR
+    team -->|calls| user
+    user -. "UserRoleChangedEvent (same tx)" .-> team
+    auth -->|Role| user
+    user & team --> common
+```
 
 ## Request lifecycle (implemented)
 
@@ -70,6 +82,18 @@ Base package: `com.ademola.esm`
   queries.
 - `ddl-auto=validate`: Flyway owns the schema, and Hibernate only verifies it.
 
+## API (implemented so far)
+
+| Method & path | Who | Notes |
+|---|---|---|
+| `POST /api/admin/users` | ADMIN | 201 + `Location`; 409 `EMAIL_ALREADY_EXISTS` |
+| `GET /api/admin/users?q&role&active&page&size&sort` | ADMIN | Paged; sort by `email`, `displayName`, `role`, `createdAt` |
+| `GET /api/admin/users/{id}` | ADMIN | |
+| `PATCH /api/admin/users/{id}` | ADMIN | `{displayName?, role?, active?, version}`; 409 on stale version or last admin |
+| `GET /api/teams`, `GET /api/teams/{id}`, `GET /api/teams/{id}/members` | AGENT+ | Active teams only |
+| `GET /api/admin/teams`, `POST /api/admin/teams`, `PATCH /api/admin/teams/{id}` | ADMIN | Includes inactive teams |
+| `PUT / DELETE /api/admin/teams/{id}/members/{userId}` | ADMIN | Idempotent, 204 |
+
 ## Observability (implemented so far)
 
 - Correlation ID on every log line (`logging.pattern.correlation`) and in every error response.
@@ -81,8 +105,8 @@ Base package: `com.ademola.esm`
 | # | Milestone | Status |
 |---|---|---|
 | M0 | Bootstrap: monorepo, Spring Boot, Flyway, Compose, error handling, correlation IDs, Testcontainers | **Done** |
-| M1 | Users & teams | Next |
-| M2 | Authentication: JWT, refresh-token rotation, role hierarchy | |
+| M1 | Users & teams, role hierarchy, admin APIs | **Done** |
+| M2 | Authentication: login, JWT, refresh-token rotation, `/users/me`, bootstrap admin | Next |
 | M3 | Ticket core + audit foundation | |
 | M4 | Workflow engine | |
 | M5 | Assignment & routing | |

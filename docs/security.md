@@ -22,14 +22,30 @@
 - **Secrets.** None in the repository. Local values live in the git-ignored `.env`, and production
   values are injected from AWS Secrets Manager (Phase 3).
 
+## Implemented (M1)
+
+- **Role hierarchy** `ADMIN > TEAM_LEAD > AGENT > REQUESTER`, generated from the `Role` enum and
+  registered as a `RoleHierarchy` bean. Spring Security applies it to both URL rules and
+  `@PreAuthorize`.
+- **Two layers of authorization.** A URL rule makes `/api/admin/**` ADMIN-only, and every service
+  method declares its own `@PreAuthorize`. A future endpoint that forgets a URL rule is still
+  protected.
+- **Password storage.** `DelegatingPasswordEncoder` (BCrypt). Passwords are 12–72 characters, and
+  the service also rejects passwords over 72 **bytes** in UTF-8, because BCrypt silently ignores
+  everything after byte 72.
+- **No password data in responses.** `UserResponse` has no hash field, which is checked by test.
+- **Sort allow-lists.** `?sort=passwordHash` returns 400 `INVALID_SORT_PROPERTY` instead of
+  revealing the order of password hashes.
+- **Search input** is always a bound parameter, and LIKE wildcards are escaped.
+- **Lockout protection.** The last active admin can't be demoted or deactivated. This is serialised
+  with `SELECT … FOR UPDATE`, and a concurrency test proves it.
+
 ## Planned (approved design, M2 onwards)
 
 | Concern | Design |
 |---|---|
-| Passwords | `DelegatingPasswordEncoder` (BCrypt; the `{id}` prefix allows a later Argon2 migration) |
 | Access token | JWT (HS256), ~15 min, issued with Spring's Nimbus `JwtEncoder`, validated by the OAuth2 Resource Server `JwtDecoder`. Held **in memory** by the SPA |
 | Refresh token | Opaque random value in an `HttpOnly; Secure; SameSite=Strict` cookie (path `/api/auth`). Only a SHA-256 hash is stored. Rotated on every use; **reuse revokes the whole token family** |
-| Roles | One role per user with hierarchy `ADMIN > TEAM_LEAD > AGENT > REQUESTER` |
 | Authorization | URL rules → `@PreAuthorize` on services → `TicketAccessPolicy` for ownership and team scope, applied **inside queries** |
 | Hidden resources | Tickets outside your scope return **404** rather than 403, which prevents ID enumeration |
 | Internal notes | Returned only to staff with team-scope access to the ticket; filtered server-side |

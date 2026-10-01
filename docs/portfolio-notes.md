@@ -41,3 +41,43 @@ stories. Only things that exist in the code are recorded here. No invented metri
 **Tests:** 7 unit tests (correlation filter) and 14 integration tests (boot + migrations + Postgres
 version, health probes, actuator exposure, OpenAPI, and the full error contract including the
 "no internal details leaked on 500" case).
+
+---
+
+## M1: Users & teams (2026-10-01)
+
+**What was built**
+- `V2` migration: `users`, `teams`, `team_members` with check, unique and foreign-key
+  constraints. Every constraint is verified by raw-SQL tests that bypass the application.
+- Admin APIs to create, search, update and deactivate users and to manage teams and membership,
+  plus a read API for support staff to list teams.
+- A role hierarchy (`ADMIN > TEAM_LEAD > AGENT > REQUESTER`) generated from one enum and applied to
+  both URL and method security.
+
+**Decisions worth discussing**
+- *Last-admin race condition.* "Can't demote the last admin" is a check-then-act race: two admins
+  demoting each other concurrently both see the other still active. I fixed it with a
+  pessimistic lock (`SELECT … FOR UPDATE` via Spring Data `@Lock`) on the active-admin rows. Under
+  PostgreSQL READ COMMITTED, the blocked transaction re-evaluates its WHERE clause after the first
+  commits, so it sees one admin and refuses. **Verified both ways:** with the lock removed, the
+  concurrency test failed 5/5 runs with both demotions succeeding (zero admins left). With the lock,
+  it passes 5/5.
+- *Optimistic locking for API clients.* Clients send back the `version` they read, and a stale
+  version gets a 409. I flush before building the response so it carries the *incremented*
+  version. Without the flush, the client's next edit would hit a false conflict.
+- *Avoiding a module cycle with a synchronous domain event.* `team` depends on `user`. For the rule
+  "demoted requesters leave all teams", `user` publishes `UserRoleChangedEvent` and `team` listens,
+  in the same transaction, so the change stays atomic without a circular dependency.
+- *Membership as an entity instead of `@ManyToMany`*, so the join row can carry `joined_at` and
+  later be the target of a composite foreign key. It references the user by ID only, and the
+  member list is one JPQL join projected directly into a DTO, so there's no N+1.
+- *Case-insensitive uniqueness in the database.* A `CHECK (email = lower(btrim(email)))` combined
+  with a plain `UNIQUE`, and a unique index on `lower(name)` for teams. Duplicate races are caught
+  at the constraint and translated to a 409.
+- *Security details.* Sort-field allow-lists (otherwise `?sort=passwordHash` leaks hash ordering),
+  LIKE-wildcard escaping, a UTF-8 byte-length check for BCrypt's 72-byte limit, and no password
+  field in any response DTO.
+
+**Tests:** 34 new unit tests (role hierarchy, user and team business rules with Mockito, sort
+allow-list, LIKE escaping) and 37 new integration tests (schema constraints, admin user API, team
+API, cross-module demotion, concurrency). Total: 41 unit + 51 integration, all against PostgreSQL 17.

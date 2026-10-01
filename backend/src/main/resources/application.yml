@@ -29,6 +29,10 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  data:
+    web:
+      pageable:
+        max-page-size: 100   # a client can't ask for ?size=1000000
 
 server:
   error:
