@@ -92,6 +92,16 @@ non-existent id, so outsiders can't enumerate ids. Team membership counts only f
 The requester and team are always taken from the token and routing rules, never from the request
 body.
 
+## Implemented (M4): workflow authorization
+
+- Status is **not a writable field**. Clients request a transition, and the server decides.
+- Permission is per move and per **relationship to the ticket** (REQUESTER / SUPPORT / ADMIN /
+  SYSTEM). A requester can't resolve their own incident, and support can't confirm closure on the
+  requester's behalf.
+- `SYSTEM`-only moves (assignment, approvals) can't be performed through the API by anyone,
+  including admins. Tested: approving a pending request via the API returns 403.
+- The entity re-validates the lifecycle on every status change, so non-API code paths can't bypass it.
+
 ## Planned
 
 | Concern | Design |

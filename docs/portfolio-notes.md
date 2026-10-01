@@ -174,3 +174,43 @@ routing, reference format, audit assertions in user/team tests) and 28 new integ
 (ticket API with real tokens, schema constraints incl. audit trigger and assignee-in-team FK,
 category API, audit guarantees, bootstrap race, reference concurrency). Total: 88 unit + 112
 integration. Also verified V4 as an incremental migration on an existing local database.
+
+---
+
+## M4: Workflow engine (2026-10-01)
+
+**What was built**
+- A small declarative workflow engine: `WorkflowDefinition` (immutable table of transitions with
+  label, allowed actors and requirements). Incident and service-request lifecycles are defined as data.
+- The entity is the only thing that changes status: it validates the move and its requirements
+  (reason, resolution code + notes, fulfilment notes, assignee present) and applies side effects
+  (first response time, resolved/closed timestamps, reopen count, clearing a failed resolution).
+- `TicketTransitionService` adds visibility (404), version (409), lifecycle (409) and actor-based
+  permission (403) checks, plus audit with reason and resolution code.
+- `GET /api/tickets/{id}/transitions` returns the moves the caller can make now, so the UI never
+  duplicates workflow rules.
+
+**Decisions worth discussing**
+- *Actors are relationships, not roles.* An agent who raised a ticket in another team's queue is
+  only its REQUESTER: they can confirm closure but can't resolve their own ticket. Admins act as
+  SUPPORT everywhere; SYSTEM is never granted through the API.
+- *Defence in depth for the state machine.* The service checks the move before authorization, and
+  the entity re-checks it on every change, so future non-API callers (scheduler, assignment rules)
+  can't bypass it.
+- *409 instead of 400 for invalid transitions.* The request is valid; it conflicts with current state.
+- *Workflow as data instead of Spring Statemachine* (ADR-007).
+
+**Testing insight**
+- Exhaustive parameterised tests check **every from/to pair** of both lifecycles (49 + 64 cases)
+  against an independently written allowed-set, so any lifecycle change must be made twice,
+  deliberately.
+- Concurrency: two agents changing the same ticket version simultaneously, repeated. I
+  instrumented the losing path and found it was **always** Hibernate's `@Version` check (30/30
+  runs), never the explicit version comparison, because both threads read before either committed.
+  I corrected the test's documentation rather than claim it covers both, and the explicit check
+  has its own sequential test. Also verified the loser's audit entry is rolled back with its change.
+
+**Tests:** 140 new unit test cases (exhaustive lifecycle matrices, definition builder rules,
+entity side effects, actor resolution) and 17 new integration tests (full lifecycle with audit
+trail, error codes, permissions, available transitions per caller, SYSTEM-only approvals,
+concurrency). Total: 228 unit + 129 integration.

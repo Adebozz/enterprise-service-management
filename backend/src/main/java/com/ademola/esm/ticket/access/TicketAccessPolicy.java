@@ -31,18 +31,28 @@ public class TicketAccessPolicy {
     }
 
     public boolean canView(CurrentUser user, WorkItem item) {
-        Set<UUID> teamIds = user.role().isStaff() ? teams.teamIdsOf(user.id()) : Set.of();
-        return canView(user, item, teamIds);
+        return canView(user, item, teamScopeOf(user));
+    }
+
+    /** Teams whose tickets the user handles; empty for requesters. Load once per request and reuse. */
+    public Set<UUID> teamScopeOf(CurrentUser user) {
+        return user.role().isStaff() ? teams.teamIdsOf(user.id()) : Set.of();
     }
 
     /** Pure decision function: no I/O, so every rule is unit-testable in isolation. */
-    static boolean canView(CurrentUser user, WorkItem item, Set<UUID> userTeamIds) {
+    public static boolean canView(CurrentUser user, WorkItem item, Set<UUID> userTeamIds) {
         if (user.role() == Role.ADMIN || user.id().equals(item.getRequesterId())) {
             return true;
         }
         if (!user.role().isStaff()) {
             return false;
         }
-        return user.id().equals(item.getAssigneeId()) || userTeamIds.contains(item.getAssignedTeamId());
+        return isSupporting(user, item, userTeamIds);
+    }
+
+    /** Staff responsible for the ticket: the assignee or a member of the assigned team. */
+    public static boolean isSupporting(CurrentUser user, WorkItem item, Set<UUID> userTeamIds) {
+        return user.role().isStaff()
+                && (user.id().equals(item.getAssigneeId()) || userTeamIds.contains(item.getAssignedTeamId()));
     }
 }

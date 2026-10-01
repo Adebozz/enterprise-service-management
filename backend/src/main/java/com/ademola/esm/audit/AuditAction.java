@@ -14,5 +14,6 @@ public enum AuditAction {
     CATEGORY_CREATED,
     CATEGORY_UPDATED,
     // tickets
-    TICKET_CREATED
+    TICKET_CREATED,
+    TICKET_STATUS_CHANGED
 }

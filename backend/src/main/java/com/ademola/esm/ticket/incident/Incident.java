@@ -1,13 +1,18 @@
 package com.ademola.esm.ticket.incident;
 
+import com.ademola.esm.common.error.BusinessRuleException;
+import com.ademola.esm.common.error.ErrorCode;
 import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemDraft;
 import com.ademola.esm.ticket.WorkItemType;
+import com.ademola.esm.ticket.workflow.TransitionInput;
+import com.ademola.esm.ticket.workflow.WorkflowDefinition;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
+import java.time.Instant;
 
 /** An unplanned interruption or degradation of a service ("payroll is down"). */
 @Entity
@@ -38,6 +43,53 @@ public class Incident extends WorkItem {
     @Override
     public WorkItemType getType() {
         return WorkItemType.INCIDENT;
+    }
+
+    @Override
+    public WorkflowDefinition<IncidentStatus> workflow() {
+        return IncidentWorkflow.DEFINITION;
+    }
+
+    @Override
+    protected void onTransition(String from, String to, TransitionInput input, Instant now) {
+        IncidentStatus previous = IncidentStatus.valueOf(from);
+        switch (IncidentStatus.valueOf(to)) {
+            case IN_PROGRESS -> {
+                if (previous == IncidentStatus.RESOLVED) {
+                    reopen();
+                }
+                recordFirstResponse(now);
+            }
+            case RESOLVED -> {
+                this.resolutionCode =
+                        parseResolutionCode(input.resolutionCode()).name();
+                this.resolutionNotes = input.notes().trim();
+                markResolved(now);
+            }
+            case CLOSED, CANCELLED -> markClosed(now);
+            default -> {
+                // NEW, ASSIGNED, WAITING_FOR_USER: status change only
+            }
+        }
+    }
+
+    /** The previous resolution didn't hold: forget it (the audit trail keeps the history). */
+    private void reopen() {
+        reopenCount++;
+        resolutionCode = null;
+        resolutionNotes = null;
+        clearResolved();
+    }
+
+    private static ResolutionCode parseResolutionCode(String code) {
+        try {
+            return ResolutionCode.valueOf(code.trim());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessRuleException(
+                    ErrorCode.TRANSITION_REQUIREMENT_MISSING,
+                    "Unknown resolution code '%s'. Allowed: %s"
+                            .formatted(code, java.util.Arrays.toString(ResolutionCode.values())));
+        }
     }
 
     public IncidentStatus getStatus() {

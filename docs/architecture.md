@@ -33,7 +33,7 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query` sub-packages; `workflow`, `assignment`, `comment` to come | Core implemented (M3) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API) sub-packages; `assignment`, `comment` to come | Implemented (M3–M4) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla`, `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
@@ -58,11 +58,12 @@ Inside `ticket`, packages form a one-way graph (no cycles):
 
 ```mermaid
 flowchart LR
+    transition --> query & access & core
     query --> incident & request & access & category
     incident & request --> intake
     intake --> category & priority & core["ticket (WorkItem)"]
     incident & request & access --> core
-    core --> priority
+    core --> priority & workflow
 ```
 
 Across modules:
@@ -128,6 +129,13 @@ flowchart LR
 | `GET /api/categories?type=INCIDENT\|SERVICE_REQUEST` | any signed-in user | Active category tree for that type |
 | `GET/POST /api/admin/categories`, `PATCH /api/admin/categories/{id}` | ADMIN | Code is immutable; top level needs a team; max two levels |
 
+### Workflow (M4)
+
+| Method & path | Who | Notes |
+|---|---|---|
+| `GET /api/tickets/{id}/transitions` | anyone who can see the ticket | Moves available to *this caller* now: `[{targetStatus, label, requirements}]`. The UI renders buttons from it |
+| `POST /api/tickets/{id}/transitions` | depends on the move | `{targetStatus, version, reason?, resolutionCode?, notes?}` → updated ticket |
+
 ## Ticket intake (M3)
 
 Every new ticket, of any type, goes through `TicketIntake`, in one transaction:
@@ -150,6 +158,73 @@ priority.
 | **HIGH** | P1 Critical | P2 High | P3 Medium |
 | **MEDIUM** | P2 High | P3 Medium | P4 Low |
 | **LOW** | P3 Medium | P4 Low | P4 Low |
+
+## Workflow engine (M4)
+
+Lifecycles are **data** (`WorkflowDefinition`): every allowed `from → to` move, its UI label, the
+**actors** who may make it, and its **requirements**. Undeclared moves are impossible. See
+[ADR-007](adr/007-workflow-as-data.md).
+
+| Layer | Enforces | Error |
+|---|---|---|
+| `TicketTransitionService` | caller can see the ticket | 404 |
+| | client's `version` is current | 409 `CONCURRENT_MODIFICATION` |
+| | move exists in the lifecycle | 409 `INVALID_STATUS_TRANSITION` |
+| | caller's actor may make it | 403 `TRANSITION_NOT_PERMITTED` |
+| `WorkItem.transition()` (entity) | move exists (again: a domain invariant for every caller) | 409 |
+| | requirements: reason / resolution / fulfilment notes / assignee | 422 |
+| | side effects: first response, resolved/closed timestamps, reopen count | n/a |
+
+**Actors** are relationships to the ticket: `REQUESTER` (raised it), `SUPPORT` (assignee or
+assigned-team member; admins everywhere), `ADMIN`, `SYSTEM` (never granted via the API).
+
+**Incident** lifecycle:
+
+```mermaid
+stateDiagram-v2
+    [*] --> NEW
+    NEW --> ASSIGNED: Assign (system)
+    ASSIGNED --> NEW: Unassign (system)
+    ASSIGNED --> IN_PROGRESS: Start work (support, needs assignee)
+    IN_PROGRESS --> WAITING_FOR_USER: Wait for user (support, reason)
+    WAITING_FOR_USER --> IN_PROGRESS: Resume (support/requester)
+    IN_PROGRESS --> RESOLVED: Resolve (support, code + notes)
+    RESOLVED --> IN_PROGRESS: Reopen (requester/support, reason)
+    RESOLVED --> CLOSED: Confirm and close (requester/admin/system)
+    NEW --> CANCELLED: Cancel (reason)
+    ASSIGNED --> CANCELLED
+    IN_PROGRESS --> CANCELLED
+    WAITING_FOR_USER --> CANCELLED
+    CLOSED --> [*]
+    CANCELLED --> [*]
+```
+
+**Service request** lifecycle:
+
+```mermaid
+stateDiagram-v2
+    [*] --> SUBMITTED
+    SUBMITTED --> IN_PROGRESS: Start fulfilment (support, needs assignee)
+    SUBMITTED --> APPROVAL_PENDING: Request approval (system, Phase 2)
+    APPROVAL_PENDING --> APPROVED: system
+    APPROVAL_PENDING --> REJECTED: system
+    APPROVED --> IN_PROGRESS: Start fulfilment
+    IN_PROGRESS --> FULFILLED: Fulfil (support, notes)
+    FULFILLED --> IN_PROGRESS: Reopen (reason)
+    FULFILLED --> CLOSED: Confirm and close (requester/admin/system)
+    SUBMITTED --> CANCELLED: Cancel (reason)
+    APPROVAL_PENDING --> CANCELLED
+    APPROVED --> CANCELLED
+    IN_PROGRESS --> CANCELLED
+```
+
+Timestamps: `first_responded_at` is set the first time support starts work and never moves;
+`resolved_at` is set on RESOLVED/FULFILLED and cleared on reopen; `closed_at` is set on any terminal
+state (CLOSED, CANCELLED, REJECTED). Resolution codes for incidents are a fixed list
+(`FIXED, WORKAROUND, NO_FAULT_FOUND, DUPLICATE, USER_ERROR, NOT_REPRODUCIBLE`) for reporting.
+
+> **Status codes:** the original spec's example used 400 for an invalid transition. We return
+> **409 Conflict**: the request is well-formed but conflicts with the ticket's current state.
 
 ## Audit trail (M3)
 
@@ -178,8 +253,8 @@ priority.
 | M1 | Users & teams, role hierarchy, admin APIs | **Done** |
 | M2 | Authentication: login, JWT, refresh-token rotation, `/users/me`, bootstrap admin | **Done** |
 | M3 | Ticket core + audit foundation | **Done** |
-| M4 | Workflow engine | Next |
-| M5 | Assignment & routing | |
+| M4 | Workflow engine | **Done** |
+| M5 | Assignment & routing | Next |
 | M6 | Comments & internal notes, history endpoint | |
 | M7 | Queue, filtering, full-text search | |
 | M8 | OpenAPI polish, `docs/api.md` | |

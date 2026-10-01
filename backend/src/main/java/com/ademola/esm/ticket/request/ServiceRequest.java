@@ -3,11 +3,14 @@ package com.ademola.esm.ticket.request;
 import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemDraft;
 import com.ademola.esm.ticket.WorkItemType;
+import com.ademola.esm.ticket.workflow.TransitionInput;
+import com.ademola.esm.ticket.workflow.WorkflowDefinition;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 
 /** A standard request for something ("new laptop", "VPN access"). */
@@ -32,6 +35,33 @@ public class ServiceRequest extends WorkItem {
     @Override
     public WorkItemType getType() {
         return WorkItemType.SERVICE_REQUEST;
+    }
+
+    @Override
+    public WorkflowDefinition<ServiceRequestStatus> workflow() {
+        return ServiceRequestWorkflow.DEFINITION;
+    }
+
+    @Override
+    protected void onTransition(String from, String to, TransitionInput input, Instant now) {
+        ServiceRequestStatus previous = ServiceRequestStatus.valueOf(from);
+        switch (ServiceRequestStatus.valueOf(to)) {
+            case IN_PROGRESS -> {
+                if (previous == ServiceRequestStatus.FULFILLED) {
+                    fulfilmentNotes = null; // reopened: what was delivered wasn't right
+                    clearResolved();
+                }
+                recordFirstResponse(now);
+            }
+            case FULFILLED -> {
+                fulfilmentNotes = input.notes().trim();
+                markResolved(now); // resolved_at doubles as "fulfilled at" for SLA/reporting
+            }
+            case CLOSED, CANCELLED, REJECTED -> markClosed(now);
+            default -> {
+                // SUBMITTED, APPROVAL_PENDING, APPROVED: status change only
+            }
+        }
     }
 
     public ServiceRequestStatus getStatus() {
