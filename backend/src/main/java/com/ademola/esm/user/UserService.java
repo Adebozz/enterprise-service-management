@@ -1,11 +1,17 @@
 package com.ademola.esm.user;
 
+import com.ademola.esm.audit.AuditAction;
+import com.ademola.esm.audit.AuditEntityType;
+import com.ademola.esm.audit.AuditRecord;
+import com.ademola.esm.audit.AuditService;
 import com.ademola.esm.common.error.BusinessRuleException;
 import com.ademola.esm.common.error.ErrorCode;
 import com.ademola.esm.common.error.ResourceNotFoundException;
 import com.ademola.esm.common.error.StaleVersionException;
 import com.ademola.esm.common.web.PageResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,13 +39,19 @@ public class UserService {
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher events;
+    private final AuditService audit;
 
     // Constructor injection: dependencies are explicit, final, and trivially replaceable with mocks
     // in unit tests. No reflection-based field injection.
-    public UserService(UserRepository users, PasswordEncoder passwordEncoder, ApplicationEventPublisher events) {
+    public UserService(
+            UserRepository users,
+            PasswordEncoder passwordEncoder,
+            ApplicationEventPublisher events,
+            AuditService audit) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.events = events;
+        this.audit = audit;
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -59,6 +71,11 @@ public class UserService {
         } catch (DataIntegrityViolationException raceLost) {
             throw emailAlreadyExists();
         }
+        audit.record(AuditRecord.created(
+                AuditAction.USER_CREATED,
+                AuditEntityType.USER,
+                user.getId(),
+                Map.of("email", user.getEmail(), "displayName", user.getDisplayName(), "role", user.getRole())));
         log.info("User created id={} role={}", user.getId(), user.getRole());
         return UserResponse.from(user);
     }
@@ -83,22 +100,34 @@ public class UserService {
         if (wouldRemoveAdminRights(user, request)) {
             ensureAnotherActiveAdminExists(user);
         }
-        if (request.displayName() != null) {
+        Map<String, Object> before = new LinkedHashMap<>();
+        Map<String, Object> after = new LinkedHashMap<>();
+        if (request.displayName() != null && !request.displayName().trim().equals(user.getDisplayName())) {
+            before.put("displayName", user.getDisplayName());
             user.rename(request.displayName());
+            after.put("displayName", user.getDisplayName());
         }
         if (request.role() != null && request.role() != user.getRole()) {
             Role previous = user.getRole();
+            before.put("role", previous);
             user.changeRole(request.role());
+            after.put("role", request.role());
             events.publishEvent(new UserRoleChangedEvent(user.getId(), previous, request.role()));
             log.info("User role changed id={} from={} to={}", user.getId(), previous, request.role());
         }
         if (request.active() != null && request.active() != user.isActive()) {
+            before.put("active", user.isActive());
             if (request.active()) {
                 user.activate();
             } else {
                 user.deactivate();
             }
+            after.put("active", user.isActive());
             log.info("User active flag changed id={} active={}", user.getId(), request.active());
+        }
+        if (!after.isEmpty()) {
+            audit.record(
+                    AuditRecord.changed(AuditAction.USER_UPDATED, AuditEntityType.USER, user.getId(), before, after));
         }
 
         // Flush before mapping so the response carries the incremented @Version. Otherwise the
@@ -125,6 +154,8 @@ public class UserService {
         requireBcryptCompatible(newPassword);
         user.changePasswordHash(passwordEncoder.encode(newPassword));
         events.publishEvent(new PasswordChangedEvent(userId));
+        // Record that it happened, never any password material.
+        audit.record(AuditRecord.event(AuditAction.PASSWORD_CHANGED, AuditEntityType.USER, userId, null));
         log.info("Password changed for user id={}", userId);
     }
 

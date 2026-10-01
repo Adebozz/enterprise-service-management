@@ -1,5 +1,10 @@
 package com.ademola.esm.user;
 
+import com.ademola.esm.audit.AuditAction;
+import com.ademola.esm.audit.AuditEntityType;
+import com.ademola.esm.audit.AuditRecord;
+import com.ademola.esm.audit.AuditService;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -7,7 +12,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Solves the chicken-and-egg problem "you need an admin to create an admin".
@@ -29,15 +34,23 @@ class AdminBootstrap implements ApplicationRunner {
     private final BootstrapAdminProperties properties;
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService audit;
+    private final TransactionTemplate transaction;
 
-    AdminBootstrap(BootstrapAdminProperties properties, UserRepository users, PasswordEncoder passwordEncoder) {
+    AdminBootstrap(
+            BootstrapAdminProperties properties,
+            UserRepository users,
+            PasswordEncoder passwordEncoder,
+            AuditService audit,
+            TransactionTemplate transaction) {
         this.properties = properties;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
+        this.audit = audit;
+        this.transaction = transaction;
     }
 
     @Override
-    @Transactional
     public void run(ApplicationArguments args) {
         if (properties.isPartiallyConfigured()) {
             log.warn(
@@ -58,11 +71,24 @@ class AdminBootstrap implements ApplicationRunner {
                         ? "Administrator"
                         : properties.displayName();
         try {
-            users.saveAndFlush(
-                    new User(properties.email(), name, passwordEncoder.encode(properties.password()), Role.ADMIN));
+            // The insert runs in its own transaction and the duplicate is caught OUTSIDE it. Catching
+            // inside a @Transactional method doesn't work: the failed flush has already marked the
+            // transaction rollback-only, so the commit would throw and abort startup.
+            transaction.executeWithoutResult(status -> createAdmin(name));
             log.info("Bootstrap admin account created (no other active admin existed)");
         } catch (DataIntegrityViolationException alreadyCreated) {
             log.info("Bootstrap admin already created by another instance or email in use; skipping");
         }
+    }
+
+    private void createAdmin(String name) {
+        User admin = users.saveAndFlush(
+                new User(properties.email(), name, passwordEncoder.encode(properties.password()), Role.ADMIN));
+        // Actor is empty (system): no one is signed in during startup.
+        audit.record(AuditRecord.created(
+                AuditAction.USER_CREATED,
+                AuditEntityType.USER,
+                admin.getId(),
+                Map.of("email", admin.getEmail(), "role", Role.ADMIN, "source", "BOOTSTRAP")));
     }
 }

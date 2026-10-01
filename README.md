@@ -19,7 +19,9 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Testcontainers integration tests against real PostgreSQL | Done (M0) |
 | Users & teams: admin APIs, role hierarchy, optimistic locking, last-admin protection | Done (M1) |
 | Authentication: JWT access tokens, rotating refresh-token cookie with reuse detection, logout, password change, first-admin bootstrap | Done (M2) |
-| Incidents, workflow, assignment, comments, audit, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Tickets: incidents & service requests (JPA JOINED inheritance), race-free references, configurable priority matrix, category-based routing, ownership/team visibility | Done (M3) |
+| Append-only audit trail (same-transaction, DB-trigger enforced) | Done (M3) |
+| Workflow, assignment, comments, queues, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 

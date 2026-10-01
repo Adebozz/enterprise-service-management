@@ -10,6 +10,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V1__baseline.sql` | No tables. Proves the migration pipeline end to end |
 | `V2__users_and_teams.sql` | `users`, `teams`, `team_members` (M1) |
 | `V3__refresh_tokens.sql` | `refresh_tokens` (M2) |
+| `V4__tickets_and_audit.sql` | `categories`, `work_items`, `incidents`, `service_requests`, reference sequences, `audit_events` + append-only trigger (M3) |
 
 ### users
 
@@ -51,6 +52,40 @@ memberships can't be hard-deleted.
 
 Indexes: `family_id`, `user_id`, `expires_at` (for the future purge job).
 
+### categories
+
+Two levels (`parent_id` → top-level category). `code` is unique UPPER_SNAKE_CASE; `applies_to` is
+`INCIDENT | SERVICE_REQUEST | ANY`. **`CHECK (parent_id IS NOT NULL OR default_team_id IS NOT NULL)`**:
+every top-level category routes to a team, so every ticket is routable. A subcategory's team, if
+set, overrides its parent's.
+
+### work_items, incidents, service_requests (JPA `JOINED` inheritance)
+
+`work_items` holds every shared column: `reference` (unique, `^(INC|REQ)-[0-9]{6,}$`), `type`
+(discriminator), `title`, `description`, `status`, `impact`, `urgency`, `priority`, `category_id`,
+`subcategory_id`, `requester_id`, `assigned_team_id` (**NOT NULL**), `assignee_id`, lifecycle
+timestamps and `version`. `incidents` and `service_requests` share its primary key
+(`work_item_id`, `ON DELETE CASCADE`) and add type-specific columns.
+
+| Guarantee | Mechanism |
+|---|---|
+| Status belongs to the type | `work_items_status_check`: `(type, status)` pairs |
+| Unique, race-free references | `incident_ref_seq` / `service_request_ref_seq` + `UNIQUE (reference)` |
+| Assignee is in the assigned team | composite FK `(assigned_team_id, assignee_id)` → `team_members` (NULL assignee allowed) |
+| Valid impact/urgency/priority | `CHECK ... IN (...)` |
+
+Indexes: `(requester_id, created_at DESC)` for "my tickets", `(assigned_team_id, status)` and
+`(assignee_id, status)` for queues, `(created_at)` for reporting. Queue-specific and full-text
+indexes are added in M7, sized against real query plans.
+
+### audit_events
+
+`occurred_at`, `actor_id` (NULL = system), `action`, `entity_type`, `entity_id`, `old_value` /
+`new_value` / `metadata` (**jsonb**), `correlation_id`. No foreign keys, so the trail never blocks
+or depends on what it describes. **A `BEFORE UPDATE OR DELETE` trigger raises `restrict_violation`**,
+making it append-only at the database level. Indexes: `(entity_type, entity_id, occurred_at)` for
+timelines and `(actor_id, occurred_at)`.
+
 ## Conventions
 
 - Migrations are **immutable once merged**. A fix is a new migration.
@@ -61,7 +96,7 @@ Indexes: `family_id`, `user_id`, `expires_at` (for the future purge job).
   remain migration-friendly, and still get database-level validation.
 - Business invariants are enforced in the service **and**, where cheap, in the database.
 
-## Phase 1 schema (planned, approved design)
+## Phase 1 entity relationships
 
 ```mermaid
 erDiagram
@@ -80,14 +115,5 @@ erDiagram
     users ||--o{ comments : writes
 ```
 
-Key decisions for tables not built yet (details are recorded in the milestone that implements them):
-
-- **One `work_items` table plus one extension table per type** (JPA `JOINED` inheritance). Queues,
-  search, comments, audit and SLA all need a single foreign-key target across types.
-- **Reference numbers come from one PostgreSQL sequence per type.** Sequences are atomic, so there
-  are no race conditions. Gaps after a rollback are acceptable.
-- **`assigned_team_id` is NOT NULL.** Routing always sets a team, so the "unassigned queue" means
-  `assignee_id IS NULL`.
-- **Composite FK `(assigned_team_id, assignee_id)` → `team_members`.** The database rejects an
-  assignee who isn't a member of the assigned team.
-- **`audit_events` is append-only**, enforced by a trigger that rejects `UPDATE` and `DELETE`.
+Tables still to come: `comments` (M6), then Phase 2 (`sla_*`, `catalogue_items`, `approvals`,
+`problems`, `changes`, `attachments`, `notifications`).

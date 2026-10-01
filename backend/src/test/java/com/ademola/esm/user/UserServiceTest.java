@@ -7,6 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ademola.esm.audit.AuditAction;
+import com.ademola.esm.audit.AuditRecord;
+import com.ademola.esm.audit.AuditService;
 import com.ademola.esm.common.error.DomainException;
 import com.ademola.esm.common.error.ErrorCode;
 import java.util.List;
@@ -39,6 +42,9 @@ class UserServiceTest {
     @Mock
     ApplicationEventPublisher events;
 
+    @Mock
+    AuditService audit;
+
     @InjectMocks
     UserService service;
 
@@ -55,6 +61,12 @@ class UserServiceTest {
         assertThat(saved.getValue().getDisplayName()).isEqualTo("Ada");
         assertThat(saved.getValue().getPasswordHash()).isEqualTo("{bcrypt}hash");
         assertThat(created.email()).isEqualTo("ada.lovelace@example.com");
+        ArgumentCaptor<AuditRecord> audited = ArgumentCaptor.forClass(AuditRecord.class);
+        verify(audit).record(audited.capture());
+        assertThat(audited.getValue().action()).isEqualTo(AuditAction.USER_CREATED);
+        assertThat(audited.getValue().newValue().toString())
+                .doesNotContain("bcrypt")
+                .doesNotContain("password");
     }
 
     @Test
@@ -123,6 +135,11 @@ class UserServiceTest {
 
         assertThat(updated.role()).isEqualTo(Role.TEAM_LEAD);
         verify(events).publishEvent(new UserRoleChangedEvent(admin.getId(), Role.ADMIN, Role.TEAM_LEAD));
+        ArgumentCaptor<AuditRecord> audited = ArgumentCaptor.forClass(AuditRecord.class);
+        verify(audit).record(audited.capture());
+        assertThat(audited.getValue().action()).isEqualTo(AuditAction.USER_UPDATED);
+        assertThat(audited.getValue().oldValue()).isEqualTo(java.util.Map.of("role", Role.ADMIN));
+        assertThat(audited.getValue().newValue()).isEqualTo(java.util.Map.of("role", Role.TEAM_LEAD));
     }
 
     @Test
@@ -144,6 +161,7 @@ class UserServiceTest {
         service.update(agent.getId(), new UpdateUserRequest(null, Role.AGENT, null, 0L));
 
         verify(events, never()).publishEvent(any());
+        verify(audit, never()).record(any()); // a no-op update leaves no audit noise
     }
 
     @Test

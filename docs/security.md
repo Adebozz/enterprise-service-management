@@ -77,12 +77,26 @@ sequenceDiagram
 
 Verified by `AuthApiIT`, `JwtSecurityIT` (expired, tampered, wrong key, `alg: none`, wrong issuer, malformed, and an RBAC matrix with real tokens) and `RefreshConcurrencyIT`.
 
+## Implemented (M3): ticket visibility
+
+`TicketAccessPolicy` (a pure function, unit-tested case by case):
+
+| Caller | Sees |
+|---|---|
+| ADMIN | every ticket |
+| anyone | tickets they raised |
+| AGENT / TEAM_LEAD | tickets assigned to them or to any of their teams |
+
+Tickets outside the caller's scope return **404 `RESOURCE_NOT_FOUND`**, identical to a
+non-existent id, so outsiders can't enumerate ids. Team membership counts only for staff roles.
+The requester and team are always taken from the token and routing rules, never from the request
+body.
+
 ## Planned
 
 | Concern | Design |
 |---|---|
-| Ticket authorization | `TicketAccessPolicy` for ownership and team scope, applied **inside queries** (M3+) |
-| Hidden resources | Tickets outside your scope return **404** rather than 403, which prevents ID enumeration |
+| List/queue authorization | The same rules applied **inside the SQL query** (JPA Specification), not by filtering results (M7) |
 | Internal notes | Returned only to staff with team-scope access to the ticket; filtered server-side (M6) |
 
 ## Known limitations (security)

@@ -3,7 +3,6 @@ package com.ademola.esm.team;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface TeamMemberRepository extends JpaRepository<TeamMember, TeamMemberId> {
@@ -28,8 +27,6 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, TeamMemb
             """)
     List<TeamSummary> findActiveTeamsOf(UUID userId);
 
-    /** Bulk delete: one SQL statement, no need to load the rows first. */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("delete from TeamMember m where m.id.userId = :userId")
-    int deleteAllByUserId(UUID userId);
+    @Query("select m.id.teamId from TeamMember m where m.id.userId = :userId")
+    List<UUID> findTeamIdsOf(UUID userId);
 }

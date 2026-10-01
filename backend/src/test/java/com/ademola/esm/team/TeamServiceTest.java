@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.ademola.esm.audit.AuditService;
 import com.ademola.esm.common.error.DomainException;
 import com.ademola.esm.common.error.ErrorCode;
 import com.ademola.esm.user.Role;
@@ -42,13 +43,16 @@ class TeamServiceTest {
     @Mock
     UserService userService;
 
+    @Mock
+    AuditService audit;
+
     TeamService service;
 
     Team team;
 
     @BeforeEach
     void setUp() {
-        service = new TeamService(teams, members, userService, Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new TeamService(teams, members, userService, Clock.fixed(NOW, ZoneOffset.UTC), audit);
         team = withId(new Team("Network Team", null));
     }
 
@@ -106,12 +110,17 @@ class TeamServiceTest {
     }
 
     @Test
-    void demotionToRequesterRemovesAllMemberships() {
+    void demotionToRequesterRemovesAndAuditsEveryMembership() {
         UUID userId = UUID.randomUUID();
+        UUID teamA = UUID.randomUUID();
+        UUID teamB = UUID.randomUUID();
+        when(members.findTeamIdsOf(userId)).thenReturn(java.util.List.of(teamA, teamB));
 
         service.onUserRoleChanged(new UserRoleChangedEvent(userId, Role.AGENT, Role.REQUESTER));
 
-        verify(members).deleteAllByUserId(userId);
+        verify(members).deleteById(new TeamMemberId(teamA, userId));
+        verify(members).deleteById(new TeamMemberId(teamB, userId));
+        verify(audit, org.mockito.Mockito.times(2)).record(any());
     }
 
     @ParameterizedTest
@@ -121,7 +130,8 @@ class TeamServiceTest {
     void roleChangesBetweenStaffRolesKeepMemberships(Role newRole) {
         service.onUserRoleChanged(new UserRoleChangedEvent(UUID.randomUUID(), Role.AGENT, newRole));
 
-        verify(members, never()).deleteAllByUserId(any());
+        verify(members, never()).findTeamIdsOf(any());
+        verify(members, never()).deleteById(any());
     }
 
     @Test

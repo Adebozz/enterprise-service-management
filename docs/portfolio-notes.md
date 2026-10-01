@@ -126,3 +126,51 @@ password change) and 33 new integration tests (`AuthApiIT` 14, `JwtSecurityIT` 1
 `RefreshConcurrencyIT` 5). Total: 57 unit + 84 integration. Also smoke-tested manually against the
 docker-compose database with curl (bootstrap → login → `/me` → admin create → refresh → logout →
 refresh rejected).
+
+---
+
+## M3: Ticket core & audit trail (2026-10-01)
+
+**What was built**
+- Incidents and service requests on one `work_items` table with type-specific extension tables
+  (JPA `JOINED` inheritance and a discriminator). The database `CHECK` validates `(type, status)`.
+- Race-free human-readable references (`INC-000001`) from per-type PostgreSQL sequences, proven by
+  20 concurrent creations all receiving distinct references.
+- Priority from a configurable impact × urgency matrix, validated at startup (a missing cell
+  stops the app), behind a single `PriorityPolicy`.
+- Category-based routing (subcategory team overrides parent team), with a DB check guaranteeing
+  every top-level category routes somewhere. Admin category management.
+- `TicketAccessPolicy`: owners, team staff and admins see a ticket; everyone else gets 404 (not
+  403) to prevent id enumeration. It's a pure function unit-tested case by case, including an agent
+  who raised a ticket in another team's queue.
+- Append-only audit trail written in the same transaction (`Propagation.MANDATORY`), with actor,
+  correlation id and jsonb before/after values. Retrofitted to user, team, password and category
+  operations.
+
+**Decisions worth discussing**
+- *Aggregates reference each other by id, not JPA associations*, even within the ticket module.
+  This keeps the package graph acyclic (verified while designing: a `@ManyToOne Category` on
+  `WorkItem` would have created a `ticket ↔ category` cycle) and rules out lazy-loading N+1 by
+  construction.
+- *Dependency inversion for the audit actor.* `audit` defines `ActorProvider`, `auth`
+  implements it, so every module can depend on `audit` without a cycle through security.
+- *Composition over inheritance for services.* `TicketIntake` holds the shared creation steps;
+  `IncidentService` and `ServiceRequestService` call it rather than extending a base service.
+
+**Bugs found and fixed**
+- *Latent M2 bug in the admin bootstrap:* it caught the duplicate-email exception **inside**
+  `@Transactional`, but a failed flush marks the transaction rollback-only, so the commit would
+  throw `UnexpectedRollbackException` and abort startup in exactly the multi-instance race it
+  claimed to handle. Fixed with `TransactionTemplate` and catching **outside** the transaction.
+  **Verified both ways:** the new `AdminBootstrapIT` fails with
+  `UnexpectedRollbackException … marked as rollback-only` when the catch is moved back inside.
+- *Misleading error translation:* the audit trigger first raised `insufficient_privilege` (SQLSTATE
+  42501), which Spring translates to `BadSqlGrammarException`. Switched to `restrict_violation`
+  (23001), so the app sees a `DataIntegrityViolationException`.
+- `ddl-auto=validate` again pinned a `text` vs `varchar` mapping (fixed with `columnDefinition`).
+
+**Tests:** 31 new unit tests (priority matrix 9 cells + incomplete matrix, access policy, category
+routing, reference format, audit assertions in user/team tests) and 28 new integration tests
+(ticket API with real tokens, schema constraints incl. audit trigger and assignee-in-team FK,
+category API, audit guarantees, bootstrap race, reference concurrency). Total: 88 unit + 112
+integration. Also verified V4 as an incremental migration on an existing local database.

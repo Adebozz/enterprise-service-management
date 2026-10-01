@@ -1,5 +1,9 @@
 package com.ademola.esm.team;
 
+import com.ademola.esm.audit.AuditAction;
+import com.ademola.esm.audit.AuditEntityType;
+import com.ademola.esm.audit.AuditRecord;
+import com.ademola.esm.audit.AuditService;
 import com.ademola.esm.common.error.BusinessRuleException;
 import com.ademola.esm.common.error.ErrorCode;
 import com.ademola.esm.common.error.ResourceNotFoundException;
@@ -8,7 +12,10 @@ import com.ademola.esm.user.User;
 import com.ademola.esm.user.UserRoleChangedEvent;
 import com.ademola.esm.user.UserService;
 import java.time.Clock;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,12 +35,19 @@ public class TeamService {
     private final TeamMemberRepository members;
     private final UserService userService;
     private final Clock clock;
+    private final AuditService audit;
 
-    public TeamService(TeamRepository teams, TeamMemberRepository members, UserService userService, Clock clock) {
+    public TeamService(
+            TeamRepository teams,
+            TeamMemberRepository members,
+            UserService userService,
+            Clock clock,
+            AuditService audit) {
         this.teams = teams;
         this.members = members;
         this.userService = userService;
         this.clock = clock;
+        this.audit = audit;
     }
 
     // ----- queries (support staff) --------------------------------------------------------------
@@ -71,6 +85,29 @@ public class TeamService {
         return members.findActiveTeamsOf(userId);
     }
 
+    /** Ids of every team (active or not) the user belongs to; used for ticket visibility. */
+    @Transactional(readOnly = true)
+    public Set<UUID> teamIdsOf(UUID userId) {
+        return Set.copyOf(members.findTeamIdsOf(userId));
+    }
+
+    /** Name lookup for display purposes (e.g. "assigned to Network Team" on a ticket). */
+    @Transactional(readOnly = true)
+    public TeamSummary summaryOf(UUID teamId) {
+        Team team = require(teamId);
+        return new TeamSummary(team.getId(), team.getName());
+    }
+
+    /** For other modules that route work to a team: it must exist and be active. */
+    @Transactional(readOnly = true)
+    public TeamSummary requireActiveTeam(UUID teamId) {
+        Team team = require(teamId);
+        if (!team.isActive()) {
+            throw new BusinessRuleException(ErrorCode.TEAM_INACTIVE, "Team '%s' is inactive".formatted(team.getName()));
+        }
+        return new TeamSummary(team.getId(), team.getName());
+    }
+
     // ----- administration -----------------------------------------------------------------------
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -84,6 +121,8 @@ public class TeamService {
         } catch (DataIntegrityViolationException raceLost) {
             throw nameAlreadyExists();
         }
+        audit.record(AuditRecord.created(
+                AuditAction.TEAM_CREATED, AuditEntityType.TEAM, team.getId(), Map.of("name", team.getName())));
         log.info("Team created id={} name='{}'", team.getId(), team.getName());
         return TeamResponse.from(team);
     }
@@ -93,21 +132,32 @@ public class TeamService {
         Team team = require(teamId);
         StaleVersionException.check("Team", request.version(), team.getVersion());
 
-        if (request.name() != null) {
+        Map<String, Object> before = new LinkedHashMap<>();
+        Map<String, Object> after = new LinkedHashMap<>();
+        if (request.name() != null && !request.name().trim().equals(team.getName())) {
             if (teams.existsByNameIgnoreCaseAndIdNot(request.name().trim(), teamId)) {
                 throw nameAlreadyExists();
             }
+            before.put("name", team.getName());
             team.rename(request.name());
+            after.put("name", team.getName());
         }
-        if (request.description() != null) {
+        if (request.description() != null && !request.description().equals(team.getDescription())) {
+            before.put("description", team.getDescription());
             team.describe(request.description());
+            after.put("description", team.getDescription());
         }
-        if (request.active() != null) {
+        if (request.active() != null && request.active() != team.isActive()) {
+            before.put("active", team.isActive());
             if (request.active()) {
                 team.activate();
             } else {
                 team.deactivate();
             }
+            after.put("active", team.isActive());
+        }
+        if (!after.isEmpty()) {
+            audit.record(AuditRecord.changed(AuditAction.TEAM_UPDATED, AuditEntityType.TEAM, teamId, before, after));
         }
         try {
             teams.flush(); // surface constraint races here and return the incremented version
@@ -137,6 +187,8 @@ public class TeamService {
         TeamMemberId id = new TeamMemberId(teamId, userId);
         if (!members.existsById(id)) {
             members.save(new TeamMember(teamId, userId, clock.instant()));
+            audit.record(AuditRecord.event(
+                    AuditAction.TEAM_MEMBER_ADDED, AuditEntityType.TEAM, teamId, Map.of("userId", userId)));
             log.info("User {} added to team {}", userId, teamId);
         }
     }
@@ -148,6 +200,8 @@ public class TeamService {
         TeamMemberId id = new TeamMemberId(teamId, userId);
         if (members.existsById(id)) {
             members.deleteById(id);
+            audit.record(AuditRecord.event(
+                    AuditAction.TEAM_MEMBER_REMOVED, AuditEntityType.TEAM, teamId, Map.of("userId", userId)));
             log.info("User {} removed from team {}", userId, teamId);
         }
     }
@@ -161,13 +215,13 @@ public class TeamService {
     @EventListener
     void onUserRoleChanged(UserRoleChangedEvent event) {
         if (!event.newRole().isStaff()) {
-            int removed = members.deleteAllByUserId(event.userId());
-            if (removed > 0) {
-                log.info(
-                        "Removed user {} from {} team(s) after role change to {}",
-                        event.userId(),
-                        removed,
-                        event.newRole());
+            for (UUID teamId : members.findTeamIdsOf(event.userId())) {
+                members.deleteById(new TeamMemberId(teamId, event.userId()));
+                audit.record(AuditRecord.event(
+                        AuditAction.TEAM_MEMBER_REMOVED,
+                        AuditEntityType.TEAM,
+                        teamId,
+                        Map.of("userId", event.userId(), "reason", "ROLE_CHANGED_TO_" + event.newRole())));
             }
         }
     }

@@ -53,6 +53,13 @@ esm:
       cookie-secure: true
     # Browser origins allowed to call the cookie-authenticated endpoints (refresh/logout).
     allowed-origins: ${ESM_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}
+  # Ticket priority = f(impact, urgency). Change the policy here, not in code. Every cell is
+  # required; startup fails if one is missing. Documented in docs/architecture.md.
+  priority:
+    matrix:
+      HIGH:   { HIGH: P1, MEDIUM: P2, LOW: P3 }
+      MEDIUM: { HIGH: P2, MEDIUM: P3, LOW: P4 }
+      LOW:    { HIGH: P3, MEDIUM: P4, LOW: P4 }
   bootstrap:
     admin:
       email: ${ESM_BOOTSTRAP_ADMIN_EMAIL:}

@@ -33,8 +33,8 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel plus `incident`, `request`, `workflow`, `priority`, `assignment`, `comment`, `category`, `query`, `access` sub-packages | Planned (M3–M7) |
-| `audit` | Append-only audit trail | Planned (M3) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query` sub-packages; `workflow`, `assignment`, `comment` to come | Core implemented (M3) |
+| `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla`, `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
 
@@ -54,8 +54,23 @@ Base package: `com.ademola.esm`
   `UserRoleChangedEvent` and `team` listens. Listeners are synchronous and run in the same
   transaction, so the change is atomic. Phase 2 uses the same pattern for ticket → SLA.
 
+Inside `ticket`, packages form a one-way graph (no cycles):
+
 ```mermaid
 flowchart LR
+    query --> incident & request & access & category
+    incident & request --> intake
+    intake --> category & priority & core["ticket (WorkItem)"]
+    incident & request & access --> core
+    core --> priority
+```
+
+Across modules:
+
+```mermaid
+flowchart LR
+    ticket --> team & user & auth & audit
+    auth -. implements ActorProvider .-> audit
     team -->|calls| user
     user -. "UserRoleChangedEvent (same tx)" .-> team
     auth -->|calls| user
@@ -103,6 +118,52 @@ flowchart LR
 | `GET /api/admin/teams`, `POST /api/admin/teams`, `PATCH /api/admin/teams/{id}` | ADMIN | Includes inactive teams |
 | `PUT / DELETE /api/admin/teams/{id}/members/{userId}` | ADMIN | Idempotent, 204 |
 
+### Tickets & categories (M3)
+
+| Method & path | Who | Notes |
+|---|---|---|
+| `POST /api/incidents` | any signed-in user | `{title, description, categoryId, subcategoryId?, impact, urgency, affectedService?}` → 201 `{id, reference, type, status, priority}` + `Location: /api/tickets/{id}` |
+| `POST /api/service-requests` | any signed-in user | `{title, description, categoryId, subcategoryId?, urgency?}`; impact defaults LOW, urgency MEDIUM |
+| `GET /api/tickets/{id}` | owner / team staff / admin | Full ticket with names resolved; **404** if not visible |
+| `GET /api/categories?type=INCIDENT\|SERVICE_REQUEST` | any signed-in user | Active category tree for that type |
+| `GET/POST /api/admin/categories`, `PATCH /api/admin/categories/{id}` | ADMIN | Code is immutable; top level needs a team; max two levels |
+
+## Ticket intake (M3)
+
+Every new ticket, of any type, goes through `TicketIntake`, in one transaction:
+
+1. **Category check:** active, top-level, applicable to the type; the subcategory must belong to it.
+   Failures are 422 `INVALID_CATEGORY` (never 404, which would allow probing for ids).
+2. **Routing:** subcategory team ?? category team; that team must be active.
+3. **Priority:** `PriorityPolicy` (below).
+4. **Reference:** `nextval` on the type's sequence → `INC-000042`.
+5. Save, then **audit** `TICKET_CREATED` in the same transaction.
+
+### Priority matrix
+
+Configured in `application.yml` (`esm.priority.matrix`), bound to a validated record. Startup
+fails if any cell is missing. `PriorityPolicy` is the only code that maps impact/urgency to
+priority.
+
+| Impact \ Urgency | HIGH | MEDIUM | LOW |
+|---|---|---|---|
+| **HIGH** | P1 Critical | P2 High | P3 Medium |
+| **MEDIUM** | P2 High | P3 Medium | P4 Low |
+| **LOW** | P3 Medium | P4 Low | P4 Low |
+
+## Audit trail (M3)
+
+- `AuditService.record()` uses `Propagation.MANDATORY`: callable only inside the business
+  transaction, so a change and its audit entry commit or roll back together (tested: a failed
+  duplicate-email create leaves no audit row).
+- The actor comes from `ActorProvider` (implemented by `auth` from the JWT principal; empty for
+  system actions such as the admin bootstrap). The correlation id comes from the MDC.
+- Audited so far: user created/updated/password changed, team created/updated/member
+  added/removed, category created/updated, ticket created. Values hold only changed fields and never
+  secrets.
+- Append-only at three levels: `@Immutable` entity, a repository with no update/delete methods, and
+  a database trigger.
+
 ## Observability (implemented so far)
 
 - Correlation ID on every log line (`logging.pattern.correlation`) and in every error response.
@@ -116,8 +177,8 @@ flowchart LR
 | M0 | Bootstrap: monorepo, Spring Boot, Flyway, Compose, error handling, correlation IDs, Testcontainers | **Done** |
 | M1 | Users & teams, role hierarchy, admin APIs | **Done** |
 | M2 | Authentication: login, JWT, refresh-token rotation, `/users/me`, bootstrap admin | **Done** |
-| M3 | Ticket core + audit foundation | Next |
-| M4 | Workflow engine | |
+| M3 | Ticket core + audit foundation | **Done** |
+| M4 | Workflow engine | Next |
 | M5 | Assignment & routing | |
 | M6 | Comments & internal notes, history endpoint | |
 | M7 | Queue, filtering, full-text search | |
