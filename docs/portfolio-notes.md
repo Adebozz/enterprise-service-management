@@ -214,3 +214,38 @@ integration. Also verified V4 as an incremental migration on an existing local d
 entity side effects, actor resolution) and 17 new integration tests (full lifecycle with audit
 trail, error codes, permissions, available transitions per caller, SYSTEM-only approvals,
 concurrency). Total: 228 unit + 129 integration.
+
+---
+
+## M5: Assignment (2026-10-02)
+
+**What was built**
+- `PUT /api/tickets/{id}/assignment`: take, release, assign, reassign and transfer, authorized
+  by a pure `AssignmentPolicy` that combines role (agent vs team lead) with team membership and
+  the ticket's current owner.
+- Ownership drives status through **SYSTEM-only** workflow moves applied by the entity (NEW →
+  ASSIGNED on gaining an owner; ASSIGNED/IN_PROGRESS/WAITING → NEW "return to queue" on losing it),
+  so users can't reach those statuses through `/transitions`, and work in progress always has an
+  owner.
+- Idempotent PUT (same values → no version bump, no audit). A compact response, because a transfer
+  can remove the caller's right to see the ticket.
+
+**Design correction (good interview story)**
+- In M3 I enforced "assignee is a team member" with a **composite foreign key**. Designing
+  membership removal exposed the flaw: closed tickets keep their historical assignee, so the FK would
+  stop anyone who had ever worked a ticket from ever leaving that team. I replaced it (V5, ADR-008)
+  with two triggers expressing the real rules: membership is checked **at assignment time**, and
+  a member can't be removed while owning **open** tickets. The service translates the latter to
+  409 `MEMBER_HAS_OPEN_TICKETS`; a demotion that would orphan open tickets is rolled back as a whole.
+  Takeaway: FKs are for whole-lifetime invariants.
+
+**Bug caught in my own design before shipping**
+- The first version of the "take" rule let an agent assign themselves a ticket **already owned by a
+  colleague**. Restricted taking to unassigned tickets. **Mutation-checked:** removing the guard
+  makes `agentCannotTakeATicketAlreadyOwnedByAColleague` fail.
+
+**Tests:** 20 new unit tests (12 policy cases, entity status effects, membership-removal
+translation, updated exhaustive workflow tables) and 18 new integration tests (assignment API with
+real tokens, membership triggers incl. "closed history doesn't block removal", two team leads
+assigning concurrently). Total: 248 unit + 147 integration. V5 also applied as an incremental
+migration to a local database that already held data.

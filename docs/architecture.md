@@ -33,7 +33,7 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API) sub-packages; `assignment`, `comment` to come | Implemented (M3–M4) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment` sub-packages; `comment` to come | Implemented (M3–M5) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla`, `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
@@ -59,6 +59,7 @@ Inside `ticket`, packages form a one-way graph (no cycles):
 ```mermaid
 flowchart LR
     transition --> query & access & core
+    assignment --> access & core
     query --> incident & request & access & category
     incident & request --> intake
     intake --> category & priority & core["ticket (WorkItem)"]
@@ -136,6 +137,12 @@ flowchart LR
 | `GET /api/tickets/{id}/transitions` | anyone who can see the ticket | Moves available to *this caller* now: `[{targetStatus, label, requirements}]`. The UI renders buttons from it |
 | `POST /api/tickets/{id}/transitions` | depends on the move | `{targetStatus, version, reason?, resolutionCode?, notes?}` → updated ticket |
 
+### Assignment (M5)
+
+| Method & path | Who | Notes |
+|---|---|---|
+| `PUT /api/tickets/{id}/assignment` | AGENT+ (see rules) | `{teamId, assigneeId?, version}` → `{ticketId, reference, status, assignedTeam, assignee, version}`. Same values = no-op |
+
 ## Ticket intake (M3)
 
 Every new ticket, of any type, goes through `TicketIntake`, in one transaction:
@@ -185,6 +192,8 @@ stateDiagram-v2
     [*] --> NEW
     NEW --> ASSIGNED: Assign (system)
     ASSIGNED --> NEW: Unassign (system)
+    IN_PROGRESS --> NEW: Return to queue (system)
+    WAITING_FOR_USER --> NEW: Return to queue (system)
     ASSIGNED --> IN_PROGRESS: Start work (support, needs assignee)
     IN_PROGRESS --> WAITING_FOR_USER: Wait for user (support, reason)
     WAITING_FOR_USER --> IN_PROGRESS: Resume (support/requester)
@@ -210,6 +219,7 @@ stateDiagram-v2
     APPROVAL_PENDING --> REJECTED: system
     APPROVED --> IN_PROGRESS: Start fulfilment
     IN_PROGRESS --> FULFILLED: Fulfil (support, notes)
+    IN_PROGRESS --> SUBMITTED: Return to queue (system)
     FULFILLED --> IN_PROGRESS: Reopen (reason)
     FULFILLED --> CLOSED: Confirm and close (requester/admin/system)
     SUBMITTED --> CANCELLED: Cancel (reason)
@@ -225,6 +235,40 @@ state (CLOSED, CANCELLED, REJECTED). Resolution codes for incidents are a fixed 
 
 > **Status codes:** the original spec's example used 400 for an invalid transition. We return
 > **409 Conflict**: the request is well-formed but conflicts with the ticket's current state.
+
+## Assignment (M5)
+
+`WorkItem.assign()` is the only way ownership changes. `AssignmentPolicy` (pure, unit-tested)
+decides who may do what; admins may do anything:
+
+| Change | Allowed for |
+|---|---|
+| Take an **unassigned** ticket in my team (assignee = me) | any staff member of that team |
+| Release my own ticket | its current assignee |
+| Assign/reassign to someone else in the team | TEAM_LEAD of that team |
+| Transfer to another team, unassigned | support on the ticket (team member or assignee) |
+| Transfer and choose the new assignee | TEAM_LEAD of the target team |
+
+Validation: the target team is active (422 `TEAM_INACTIVE`); the assignee is an active staff
+member of it (422 `ASSIGNEE_NOT_IN_TEAM`); the ticket isn't resolved, fulfilled or terminal (409
+`TICKET_NOT_ASSIGNABLE`).
+
+**Status follows ownership through SYSTEM-only workflow moves**, applied by the entity:
+
+| Ownership change | Incident | Service request |
+|---|---|---|
+| gains an owner while NEW | NEW → ASSIGNED | (no change) |
+| loses its owner | ASSIGNED / IN_PROGRESS / WAITING_FOR_USER → NEW | IN_PROGRESS → SUBMITTED |
+| owner replaced | unchanged | unchanged |
+
+Users can't reach these statuses via `/transitions`, because the API never grants the SYSTEM
+actor. Work in progress therefore always has an owner. The response is a compact
+`AssignmentResponse`, because after a transfer the caller may no longer be allowed to see the
+ticket.
+
+Removing a member (or demoting them to REQUESTER) while they own open tickets in that team is
+refused by the database and reported as 409 `MEMBER_HAS_OPEN_TICKETS`; a demotion is rolled back
+as a whole.
 
 ## Audit trail (M3)
 
@@ -254,8 +298,8 @@ state (CLOSED, CANCELLED, REJECTED). Resolution codes for incidents are a fixed 
 | M2 | Authentication: login, JWT, refresh-token rotation, `/users/me`, bootstrap admin | **Done** |
 | M3 | Ticket core + audit foundation | **Done** |
 | M4 | Workflow engine | **Done** |
-| M5 | Assignment & routing | Next |
-| M6 | Comments & internal notes, history endpoint | |
+| M5 | Assignment & routing | **Done** |
+| M6 | Comments & internal notes, history endpoint | Next |
 | M7 | Queue, filtering, full-text search | |
 | M8 | OpenAPI polish, `docs/api.md` | |
 | M9 | Frontend foundation (auth, layout, generated API types) | |

@@ -43,6 +43,7 @@ public final class ServiceRequestWorkflow {
             .allow(APPROVAL_PENDING, REJECTED, "Reject", Set.of(SYSTEM))
             .allow(APPROVED, IN_PROGRESS, "Start fulfilment", Set.of(SUPPORT), Set.of(ASSIGNEE))
             .allow(IN_PROGRESS, FULFILLED, "Fulfil", Set.of(SUPPORT), Set.of(FULFILMENT_NOTES))
+            .allow(IN_PROGRESS, SUBMITTED, "Return to queue", Set.of(SYSTEM))
             .allow(FULFILLED, CLOSED, "Confirm and close", Set.of(REQUESTER, ADMIN, SYSTEM))
             .allow(FULFILLED, IN_PROGRESS, "Reopen", Set.of(REQUESTER, SUPPORT), Set.of(REASON))
             .allowFromEach(

@@ -135,6 +135,22 @@ class TeamServiceTest {
     }
 
     @Test
+    void removingAMemberWhoOwnsOpenTicketsIsAClearConflict() {
+        UUID userId = UUID.randomUUID();
+        TeamMemberId id = new TeamMemberId(team.getId(), userId);
+        when(teams.findById(team.getId())).thenReturn(Optional.of(team));
+        when(members.existsById(id)).thenReturn(true);
+        // The V5 trigger refuses the delete when the flush reaches the database.
+        org.mockito.Mockito.doThrow(
+                        new org.springframework.dao.DataIntegrityViolationException("still owns open tickets"))
+                .when(members)
+                .flush();
+
+        assertErrorCode(() -> service.removeMember(team.getId(), userId), ErrorCode.MEMBER_HAS_OPEN_TICKETS);
+        verify(audit, never()).record(any());
+    }
+
+    @Test
     void duplicateTeamNameIsRejectedCaseInsensitively() {
         when(teams.existsByNameIgnoreCase("network team")).thenReturn(true);
 

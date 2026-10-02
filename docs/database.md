@@ -11,6 +11,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V2__users_and_teams.sql` | `users`, `teams`, `team_members` (M1) |
 | `V3__refresh_tokens.sql` | `refresh_tokens` (M2) |
 | `V4__tickets_and_audit.sql` | `categories`, `work_items`, `incidents`, `service_requests`, reference sequences, `audit_events` + append-only trigger (M3) |
+| `V5__assignment_membership_rules.sql` | Replaces V4's composite assignee FK with two triggers (see below); index `(assigned_team_id, assignee_id)` (M5) |
 
 ### users
 
@@ -71,12 +72,18 @@ timestamps and `version`. `incidents` and `service_requests` share its primary k
 |---|---|
 | Status belongs to the type | `work_items_status_check`: `(type, status)` pairs |
 | Unique, race-free references | `incident_ref_seq` / `service_request_ref_seq` + `UNIQUE (reference)` |
-| Assignee is in the assigned team | composite FK `(assigned_team_id, assignee_id)` → `team_members` (NULL assignee allowed) |
+| Assignee is in the assigned team **when assigned** | trigger `work_items_assignee_membership` (BEFORE INSERT/UPDATE OF assignee/team) |
+| A member can't leave a team while owning **open** tickets there | trigger `team_members_no_open_assignments` (BEFORE DELETE) |
 | Valid impact/urgency/priority | `CHECK ... IN (...)` |
 
 Indexes: `(requester_id, created_at DESC)` for "my tickets", `(assigned_team_id, status)` and
 `(assignee_id, status)` for queues, `(created_at)` for reporting. Queue-specific and full-text
 indexes are added in M7, sized against real query plans.
+
+> **Why triggers instead of the original composite FK (V4 → V5):** a foreign key holds for the
+> row's whole life. Closed tickets keep their historical assignee, so the FK made it impossible to
+> ever remove someone from a team they had once worked in. The real rule is about *assignment time*
+> and *open* tickets, which a trigger can express. See [ADR-008](adr/008-assignment-membership-triggers.md).
 
 ### audit_events
 

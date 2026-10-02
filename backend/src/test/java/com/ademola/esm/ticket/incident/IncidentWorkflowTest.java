@@ -29,6 +29,8 @@ class IncidentWorkflowTest {
     static final Set<String> ALLOWED = Set.of(
             "NEW->ASSIGNED",
             "ASSIGNED->NEW",
+            "IN_PROGRESS->NEW",
+            "WAITING_FOR_USER->NEW",
             "ASSIGNED->IN_PROGRESS",
             "IN_PROGRESS->WAITING_FOR_USER",
             "WAITING_FOR_USER->IN_PROGRESS",
@@ -84,6 +86,20 @@ class IncidentWorkflowTest {
         assertThat(IncidentWorkflow.DEFINITION.find(NEW, ASSIGNED).orElseThrow().allowedActors())
                 .containsExactly(Actor.SYSTEM);
         assertThat(IncidentWorkflow.DEFINITION.find(ASSIGNED, NEW).orElseThrow().allowedActors())
+                .containsExactly(Actor.SYSTEM);
+    }
+
+    @Test
+    void returningToTheQueueIsReservedForTheSystem() {
+        assertThat(IncidentWorkflow.DEFINITION
+                        .find(IN_PROGRESS, NEW)
+                        .orElseThrow()
+                        .allowedActors())
+                .containsExactly(Actor.SYSTEM);
+        assertThat(IncidentWorkflow.DEFINITION
+                        .find(WAITING_FOR_USER, NEW)
+                        .orElseThrow()
+                        .allowedActors())
                 .containsExactly(Actor.SYSTEM);
     }
 

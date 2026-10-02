@@ -20,6 +20,7 @@ class ServiceRequestWorkflowTest {
             "APPROVAL_PENDING->REJECTED",
             "APPROVED->IN_PROGRESS",
             "IN_PROGRESS->FULFILLED",
+            "IN_PROGRESS->SUBMITTED",
             "FULFILLED->CLOSED",
             "FULFILLED->IN_PROGRESS",
             "SUBMITTED->CANCELLED",

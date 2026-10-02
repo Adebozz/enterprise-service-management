@@ -22,7 +22,8 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Tickets: incidents & service requests (JPA JOINED inheritance), race-free references, configurable priority matrix, category-based routing, ownership/team visibility | Done (M3) |
 | Append-only audit trail (same-transaction, DB-trigger enforced) | Done (M3) |
 | Workflow engine: lifecycles as data, actor-based permissions, requirements, lifecycle timestamps, available-transitions endpoint | Done (M4) |
-| Assignment, comments, queues, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Assignment: take/release/assign/transfer with role-and-team rules, status follows ownership, DB-enforced membership rules | Done (M5) |
+| Comments, queues, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 

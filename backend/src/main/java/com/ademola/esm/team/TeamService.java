@@ -199,7 +199,7 @@ public class TeamService {
         require(teamId);
         TeamMemberId id = new TeamMemberId(teamId, userId);
         if (members.existsById(id)) {
-            members.deleteById(id);
+            deleteMembership(id);
             audit.record(AuditRecord.event(
                     AuditAction.TEAM_MEMBER_REMOVED, AuditEntityType.TEAM, teamId, Map.of("userId", userId)));
             log.info("User {} removed from team {}", userId, teamId);
@@ -216,13 +216,29 @@ public class TeamService {
     void onUserRoleChanged(UserRoleChangedEvent event) {
         if (!event.newRole().isStaff()) {
             for (UUID teamId : members.findTeamIdsOf(event.userId())) {
-                members.deleteById(new TeamMemberId(teamId, event.userId()));
+                deleteMembership(new TeamMemberId(teamId, event.userId()));
                 audit.record(AuditRecord.event(
                         AuditAction.TEAM_MEMBER_REMOVED,
                         AuditEntityType.TEAM,
                         teamId,
                         Map.of("userId", event.userId(), "reason", "ROLE_CHANGED_TO_" + event.newRole())));
             }
+        }
+    }
+
+    /**
+     * The database refuses to remove a member who still owns open tickets (trigger from V5).
+     * Flushing here surfaces that refusal immediately so we can turn it into a clear 409, rather
+     * than a generic failure at commit.
+     */
+    private void deleteMembership(TeamMemberId id) {
+        try {
+            members.deleteById(id);
+            members.flush();
+        } catch (DataIntegrityViolationException ownsOpenTickets) {
+            throw new BusinessRuleException(
+                    ErrorCode.MEMBER_HAS_OPEN_TICKETS,
+                    "This person still owns open tickets in the team. Reassign them first.");
         }
     }
 

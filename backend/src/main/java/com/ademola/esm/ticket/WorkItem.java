@@ -1,5 +1,7 @@
 package com.ademola.esm.ticket;
 
+import com.ademola.esm.common.error.BusinessRuleException;
+import com.ademola.esm.common.error.ErrorCode;
 import com.ademola.esm.common.persistence.BaseEntity;
 import com.ademola.esm.ticket.priority.Impact;
 import com.ademola.esm.ticket.priority.Priority;
@@ -125,6 +127,34 @@ public abstract class WorkItem extends BaseEntity {
         onTransition(previous, this.status, input, now);
         return transition;
     }
+
+    /**
+     * Changes team and/or assignee. This is the <b>only</b> way ownership changes.
+     *
+     * <p>Status consequences are applied by the ticket itself through its own workflow, using
+     * SYSTEM-only transitions (e.g. NEW -> ASSIGNED). Users can therefore reach those statuses only
+     * by assigning, never by requesting the transition directly.
+     */
+    public final AssignmentChange assign(UUID teamId, UUID newAssigneeId, Instant now) {
+        if (!isAssignable()) {
+            throw new BusinessRuleException(
+                    ErrorCode.TICKET_NOT_ASSIGNABLE,
+                    "A %s in status %s can't be reassigned"
+                            .formatted(workflow().subject().toLowerCase(), status));
+        }
+        AssignmentChange.Snapshot before = new AssignmentChange.Snapshot(assignedTeamId, assigneeId, status);
+        boolean hadAssignee = assigneeId != null;
+        this.assignedTeamId = teamId;
+        this.assigneeId = newAssigneeId;
+        onAssignmentChanged(hadAssignee, newAssigneeId != null, now);
+        return new AssignmentChange(before, new AssignmentChange.Snapshot(assignedTeamId, assigneeId, status));
+    }
+
+    /** Whether ownership may change in the current status (not once resolved or closed). */
+    protected abstract boolean isAssignable();
+
+    /** Status consequences of gaining or losing an owner. */
+    protected abstract void onAssignmentChanged(boolean hadAssignee, boolean hasAssignee, Instant now);
 
     /** Type-specific side effects of a status change (timestamps, resolution data...). */
     protected abstract void onTransition(String from, String to, TransitionInput input, Instant now);

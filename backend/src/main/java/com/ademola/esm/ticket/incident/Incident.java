@@ -73,6 +73,24 @@ public class Incident extends WorkItem {
         }
     }
 
+    @Override
+    protected boolean isAssignable() {
+        return switch (getStatus()) {
+            case NEW, ASSIGNED, IN_PROGRESS, WAITING_FOR_USER -> true;
+            case RESOLVED, CLOSED, CANCELLED -> false;
+        };
+    }
+
+    @Override
+    protected void onAssignmentChanged(boolean hadAssignee, boolean hasAssignee, Instant now) {
+        if (!hadAssignee && hasAssignee && getStatus() == IncidentStatus.NEW) {
+            transition(IncidentStatus.ASSIGNED.name(), TransitionInput.NONE, now);
+        } else if (hadAssignee && !hasAssignee && getStatus() != IncidentStatus.NEW) {
+            // ASSIGNED -> NEW (unassign), IN_PROGRESS/WAITING_FOR_USER -> NEW (return to queue)
+            transition(IncidentStatus.NEW.name(), TransitionInput.NONE, now);
+        }
+    }
+
     /** The previous resolution didn't hold: forget it (the audit trail keeps the history). */
     private void reopen() {
         reopenCount++;

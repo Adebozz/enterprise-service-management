@@ -61,15 +61,34 @@ class TicketSchemaIT {
     }
 
     @Test
-    void assigneeMustBeAMemberOfTheAssignedTeam() {
+    void assigneeMustBeAMemberOfTheAssignedTeamWhenAssigned() {
         UUID agent = users.create("agent@example.com", Role.AGENT).getId();
 
         assertThatThrownBy(() -> insertWorkItem("INC-900002", "INCIDENT", "ASSIGNED", agent))
                 .isInstanceOf(DataIntegrityViolationException.class)
-                .hasMessageContaining("work_items_assignee_in_team_fk");
+                .rootCause()
+                .hasMessageContaining("is not a member of team");
 
         fixtures.member(team, agent);
         insertWorkItem("INC-900003", "INCIDENT", "ASSIGNED", agent);
+    }
+
+    @Test
+    void memberWithOpenTicketsCannotLeaveButClosedHistoryDoesNotBlockRemoval() {
+        UUID agent = users.create("agent@example.com", Role.AGENT).getId();
+        fixtures.member(team, agent);
+        insertWorkItem("INC-900004", "INCIDENT", "IN_PROGRESS", agent);
+
+        assertThatThrownBy(() -> jdbc.update("delete from team_members where user_id = ?", agent))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .rootCause()
+                .hasMessageContaining("still owns open tickets");
+
+        jdbc.update("update work_items set status = 'CLOSED' where reference = 'INC-900004'");
+        jdbc.update("delete from team_members where user_id = ?", agent);
+        assertThat(jdbc.queryForObject("select assignee_id from work_items where reference = 'INC-900004'", UUID.class))
+                .as("history keeps the original assignee")
+                .isEqualTo(agent);
     }
 
     @Test

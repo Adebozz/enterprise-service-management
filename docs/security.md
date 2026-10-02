@@ -102,6 +102,17 @@ body.
   including admins. Tested: approving a pending request via the API returns 403.
 - The entity re-validates the lifecycle on every status change, so non-API code paths can't bypass it.
 
+## Implemented (M5): assignment authorization
+
+- Requesters can never change ownership (`@PreAuthorize("hasRole('AGENT')")`), even of their own
+  tickets. Tickets they can't see still return 404.
+- Agents can take only **unassigned** tickets in their own team. Taking a colleague's ticket,
+  assigning others, or choosing an owner in another team needs a TEAM_LEAD of that team. Each rule
+  is a unit-tested case of `AssignmentPolicy`, with mutation-checked coverage of the
+  "not someone else's ticket" guard.
+- Assignee eligibility is checked in the service (active, staff, member) **and** by a database
+  trigger at assignment time.
+
 ## Planned
 
 | Concern | Design |

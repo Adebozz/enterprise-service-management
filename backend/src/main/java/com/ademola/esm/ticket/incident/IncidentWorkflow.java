@@ -24,6 +24,7 @@ import java.util.Set;
  *
  * <pre>
  * NEW --assign (system)--> ASSIGNED --start work--> IN_PROGRESS <--resume-- WAITING_FOR_USER
+ *   ^-- unassign / return to queue (system, when the owner is removed) --'
  *                                                   |  ^   \--wait for user--/
  *                                           resolve |  | reopen
  *                                                   v  |
@@ -38,6 +39,9 @@ public final class IncidentWorkflow {
             // Driven by assignment (M5): giving the ticket an owner moves it to ASSIGNED and back.
             .allow(NEW, ASSIGNED, "Assign", Set.of(SYSTEM))
             .allow(ASSIGNED, NEW, "Unassign", Set.of(SYSTEM))
+            // Released or transferred without a new owner: work in progress always has an owner.
+            .allow(IN_PROGRESS, NEW, "Return to queue", Set.of(SYSTEM))
+            .allow(WAITING_FOR_USER, NEW, "Return to queue", Set.of(SYSTEM))
             .allow(ASSIGNED, IN_PROGRESS, "Start work", Set.of(SUPPORT), Set.of(ASSIGNEE))
             .allow(IN_PROGRESS, WAITING_FOR_USER, "Wait for user", Set.of(SUPPORT), Set.of(REASON))
             .allow(WAITING_FOR_USER, IN_PROGRESS, "Resume", Set.of(SUPPORT, REQUESTER))

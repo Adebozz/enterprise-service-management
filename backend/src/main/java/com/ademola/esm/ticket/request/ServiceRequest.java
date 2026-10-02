@@ -64,6 +64,21 @@ public class ServiceRequest extends WorkItem {
         }
     }
 
+    @Override
+    protected boolean isAssignable() {
+        return switch (getStatus()) {
+            case SUBMITTED, APPROVAL_PENDING, APPROVED, IN_PROGRESS -> true;
+            case FULFILLED, CLOSED, CANCELLED, REJECTED -> false;
+        };
+    }
+
+    @Override
+    protected void onAssignmentChanged(boolean hadAssignee, boolean hasAssignee, Instant now) {
+        if (hadAssignee && !hasAssignee && getStatus() == ServiceRequestStatus.IN_PROGRESS) {
+            transition(ServiceRequestStatus.SUBMITTED.name(), TransitionInput.NONE, now); // return to queue
+        }
+    }
+
     public ServiceRequestStatus getStatus() {
         return ServiceRequestStatus.valueOf(getStatusName());
     }
