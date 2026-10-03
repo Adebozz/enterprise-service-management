@@ -122,11 +122,16 @@ body.
 - History (the full audit timeline) is limited to support on the ticket and admins.
 - Audit entries for comments carry no comment content.
 
-## Planned
+## Implemented (M7): lists and search
 
-| Concern | Design |
-|---|---|
-| List/queue authorization | The same rules applied **inside the SQL query** (JPA Specification), not by filtering results (M7) |
+- The visibility rules are part of the list query's `WHERE` clause; rows a caller may not see are
+  never read. Views and search can only narrow. Tested: an agent searching another team's ticket
+  title gets nothing.
+- SQL injection: the query text is built only from constants, all client values are bind
+  parameters, and sort properties map through a fixed allow-list. Unit tests feed injection
+  payloads through search and sort; an API test confirms the `users` table survives
+  `q='; DROP TABLE users; --`.
+- LIKE wildcards in name matching are escaped; page size is capped at 100.
 
 ## Known limitations (security)
 

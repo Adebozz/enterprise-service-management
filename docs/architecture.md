@@ -33,7 +33,7 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history` sub-packages | Implemented (M3–M6) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla`, `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
@@ -62,6 +62,7 @@ flowchart LR
     assignment --> access & core
     transition --> comment
     comment & history --> access & core
+    queue --> access
     query --> incident & request & access & category
     incident & request --> intake
     intake --> category & priority & core["ticket (WorkItem)"]
@@ -152,6 +153,12 @@ flowchart LR
 | `GET /api/tickets/{id}/comments` | anyone who can see the ticket | Oldest first. Internal notes only for support on this ticket and admins |
 | `POST /api/tickets/{id}/comments` | anyone who can see the ticket | `{visibility: PUBLIC\|INTERNAL, body}` → 201. INTERNAL: support/admin only (403). Closed tickets: 409 `TICKET_CLOSED` |
 | `GET /api/tickets/{id}/history` | support on this ticket, admins | Audit timeline: `[{occurredAt, actor, action, oldValue, newValue, metadata}]`; requesters 403 |
+
+### Queues & search (M7)
+
+| Method & path | Who | Notes |
+|---|---|---|
+| `GET /api/tickets` | any signed-in user | Paged `TicketSummary` rows the caller may see. `view=ALL\|REQUESTED\|MINE\|TEAM\|UNASSIGNED`; filters `type, status, priority` (repeatable or comma-separated), `teamId, assigneeId, categoryId` (also matches subcategory), `createdFrom/createdTo` (inclusive UTC days), `open=true`, `q`; `sort` by `createdAt, updatedAt, priority, reference, status, title`; default newest first, or by relevance when searching |
 
 ## Ticket intake (M3)
 
@@ -280,6 +287,28 @@ Removing a member (or demoting them to REQUESTER) while they own open tickets in
 refused by the database and reported as 409 `MEMBER_HAS_OPEN_TICKETS`; a demotion is rolled back
 as a whole.
 
+## Queues and search (M7)
+
+A **SQL read model** ([ADR-009](adr/009-sql-read-model-for-queues.md)): `TicketListQuery` builds
+the SQL from constant fragments, and every request value is a bind parameter.
+
+- **Visibility in the WHERE clause:** requester `requester_id = :me`; staff
+  `requester_id = :me OR assignee_id = :me OR assigned_team_id IN (:myTeams)`; admin unrestricted.
+  Views (`REQUESTED, MINE, TEAM, UNASSIGNED`) are extra conditions, so they can only narrow results.
+- **Search `q`:**
+  - a reference (`inc-42` → `INC-000042`) is an exact match on the unique index;
+  - otherwise PostgreSQL full-text search (`websearch_to_tsquery('english', q)` against the
+    generated, GIN-indexed `search_vector`; English stemming; `-word` excludes);
+  - **or** requester / category name matches, resolved first into small id lists so the planner
+    can combine indexes (BitmapOr) instead of running a subquery per row.
+
+  Ordered by `ts_rank` unless a sort is given.
+- **One query per page** joins category, team, requester and assignee names (no N+1). The count
+  query is skipped when the first page isn't full. A stable `ORDER BY …, id` tie-breaker keeps
+  pages consistent.
+- **Indexes verified by `QueryPlanIT`** on 100,000 realistic tickets; timings in
+  [performance.md](performance.md).
+
 ## Comments, internal notes and history (M6)
 
 - **Visibility is a property of the caller's relationship to the ticket**, not of being staff:
@@ -328,8 +357,8 @@ as a whole.
 | M4 | Workflow engine | **Done** |
 | M5 | Assignment & routing | **Done** |
 | M6 | Comments & internal notes, history endpoint | **Done** |
-| M7 | Queue, filtering, full-text search | Next |
-| M8 | OpenAPI polish, `docs/api.md` | |
+| M7 | Queue, filtering, full-text search | **Done** |
+| M8 | OpenAPI polish, `docs/api.md` | Next |
 | M9 | Frontend foundation (auth, layout, generated API types) | |
 | M10 | Requester portal | |
 | M11 | Agent portal | |

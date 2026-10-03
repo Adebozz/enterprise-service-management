@@ -281,3 +281,40 @@ migration to a local database that already held data.
 integration tests (comment API visibility, first response, transition notes, cancelled-ticket
 behaviour, audit without content, API and DB body validation, history timeline and access).
 Total: 253 unit + 157 integration.
+
+---
+
+## M7: Queues & search (2026-10-03)
+
+**What was built**
+- `GET /api/tickets`: views (requested / mine / team / unassigned), 10 optional filters, sorting,
+  paging, and search over references, full text, requester and category names, as a **SQL read
+  model** (ADR-009) with names joined in one query.
+- PostgreSQL full-text search: a generated, weighted `tsvector` column + GIN index,
+  `websearch_to_tsquery`, relevance ranking. No Elasticsearch.
+- Visibility rules rendered into the `WHERE` clause; views can only narrow.
+
+**Measured (not estimated) results**, on 100k realistic tickets (`docs/performance.md`):
+- Unassigned queue page: **0.041 ms** with a partial index vs 0.47 ms without.
+- Full-text search: **2.5 ms** with GIN vs 16.9 ms sequential scan.
+
+**What I learned (good interview material)**
+- My first index test expected the GIN index on 20k rows. PostgreSQL chose a sequential scan, and
+  was right (cost 1,020 vs 1,930). GIN has a high fixed cost; it wins on bigger tables.
+- **Test data shapes query plans.** Two seed-data mistakes (every open ticket unassigned; status
+  correlated with team via modulo arithmetic) produced misleading plans. I caught the second by
+  reading `actual rows=5000` for one team in `EXPLAIN ANALYZE`. The seed now models a realistic
+  distribution.
+- A **partial index** is only usable when the planner can prove the query implies its predicate,
+  so the terminal-status list is inlined as literals rather than bind parameters.
+- Also corrected a wrong test assumption: the English stemmer maps "printing" → `print` but
+  "printer" → `printer`.
+
+**Testing**
+- `QueryPlanIT` turns index decisions into regression tests: seed 100k tickets, `EXPLAIN` the exact
+  generated SQL, assert the intended index is used.
+- Injection payloads through every input (unit) plus a live `DROP TABLE` attempt (API).
+
+**Tests:** 23 new unit tests (SQL builder: visibility, views, filters, references, injection,
+ordering) and 23 new integration tests (list API: visibility, views, filters, search, sort, paging,
+validation; 4 query-plan assertions). Total: 276 unit + 180 integration.

@@ -24,7 +24,8 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Workflow engine: lifecycles as data, actor-based permissions, requirements, lifecycle timestamps, available-transitions endpoint | Done (M4) |
 | Assignment: take/release/assign/transfer with role-and-team rules, status follows ownership, DB-enforced membership rules | Done (M5) |
 | Comments & internal notes (filtered in SQL), first-response tracking, ticket history timeline | Done (M6) |
-| Queues & search, React UI, Docker, CI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Queues & search: views, filters, paging, PostgreSQL full-text search, visibility in SQL, index regression tests ([performance notes](docs/performance.md)) | Done (M7) |
+| React UI, Docker, CI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 
@@ -123,6 +124,7 @@ log line written while handling the request.
 - [Architecture](docs/architecture.md)
 - [Database design](docs/database.md)
 - [Security model](docs/security.md)
+- [Performance notes](docs/performance.md)
 - Architecture Decision Records: [docs/adr](docs/adr)
 
 ## Roadmap

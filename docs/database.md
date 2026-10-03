@@ -13,6 +13,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V4__tickets_and_audit.sql` | `categories`, `work_items`, `incidents`, `service_requests`, reference sequences, `audit_events` + append-only trigger (M3) |
 | `V5__assignment_membership_rules.sql` | Replaces V4's composite assignee FK with two triggers (see below); index `(assigned_team_id, assignee_id)` (M5) |
 | `V6__comments.sql` | `comments` (M6) |
+| `V7__ticket_search_and_queue_indexes.sql` | `search_vector` generated column + GIN index, partial index for the unassigned queue, category indexes (M7) |
 
 ### users
 
@@ -77,9 +78,16 @@ timestamps and `version`. `incidents` and `service_requests` share its primary k
 | A member can't leave a team while owning **open** tickets there | trigger `team_members_no_open_assignments` (BEFORE DELETE) |
 | Valid impact/urgency/priority | `CHECK ... IN (...)` |
 
-Indexes: `(requester_id, created_at DESC)` for "my tickets", `(assigned_team_id, status)` and
-`(assignee_id, status)` for queues, `(created_at)` for reporting. Queue-specific and full-text
-indexes are added in M7, sized against real query plans.
+Indexes: `(requester_id, created_at DESC)` for "my tickets"; `(assigned_team_id, status)`,
+`(assignee_id, status)` and `(assigned_team_id, assignee_id)` for queues; `(created_at)` for
+reporting; `category_id` / `subcategory_id` for filters and name search. Added in V7, with their
+effect measured in [performance.md](performance.md):
+
+- `search_vector tsvector GENERATED ALWAYS AS (weight A: title, weight B: description) STORED`
+  with a **GIN** index. PostgreSQL maintains it, so it can't drift; it isn't mapped in JPA.
+- **Partial** index `work_items_unassigned_queue_idx (assigned_team_id, created_at) WHERE
+  assignee_id IS NULL AND status NOT IN ('CLOSED','CANCELLED','REJECTED')`. It only holds tickets
+  that can appear in a pick-up queue, however many get closed.
 
 > **Why triggers instead of the original composite FK (V4 → V5):** a foreign key holds for the
 > row's whole life. Closed tickets keep their historical assignee, so the FK made it impossible to
