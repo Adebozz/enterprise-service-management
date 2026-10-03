@@ -1,6 +1,7 @@
 package com.ademola.esm.ticket.assignment;
 
 import com.ademola.esm.ticket.query.NamedRef;
+import jakarta.annotation.Nullable;
 import java.util.UUID;
 
 /**
@@ -8,4 +9,9 @@ import java.util.UUID;
  * no longer be allowed to see it.
  */
 public record AssignmentResponse(
-        UUID ticketId, String reference, String status, NamedRef assignedTeam, NamedRef assignee, long version) {}
+        UUID ticketId,
+        String reference,
+        String status,
+        NamedRef assignedTeam,
+        @Nullable NamedRef assignee,
+        long version) {}

@@ -1,5 +1,6 @@
 package com.ademola.esm.ticket.category;
 
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.UUID;
 
@@ -8,8 +9,8 @@ public record CategoryResponse(
         UUID id,
         String code,
         String name,
-        UUID parentId,
-        UUID defaultTeamId,
+        @Nullable UUID parentId,
+        @Nullable UUID defaultTeamId,
         CategoryScope appliesTo,
         boolean active,
         long version,

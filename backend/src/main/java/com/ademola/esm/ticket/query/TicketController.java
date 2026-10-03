@@ -22,7 +22,9 @@ class TicketController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "A ticket of any type. 404 if it doesn't exist or the caller may not see it")
+    @Operation(
+            operationId = "getTicket",
+            summary = "A ticket of any type. 404 if it doesn't exist or the caller may not see it")
     TicketResponse get(@AuthenticationPrincipal CurrentUser user, @PathVariable UUID id) {
         return ticketQueryService.get(user, id);
     }

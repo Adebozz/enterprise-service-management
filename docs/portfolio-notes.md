@@ -318,3 +318,39 @@ Total: 253 unit + 157 integration.
 **Tests:** 23 new unit tests (SQL builder: visibility, views, filters, references, injection,
 ordering) and 23 new integration tests (list API: visibility, views, filters, search, sort, paging,
 validation; 4 query-plan assertions). Total: 276 unit + 180 integration.
+
+---
+
+## M8: API contract & documentation (2026-10-03)
+
+**What was built**
+- A precise OpenAPI 3.1 contract, committed as `docs/openapi.json`, for generating the frontend's
+  TypeScript types:
+  - explicit operation ids (`createIncident`, not `create_1`);
+  - correct 201s and `application/json`;
+  - an RFC 9457 `ApiProblem` error schema listing every error code, on every operation, plus 401
+    on protected ones;
+  - a relative server URL.
+- **Exact nullability:** Jackson always writes every field, so response properties are marked
+  present. Fields that can be null are annotated `@Nullable` and become `T | null`. Nullable object
+  references are wrapped as `oneOf: [$ref, null]`, because OpenAPI 3.1 ignores keywords next to
+  `$ref`. Verified by generating types with `openapi-typescript`
+  (`assignee: NamedRef | null`, `createdAt: string`).
+- `docs/api.md`: conventions, an auth flow, an error-code table, endpoint tables and a curl
+  walkthrough.
+
+**Testing**
+- `ApiContractIT`: the live spec must equal the committed snapshot, so API changes become
+  reviewable diffs; regenerate with `-Dopenapi.update=true`. It also enforces the conventions and
+  checks a real error response against the documented schema. **Mutation-checked:** changing one
+  summary fails the build with a clear message.
+- `ApiDocumentationTest`: every `ErrorCode` and every operation id must appear in `docs/api.md`.
+
+**Things found along the way**
+- jspecify's `@Nullable` (a TYPE_USE annotation) isn't seen by swagger-core on record components;
+  `jakarta.annotation.Nullable` (a declaration annotation) is. Found by probing the generated spec
+  before annotating 21 fields.
+- The contract test caught a **test-only controller leaking into the published spec**. Fixed by
+  limiting springdoc to `/api/**`.
+
+**Tests:** 2 new unit tests and 6 new integration tests. Total: 278 unit + 186 integration.

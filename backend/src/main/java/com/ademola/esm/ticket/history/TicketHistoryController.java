@@ -21,7 +21,9 @@ class TicketHistoryController {
     }
 
     @GetMapping("/api/tickets/{id}/history")
-    @Operation(summary = "Audit timeline of the ticket (support staff handling it, and admins)")
+    @Operation(
+            operationId = "getTicketHistory",
+            summary = "Audit timeline of the ticket (support staff handling it, and admins)")
     List<HistoryEntryResponse> history(@AuthenticationPrincipal CurrentUser user, @PathVariable UUID id) {
         return historyService.history(user, id);
     }

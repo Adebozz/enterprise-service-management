@@ -68,6 +68,10 @@ esm:
 
 springdoc:
   # Explicit so the choice is visible; production disables both (see application-prod.yml).
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+  writer-with-order-by-keys: true   # deterministic JSON, so docs/openapi.json diffs are meaningful
+  paths-to-match: /api/**           # the public contract only (not actuator, not test endpoints)
   api-docs:
     enabled: true
   swagger-ui:

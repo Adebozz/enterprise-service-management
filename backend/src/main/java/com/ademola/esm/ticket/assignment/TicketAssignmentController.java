@@ -23,7 +23,9 @@ class TicketAssignmentController {
 
     /** PUT: the client states the desired ownership; repeating the same request changes nothing. */
     @PutMapping("/api/tickets/{id}/assignment")
-    @Operation(summary = "Take, release, assign, reassign or transfer a ticket (requires current version)")
+    @Operation(
+            operationId = "assignTicket",
+            summary = "Take, release, assign, reassign or transfer a ticket (requires current version)")
     AssignmentResponse assign(
             @AuthenticationPrincipal CurrentUser user,
             @PathVariable UUID id,

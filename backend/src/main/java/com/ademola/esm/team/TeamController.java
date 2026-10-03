@@ -22,18 +22,19 @@ class TeamController {
     }
 
     @GetMapping
-    @Operation(summary = "List active teams")
+    @Operation(operationId = "listTeams", summary = "List active teams")
     List<TeamResponse> list() {
         return teamService.listActive();
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "getTeam", summary = "Get an active team")
     TeamResponse get(@PathVariable UUID id) {
         return teamService.get(id);
     }
 
     @GetMapping("/{id}/members")
-    @Operation(summary = "List members of a team")
+    @Operation(operationId = "listTeamMembers", summary = "List members of a team")
     List<TeamMemberResponse> members(@PathVariable UUID id) {
         return teamService.members(id);
     }

@@ -25,6 +25,7 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Assignment: take/release/assign/transfer with role-and-team rules, status follows ownership, DB-enforced membership rules | Done (M5) |
 | Comments & internal notes (filtered in SQL), first-response tracking, ticket history timeline | Done (M6) |
 | Queues & search: views, filters, paging, PostgreSQL full-text search, visibility in SQL, index regression tests ([performance notes](docs/performance.md)) | Done (M7) |
+| API contract: OpenAPI 3.1 snapshot with typed errors and exact nullability, guarded by a contract test; [API reference](docs/api.md) | Done (M8) |
 | React UI, Docker, CI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
@@ -121,6 +122,7 @@ log line written while handling the request.
 
 ## Documentation
 
+- [API reference](docs/api.md) and [OpenAPI contract](docs/openapi.json)
 - [Architecture](docs/architecture.md)
 - [Database design](docs/database.md)
 - [Security model](docs/security.md)

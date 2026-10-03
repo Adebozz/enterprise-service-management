@@ -29,20 +29,24 @@ class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Sign in. Returns an access token; sets the refresh-token cookie")
+    @Operation(operationId = "login", summary = "Sign in. Returns an access token; sets the refresh-token cookie")
     ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return withSession(authService.login(request.email(), request.password()));
     }
 
     @PostMapping("/refresh")
-    @Operation(summary = "Exchange the refresh-token cookie for a new access token (rotates the cookie)")
+    @Operation(
+            operationId = "refreshSession",
+            summary = "Exchange the refresh-token cookie for a new access token (rotates the cookie)")
     ResponseEntity<TokenResponse> refresh(HttpServletRequest request) {
         originPolicy.check(request);
         return withSession(authService.refresh(cookieValue(request)));
     }
 
     @PostMapping("/logout")
-    @Operation(summary = "End this session: revokes the refresh-token family and clears the cookie")
+    @Operation(
+            operationId = "logout",
+            summary = "End this session: revokes the refresh-token family and clears the cookie")
     ResponseEntity<Void> logout(HttpServletRequest request) {
         originPolicy.check(request);
         authService.logout(cookieValue(request));

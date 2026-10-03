@@ -3,6 +3,7 @@ package com.ademola.esm.ticket.queue;
 import com.ademola.esm.ticket.WorkItemType;
 import com.ademola.esm.ticket.priority.Priority;
 import com.ademola.esm.ticket.query.NamedRef;
+import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,9 +17,9 @@ public record TicketSummary(
         Priority priority,
         NamedRef category,
         NamedRef assignedTeam,
-        NamedRef assignee,
+        @Nullable NamedRef assignee,
         NamedRef requester,
         Instant createdAt,
         Instant updatedAt,
-        Instant firstRespondedAt,
-        Instant resolvedAt) {}
+        @Nullable Instant firstRespondedAt,
+        @Nullable Instant resolvedAt) {}

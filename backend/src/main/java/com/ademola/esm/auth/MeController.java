@@ -33,7 +33,7 @@ class MeController {
     }
 
     @GetMapping
-    @Operation(summary = "Profile of the signed-in user, including their teams")
+    @Operation(operationId = "getMyProfile", summary = "Profile of the signed-in user, including their teams")
     MyProfileResponse me(@AuthenticationPrincipal CurrentUser currentUser) {
         User user = userService.require(currentUser.id());
         return new MyProfileResponse(
@@ -46,7 +46,9 @@ class MeController {
 
     @PostMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Change own password. Signs out all sessions; the client must sign in again")
+    @Operation(
+            operationId = "changeMyPassword",
+            summary = "Change own password. Signs out all sessions; the client must sign in again")
     void changePassword(
             @AuthenticationPrincipal CurrentUser currentUser, @Valid @RequestBody ChangePasswordRequest request) {
         userService.changeOwnPassword(currentUser.id(), request.currentPassword(), request.newPassword());

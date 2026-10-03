@@ -1,10 +1,17 @@
 package com.ademola.esm.team;
 
+import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.UUID;
 
 public record TeamResponse(
-        UUID id, String name, String description, boolean active, Instant createdAt, Instant updatedAt, long version) {
+        UUID id,
+        String name,
+        @Nullable String description,
+        boolean active,
+        Instant createdAt,
+        Instant updatedAt,
+        long version) {
 
     static TeamResponse from(Team team) {
         return new TeamResponse(

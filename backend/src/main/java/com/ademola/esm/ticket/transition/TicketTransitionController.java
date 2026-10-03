@@ -32,13 +32,17 @@ class TicketTransitionController {
     }
 
     @GetMapping
-    @Operation(summary = "Status changes the caller can make now, with labels and required inputs")
+    @Operation(
+            operationId = "listAvailableTransitions",
+            summary = "Status changes the caller can make now, with labels and required inputs")
     List<AvailableTransition> available(@AuthenticationPrincipal CurrentUser user, @PathVariable UUID id) {
         return transitions.available(user, id);
     }
 
     @PostMapping
-    @Operation(summary = "Move the ticket to another status (requires current version)")
+    @Operation(
+            operationId = "transitionTicket",
+            summary = "Move the ticket to another status (requires current version)")
     TicketResponse transition(
             @AuthenticationPrincipal CurrentUser user,
             @PathVariable UUID id,

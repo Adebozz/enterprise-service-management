@@ -108,6 +108,9 @@ flowchart LR
 
 ## API (implemented so far)
 
+The full reference is [api.md](api.md) and the machine-readable contract is
+[openapi.json](openapi.json), guarded by `ApiContractIT`. The tables below summarise by milestone.
+
 | Method & path | Who | Notes |
 |---|---|---|
 | `POST /api/auth/login` | anyone | `{email, password}` → `{accessToken, tokenType, expiresIn, user}` + refresh cookie |
@@ -358,8 +361,8 @@ the SQL from constant fragments, and every request value is a bind parameter.
 | M5 | Assignment & routing | **Done** |
 | M6 | Comments & internal notes, history endpoint | **Done** |
 | M7 | Queue, filtering, full-text search | **Done** |
-| M8 | OpenAPI polish, `docs/api.md` | Next |
-| M9 | Frontend foundation (auth, layout, generated API types) | |
+| M8 | OpenAPI polish, `docs/api.md` | **Done** |
+| M9 | Frontend foundation (auth, layout, generated API types) | Next |
 | M10 | Requester portal | |
 | M11 | Agent portal | |
 | M12 | Full Docker Compose, production Dockerfiles, seed data | |

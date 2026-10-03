@@ -28,14 +28,16 @@ class CommentController {
     }
 
     @GetMapping
-    @Operation(summary = "The ticket's conversation, oldest first. Internal notes only for support staff")
+    @Operation(
+            operationId = "listComments",
+            summary = "The ticket's conversation, oldest first. Internal notes only for support staff")
     List<CommentResponse> thread(@AuthenticationPrincipal CurrentUser user, @PathVariable UUID id) {
         return commentService.thread(user, id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Add a public comment or (support staff) an internal note")
+    @Operation(operationId = "addComment", summary = "Add a public comment or (support staff) an internal note")
     CommentResponse add(
             @AuthenticationPrincipal CurrentUser user,
             @PathVariable UUID id,

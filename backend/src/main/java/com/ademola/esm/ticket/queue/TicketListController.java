@@ -31,7 +31,9 @@ class TicketListController {
      * {@code sort=priority,asc&sort=createdAt,asc} for a work queue.
      */
     @GetMapping("/api/tickets")
-    @Operation(summary = "Queues, filters and search over tickets the caller may see (paginated)")
+    @Operation(
+            operationId = "listTickets",
+            summary = "Queues, filters and search over tickets the caller may see (paginated)")
     PageResponse<TicketSummary> list(
             @AuthenticationPrincipal CurrentUser user,
             @Valid @ParameterObject @ModelAttribute TicketSearchParams params,

@@ -31,19 +31,23 @@ class AdminTeamController {
     }
 
     @GetMapping
-    @Operation(summary = "List all teams, including inactive ones")
+    @Operation(operationId = "listAllTeams", summary = "List all teams, including inactive ones")
     List<TeamResponse> list() {
         return teamService.listAll();
     }
 
     @PostMapping
+    @Operation(operationId = "createTeam", summary = "Create a team")
+    @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<TeamResponse> create(@Valid @RequestBody CreateTeamRequest request) {
         TeamResponse created = teamService.create(request);
         return ResponseEntity.created(URI.create("/api/teams/" + created.id())).body(created);
     }
 
     @PatchMapping("/{id}")
-    @Operation(summary = "Rename, describe, activate or deactivate a team (requires current version)")
+    @Operation(
+            operationId = "updateTeam",
+            summary = "Rename, describe, activate or deactivate a team (requires current version)")
     TeamResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateTeamRequest request) {
         return teamService.update(id, request);
     }
@@ -51,14 +55,14 @@ class AdminTeamController {
     // PUT/DELETE on the membership resource are naturally idempotent: repeating them is harmless.
     @PutMapping("/{id}/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Add a user to a team (idempotent)")
+    @Operation(operationId = "addTeamMember", summary = "Add a user to a team (idempotent)")
     void addMember(@PathVariable UUID id, @PathVariable UUID userId) {
         teamService.addMember(id, userId);
     }
 
     @DeleteMapping("/{id}/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Remove a user from a team (idempotent)")
+    @Operation(operationId = "removeTeamMember", summary = "Remove a user from a team (idempotent)")
     void removeMember(@PathVariable UUID id, @PathVariable UUID userId) {
         teamService.removeMember(id, userId);
     }

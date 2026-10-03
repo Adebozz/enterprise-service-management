@@ -4,6 +4,7 @@ import com.ademola.esm.ticket.WorkItemType;
 import com.ademola.esm.ticket.priority.Impact;
 import com.ademola.esm.ticket.priority.Priority;
 import com.ademola.esm.ticket.priority.Urgency;
+import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -22,15 +23,15 @@ public record TicketResponse(
         Urgency urgency,
         Priority priority,
         NamedRef category,
-        NamedRef subcategory,
+        @Nullable NamedRef subcategory,
         NamedRef requester,
         NamedRef assignedTeam,
-        NamedRef assignee,
+        @Nullable NamedRef assignee,
         Instant createdAt,
         Instant updatedAt,
-        Instant firstRespondedAt,
-        Instant resolvedAt,
-        Instant closedAt,
+        @Nullable Instant firstRespondedAt,
+        @Nullable Instant resolvedAt,
+        @Nullable Instant closedAt,
         long version,
-        IncidentDetails incident,
-        ServiceRequestDetails serviceRequest) {}
+        @Nullable IncidentDetails incident,
+        @Nullable ServiceRequestDetails serviceRequest) {}
