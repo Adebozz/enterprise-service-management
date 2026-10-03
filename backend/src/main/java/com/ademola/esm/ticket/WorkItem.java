@@ -179,6 +179,11 @@ public abstract class WorkItem extends BaseEntity {
         closedAt = now;
     }
 
+    /** Closed, cancelled or rejected: no further changes or conversation. */
+    public boolean isTerminal() {
+        return workflow().isTerminal(status);
+    }
+
     /** Type-agnostic status name; subclasses expose a typed status. */
     public String getStatusName() {
         return status;

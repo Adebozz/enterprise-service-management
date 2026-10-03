@@ -159,6 +159,14 @@ public class UserService {
         log.info("Password changed for user id={}", userId);
     }
 
+    /** Display names for many users in one query (avoids N+1 when rendering lists). */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> displayNamesOf(java.util.Collection<UUID> ids) {
+        Map<UUID, String> names = new java.util.HashMap<>();
+        users.findAllById(ids).forEach(user -> names.put(user.getId(), user.getDisplayName()));
+        return names;
+    }
+
     /** For other modules: loads a user or fails with 404. Callers apply their own authorization. */
     @Transactional(readOnly = true)
     public User require(UUID id) {

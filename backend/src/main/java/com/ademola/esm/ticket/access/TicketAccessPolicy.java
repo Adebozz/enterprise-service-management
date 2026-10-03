@@ -50,6 +50,14 @@ public class TicketAccessPolicy {
         return isSupporting(user, item, userTeamIds);
     }
 
+    /**
+     * May see staff-only information about this ticket (internal notes, full history): admins,
+     * and staff supporting this particular ticket. Being staff in general is not enough.
+     */
+    public static boolean canSeeStaffDetails(CurrentUser user, WorkItem item, Set<UUID> userTeamIds) {
+        return user.role() == Role.ADMIN || isSupporting(user, item, userTeamIds);
+    }
+
     /** Staff responsible for the ticket: the assignee or a member of the assigned team. */
     public static boolean isSupporting(CurrentUser user, WorkItem item, Set<UUID> userTeamIds) {
         return user.role().isStaff()

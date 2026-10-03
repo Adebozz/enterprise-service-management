@@ -23,7 +23,8 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Append-only audit trail (same-transaction, DB-trigger enforced) | Done (M3) |
 | Workflow engine: lifecycles as data, actor-based permissions, requirements, lifecycle timestamps, available-transitions endpoint | Done (M4) |
 | Assignment: take/release/assign/transfer with role-and-team rules, status follows ownership, DB-enforced membership rules | Done (M5) |
-| Comments, queues, React UI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Comments & internal notes (filtered in SQL), first-response tracking, ticket history timeline | Done (M6) |
+| Queues & search, React UI, Docker, CI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 

@@ -42,6 +42,11 @@ public final class WorkflowDefinition<S extends Enum<S>> {
         return transitionsFrom(status).isEmpty();
     }
 
+    /** Name-based variant for code that handles tickets of any type. */
+    public boolean isTerminal(String status) {
+        return isTerminal(parse(status));
+    }
+
     /** Name-based lookup for code that handles tickets of any type. */
     public Transition<S> require(String from, String to) {
         S fromStatus = parse(from);

@@ -249,3 +249,35 @@ translation, updated exhaustive workflow tables) and 18 new integration tests (a
 real tokens, membership triggers incl. "closed history doesn't block removal", two team leads
 assigning concurrently). Total: 248 unit + 147 integration. V5 also applied as an incremental
 migration to a local database that already held data.
+
+---
+
+## M6: Comments, internal notes & history (2026-10-02)
+
+**What was built**
+- Ticket conversation with PUBLIC comments and INTERNAL notes (immutable), plus a staff-only
+  history timeline built from the audit trail, with actor names loaded in one query and before/after
+  values returned as structured JSON.
+- Transition reasons (waiting for user, cancel, reopen) become public comments in the same
+  transaction, so requesters see what support is asking.
+
+**Decisions worth discussing**
+- *Relationship-based visibility.* "Can see internal notes" means "admin or supporting **this**
+  ticket", not "has a staff role". The edge case: an agent who raised a ticket handled by another
+  team is only its requester there.
+- *Filter in the query, not after loading.* The allowed visibilities are part of the SQL `WHERE`,
+  so a requester's request never loads internal rows, and a later mapping change can't leak them.
+- *First response without false conflicts.* A conditional bulk update
+  (`SET first_responded_at = :now WHERE id = :id AND first_responded_at IS NULL`) is atomic and
+  intentionally bypasses `@Version`. The field is write-once, and bumping the version would give
+  agents editing the ticket a spurious 409 just because someone commented. Tested: version stays 0,
+  and the timestamp never moves after the first reply.
+
+**Mutation-checked guarantees**
+- Removing the visibility filter from the query → 2 API tests fail (including the raw-JSON check).
+- Replacing "supporting this ticket" with "is staff" → the edge-case unit test fails.
+
+**Tests:** 5 new unit tests (comment policy incl. the cross-team requester) and 10 new
+integration tests (comment API visibility, first response, transition notes, cancelled-ticket
+behaviour, audit without content, API and DB body validation, history timeline and access).
+Total: 253 unit + 157 integration.

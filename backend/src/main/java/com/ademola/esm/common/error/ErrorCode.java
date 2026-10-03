@@ -49,6 +49,10 @@ public enum ErrorCode {
     TICKET_NOT_ASSIGNABLE(HttpStatus.CONFLICT),
     MEMBER_HAS_OPEN_TICKETS(HttpStatus.CONFLICT),
 
+    // comments / history
+    COMMENT_NOT_PERMITTED(HttpStatus.FORBIDDEN),
+    TICKET_CLOSED(HttpStatus.CONFLICT),
+
     REQUEST_FAILED(HttpStatus.BAD_REQUEST),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 

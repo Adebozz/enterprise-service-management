@@ -33,7 +33,7 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment` sub-packages; `comment` to come | Implemented (M3–M5) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history` sub-packages | Implemented (M3–M6) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla`, `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
@@ -60,6 +60,8 @@ Inside `ticket`, packages form a one-way graph (no cycles):
 flowchart LR
     transition --> query & access & core
     assignment --> access & core
+    transition --> comment
+    comment & history --> access & core
     query --> incident & request & access & category
     incident & request --> intake
     intake --> category & priority & core["ticket (WorkItem)"]
@@ -142,6 +144,14 @@ flowchart LR
 | Method & path | Who | Notes |
 |---|---|---|
 | `PUT /api/tickets/{id}/assignment` | AGENT+ (see rules) | `{teamId, assigneeId?, version}` → `{ticketId, reference, status, assignedTeam, assignee, version}`. Same values = no-op |
+
+### Comments & history (M6)
+
+| Method & path | Who | Notes |
+|---|---|---|
+| `GET /api/tickets/{id}/comments` | anyone who can see the ticket | Oldest first. Internal notes only for support on this ticket and admins |
+| `POST /api/tickets/{id}/comments` | anyone who can see the ticket | `{visibility: PUBLIC\|INTERNAL, body}` → 201. INTERNAL: support/admin only (403). Closed tickets: 409 `TICKET_CLOSED` |
+| `GET /api/tickets/{id}/history` | support on this ticket, admins | Audit timeline: `[{occurredAt, actor, action, oldValue, newValue, metadata}]`; requesters 403 |
 
 ## Ticket intake (M3)
 
@@ -270,6 +280,24 @@ Removing a member (or demoting them to REQUESTER) while they own open tickets in
 refused by the database and reported as 409 `MEMBER_HAS_OPEN_TICKETS`; a demotion is rolled back
 as a whole.
 
+## Comments, internal notes and history (M6)
+
+- **Visibility is a property of the caller's relationship to the ticket**, not of being staff:
+  internal notes are readable and writable only by admins and staff *supporting this ticket*
+  (`TicketAccessPolicy.canSeeStaffDetails`). An agent who raised a ticket in another team's
+  queue sees only the public thread.
+- **Filtered in SQL:** `findThread(ticketId, visibilities)` puts the allowed visibilities in the
+  `WHERE` clause and joins author names in the same query (no N+1). Mutation-checked: removing the
+  filter fails two API tests that inspect the raw JSON.
+- **First response:** support's first PUBLIC comment sets `first_responded_at` through a conditional
+  bulk update (`... WHERE first_responded_at IS NULL`). It's atomic and deliberately doesn't bump
+  `@Version` (a write-once field can't conflict; bumping it would cause spurious 409s for agents
+  editing the ticket).
+- **Transition reasons** (waiting for user, cancel, reopen) are also posted as PUBLIC comments
+  with `relatedStatus`, in the transition's transaction, so requesters see what support needs.
+- Comments are **immutable**. The audit trail records `COMMENT_ADDED` with id and visibility,
+  never the content.
+
 ## Audit trail (M3)
 
 - `AuditService.record()` uses `Propagation.MANDATORY`: callable only inside the business
@@ -299,8 +327,8 @@ as a whole.
 | M3 | Ticket core + audit foundation | **Done** |
 | M4 | Workflow engine | **Done** |
 | M5 | Assignment & routing | **Done** |
-| M6 | Comments & internal notes, history endpoint | Next |
-| M7 | Queue, filtering, full-text search | |
+| M6 | Comments & internal notes, history endpoint | **Done** |
+| M7 | Queue, filtering, full-text search | Next |
 | M8 | OpenAPI polish, `docs/api.md` | |
 | M9 | Frontend foundation (auth, layout, generated API types) | |
 | M10 | Requester portal | |

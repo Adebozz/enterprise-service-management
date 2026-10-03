@@ -12,6 +12,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V3__refresh_tokens.sql` | `refresh_tokens` (M2) |
 | `V4__tickets_and_audit.sql` | `categories`, `work_items`, `incidents`, `service_requests`, reference sequences, `audit_events` + append-only trigger (M3) |
 | `V5__assignment_membership_rules.sql` | Replaces V4's composite assignee FK with two triggers (see below); index `(assigned_team_id, assignee_id)` (M5) |
+| `V6__comments.sql` | `comments` (M6) |
 
 ### users
 
@@ -85,6 +86,13 @@ indexes are added in M7, sized against real query plans.
 > ever remove someone from a team they had once worked in. The real rule is about *assignment time*
 > and *open* tickets, which a trigger can express. See [ADR-008](adr/008-assignment-membership-triggers.md).
 
+### comments
+
+`work_item_id` → work_items (`ON DELETE CASCADE`), `author_id` → users, `visibility`
+(`PUBLIC | INTERNAL`), `body` (not blank, at most 10,000 characters, both CHECKs), `related_status`
+(set when the comment is the reason for a status change), `created_at`. Index
+`(work_item_id, created_at, id)` serves the thread in order. Immutable in the application.
+
 ### audit_events
 
 `occurred_at`, `actor_id` (NULL = system), `action`, `entity_type`, `entity_id`, `old_value` /
@@ -122,5 +130,5 @@ erDiagram
     users ||--o{ comments : writes
 ```
 
-Tables still to come: `comments` (M6), then Phase 2 (`sla_*`, `catalogue_items`, `approvals`,
+Tables still to come in Phase 2: (`sla_*`, `catalogue_items`, `approvals`,
 `problems`, `changes`, `attachments`, `notifications`).

@@ -113,12 +113,20 @@ body.
 - Assignee eligibility is checked in the service (active, staff, member) **and** by a database
   trigger at assignment time.
 
+## Implemented (M6): internal notes and history
+
+- Internal notes are returned only to admins and staff **supporting this ticket**, filtered **in
+  the SQL query**. Requesters' responses never contain them; tests assert on the raw JSON body.
+- An agent who raised a ticket that is handled by another team is a requester there: no internal
+  notes, can't write them (403), no history (403).
+- History (the full audit timeline) is limited to support on the ticket and admins.
+- Audit entries for comments carry no comment content.
+
 ## Planned
 
 | Concern | Design |
 |---|---|
 | List/queue authorization | The same rules applied **inside the SQL query** (JPA Specification), not by filtering results (M7) |
-| Internal notes | Returned only to staff with team-scope access to the ticket; filtered server-side (M6) |
 
 ## Known limitations (security)
 

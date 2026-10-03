@@ -12,6 +12,7 @@ import com.ademola.esm.common.error.StaleVersionException;
 import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemRepository;
 import com.ademola.esm.ticket.access.TicketAccessPolicy;
+import com.ademola.esm.ticket.comment.CommentService;
 import com.ademola.esm.ticket.query.TicketQueryService;
 import com.ademola.esm.ticket.query.TicketResponse;
 import com.ademola.esm.ticket.workflow.Actor;
@@ -51,6 +52,7 @@ public class TicketTransitionService {
     private final TicketAccessPolicy accessPolicy;
     private final TicketQueryService queries;
     private final AuditService audit;
+    private final CommentService comments;
     private final Clock clock;
 
     public TicketTransitionService(
@@ -58,11 +60,13 @@ public class TicketTransitionService {
             TicketAccessPolicy accessPolicy,
             TicketQueryService queries,
             AuditService audit,
+            CommentService comments,
             Clock clock) {
         this.workItems = workItems;
         this.accessPolicy = accessPolicy;
         this.queries = queries;
         this.audit = audit;
+        this.comments = comments;
         this.clock = clock;
     }
 
@@ -93,6 +97,10 @@ public class TicketTransitionService {
                 Map.of("status", from),
                 Map.of("status", item.getStatusName()),
                 metadata(transition, input)));
+        if (input.reason() != null && !input.reason().isBlank()) {
+            // Make the reason part of the visible conversation ("Which floor are you on?").
+            comments.recordStatusNote(item, user.id(), input.reason(), item.getStatusName());
+        }
         log.info("Ticket {} {} -> {} by {}", item.getReference(), from, item.getStatusName(), user.id());
 
         // Flush so the @Version check runs now (a concurrent change surfaces here as a 409) and the
