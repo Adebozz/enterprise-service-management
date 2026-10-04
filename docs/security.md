@@ -133,6 +133,17 @@ body.
   `q='; DROP TABLE users; --`.
 - LIKE wildcards in name matching are escaped; page size is capped at 100.
 
+## Implemented (M9): web app
+
+- The access token is held **in a JavaScript module variable only**: never `localStorage`,
+  `sessionStorage` or a readable cookie. Verified in a real browser after sign-in and reload:
+  both storages empty, `document.cookie` empty (the refresh cookie is HttpOnly).
+- Session restore on reload uses the HttpOnly refresh cookie (one call, even under React
+  StrictMode's double-run effects, thanks to the single-flight refresh).
+- Sign-out revokes the session server-side (verified: both tokens of the family revoked with
+  `LOGOUT`) and clears the query cache, so the next user never sees the previous user's data.
+- The post-login redirect only accepts same-app paths (`/…`, not `//evil.example`).
+
 ## Known limitations (security)
 
 - **No login rate limiting or lockout yet.** Planned at the edge (AWS WAF rate-based rule on

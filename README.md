@@ -26,22 +26,25 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Comments & internal notes (filtered in SQL), first-response tracking, ticket history timeline | Done (M6) |
 | Queues & search: views, filters, paging, PostgreSQL full-text search, visibility in SQL, index regression tests ([performance notes](docs/performance.md)) | Done (M7) |
 | API contract: OpenAPI 3.1 snapshot with typed errors and exact nullability, guarded by a contract test; [API reference](docs/api.md) | Done (M8) |
-| React UI, Docker, CI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Web app foundation: React 19 + TypeScript (strict), typed client generated from the contract, in-memory access token with single-flight silent refresh, protected routes, sign-in/out | Done (M9) |
+| Requester & agent portals, Docker, CI | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 
 **Backend:** Java 21, Spring Boot 4.1 (Web MVC, Data JPA/Hibernate 7, Security 7, Validation,
 Actuator), PostgreSQL 17, Flyway, springdoc-openapi.
 **Testing:** JUnit 5, AssertJ, Mockito, Spring Boot Test, Testcontainers, JaCoCo.
-**Planned:** React + TypeScript (Vite, TanStack Query, React Hook Form, Zod), Docker, GitHub
-Actions, AWS (ECS Fargate, RDS, S3, CloudFront), Terraform.
+**Frontend:** React 19, TypeScript 5.9 (strict), Vite 8, Tailwind CSS 4, shadcn/ui (Radix), React
+Router 7, TanStack Query 5, React Hook Form + Zod 4, openapi-fetch + openapi-typescript; tested with
+Vitest, React Testing Library and MSW.
+**Planned:** Docker images, GitHub Actions, AWS (ECS Fargate, RDS, S3, CloudFront), Terraform.
 
 ## Repository layout
 
 ```
 enterprise-service-management/
 ├── backend/            Spring Boot modular monolith (see docs/architecture.md)
-├── frontend/           React + TypeScript SPA (from M9)
+├── frontend/           React + TypeScript web app (see frontend/README.md)
 ├── infrastructure/     Terraform for AWS (Phase 3)
 ├── docs/               Architecture, database, security, ADRs, portfolio notes
 ├── docker-compose.yml  Local PostgreSQL (backend/frontend services added in M12)
@@ -65,6 +68,12 @@ Useful URLs:
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 - Swagger UI: http://localhost:8080/swagger-ui.html
 
+In a second terminal, start the web app and open http://localhost:5173:
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
 There's no database setup step. Flyway applies migrations automatically on startup, and the first
 admin account is created from the `ESM_BOOTSTRAP_ADMIN_*` values in `.env`.
 
@@ -87,6 +96,10 @@ Alternative with no docker-compose: `./mvnw spring-boot:test-run` starts the app
 throwaway Testcontainers PostgreSQL.
 
 ## Testing
+
+```bash
+cd frontend && npm test && npm run typecheck && npm run lint
+```
 
 ```bash
 cd backend

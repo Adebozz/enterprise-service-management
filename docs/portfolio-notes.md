@@ -354,3 +354,45 @@ validation; 4 query-plan assertions). Total: 276 unit + 180 integration.
   limiting springdoc to `/api/**`.
 
 **Tests:** 2 new unit tests and 6 new integration tests. Total: 278 unit + 186 integration.
+
+---
+
+## M9: Web app foundation (2026-10-03)
+
+**What was built**
+- React 19 + TypeScript (strict) + Vite app with Tailwind 4 and shadcn/ui (Radix), React Router,
+  TanStack Query, React Hook Form + Zod.
+- A **typed API client generated from the backend contract** (openapi-typescript + openapi-fetch),
+  plus `check:api` to catch stale types: contract → types → compiler, end to end.
+- Authentication: access token in memory only, silent session restore on reload via the HttpOnly
+  refresh cookie, **single-flight refresh** shared by concurrent 401s with one retry per request,
+  sign-out that revokes server-side and clears cached data, and protected routes that return users
+  to the page they asked for.
+- An accessible login form (labels, `aria-invalid`, `aria-describedby`, alert role, autocomplete
+  hints) and a skip link.
+
+**Decisions worth discussing**
+- *Why single-flight refresh matters here specifically:* the backend revokes a whole session when a
+  rotated refresh token is reused. Several requests failing at once would each present the same
+  token. Sharing one refresh promise prevents that. **Mutation-checked:** without it, the test sees
+  2 refresh calls instead of 1. **Seen in a real browser:** React StrictMode runs the start-up effect
+  twice in development, yet the network log shows exactly one refresh.
+- *Tests through the real client:* MSW intercepts real `fetch`, so tests cover token attachment,
+  refresh, retry with the original POST body intact (`request.clone()`), and "refresh failed → back to
+  login, no loop".
+
+**Things found along the way**
+- `openapi-typescript` doesn't support TypeScript 6 yet. I **pinned TypeScript 5.9** rather than
+  forcing peer dependencies.
+- That downgrade silently **turned strict mode off** (TS 6 enables it by default; the template
+  relied on that). I caught it reading `tsconfig` and enabled `strict` and `noUncheckedIndexedAccess`
+  explicitly.
+
+**Verified end to end** in a browser against the real backend: anonymous → `/login`; sign-in;
+reload keeps the session (one refresh); no token in `localStorage`, `sessionStorage` or
+`document.cookie`; sign-out → server revoked both tokens (`LOGOUT`).
+
+**Known limitation:** the single JS bundle is 596 KB (188 KB gzipped). Route-level code splitting is
+planned with the agent portal (M11).
+
+**Tests:** 14 frontend tests (API client 6, login 3, session lifecycle 5).

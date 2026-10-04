@@ -96,6 +96,39 @@ flowchart LR
 4. Any exception, including authentication and access-denied failures delegated from Spring
    Security, is rendered by `GlobalExceptionHandler` as `application/problem+json`.
 
+## Frontend (M9)
+
+React 19 + TypeScript (strict) single-page app in `frontend/` (details in `frontend/README.md`).
+
+- **Typed contract end to end:** `docs/openapi.json` (guarded by `ApiContractIT`) → `openapi-typescript`
+  → `src/api/schema.d.ts` (guarded by `npm run check:api`) → `openapi-fetch`. Paths, parameters,
+  bodies, responses and error codes are all compiler-checked; a backend change that breaks the
+  frontend fails `tsc`.
+- **Authentication:**
+
+```mermaid
+sequenceDiagram
+    participant Page
+    participant Client as authenticatedFetch
+    participant Session as refreshSession (single-flight)
+    participant API
+    Page->>Client: GET /api/tickets (Bearer expired)
+    Client->>API: request
+    API-->>Client: 401
+    Client->>Session: refresh
+    Note over Session: concurrent 401s await the same promise
+    Session->>API: POST /api/auth/refresh (HttpOnly cookie)
+    API-->>Session: 200 new access token (rotated cookie)
+    Client->>API: retry once with the new token
+    API-->>Page: 200
+```
+
+  If the refresh fails, the session ends and the app shows the login page. There's no retry loop.
+- **State:** server data in TanStack Query (cache cleared on sign-out); only "who is signed in" in
+  React context.
+- **Routing:** `RequireAuth` redirects anonymous users to `/login` and back afterwards (only
+  same-app paths, so it can't become an open redirect). Role checks are UX only.
+
 ## Configuration
 
 - 12-factor: environment variables (`ESM_DB_URL`, `ESM_DB_USERNAME`, `ESM_DB_PASSWORD`, ...).
@@ -362,8 +395,8 @@ the SQL from constant fragments, and every request value is a bind parameter.
 | M6 | Comments & internal notes, history endpoint | **Done** |
 | M7 | Queue, filtering, full-text search | **Done** |
 | M8 | OpenAPI polish, `docs/api.md` | **Done** |
-| M9 | Frontend foundation (auth, layout, generated API types) | Next |
-| M10 | Requester portal | |
+| M9 | Frontend foundation (auth, layout, generated API types) | **Done** |
+| M10 | Requester portal | Next |
 | M11 | Agent portal | |
 | M12 | Full Docker Compose, production Dockerfiles, seed data | |
 | M13 | GitHub Actions CI | |
