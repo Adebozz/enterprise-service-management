@@ -396,3 +396,39 @@ reload keeps the session (one refresh); no token in `localStorage`, `sessionStor
 planned with the agent portal (M11).
 
 **Tests:** 14 frontend tests (API client 6, login 3, session lifecycle 5).
+
+---
+
+## M10: Requester portal (2026-10-04)
+
+**What was built**
+- My tickets: a responsive table with status and priority badges, an Open/All filter and paging
+  kept **in the URL** (back button, refresh and shared links all work), with empty/loading/error
+  states.
+- "Report a problem" and "Request something" forms: a dependent category → subcategory picker
+  (the stale subcategory is cleared when the category changes), plain-language impact/urgency
+  options, Zod validation, and server `fieldErrors`/codes mapped onto the matching field.
+- Ticket page: details, the public conversation with reply, and **action buttons generated from the
+  server's `/transitions` answer**, with a reason dialog where required.
+
+**Decisions worth discussing**
+- *The UI never encodes the workflow.* Buttons come from the server, so frontend and backend can't
+  disagree about what a user may do. Moves needing inputs this screen doesn't collect yet aren't
+  offered (rather than shown and failing).
+- *Optimistic locking surfaced to users.* Moves carry the ticket `version`; a 409 produces "someone
+  else updated this ticket" plus a reload, never a silent overwrite. **Mutation-checked:** sending
+  a fixed version fails 2 tests.
+- *Native `<select>` over a custom listbox:* accessible and mobile-friendly by default.
+
+**Found along the way**
+- A test failed because the category placeholder and its validation error had the same text, which
+  is confusing for screen-reader users. Renamed the placeholder.
+- Verified that an icon-only dialog close button has an accessible name ("Close") with an explicit
+  role/name assertion, rather than trusting a browser tool's simplified tree.
+
+**Verified end to end** in a browser against the real backend: sign in as a requester → report a
+Wi-Fi problem (got `INC-000002`, P2 from Medium × High, routed to Network Team) → reply → cancel
+with a reason (it appears as a status note in the conversation; the reply box closes) → Open list
+empty, All list shows the cancelled ticket, and no other user's tickets.
+
+**Tests:** 15 new frontend tests (my tickets 4, incident form 4, ticket page 7). Frontend total: 29.

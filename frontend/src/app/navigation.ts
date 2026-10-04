@@ -8,7 +8,10 @@ export interface NavItem {
 }
 
 /** Grows with each portal milestone: requester (M10), agent (M11), admin (Phase 2). */
-const NAV_ITEMS: NavItem[] = [{ to: '/', label: 'Home', role: 'REQUESTER' }]
+const NAV_ITEMS: NavItem[] = [
+  { to: '/', label: 'Home', role: 'REQUESTER' },
+  { to: '/tickets', label: 'My tickets', role: 'REQUESTER' },
+]
 
 export function navigationFor(user: AuthenticatedUser): NavItem[] {
   return NAV_ITEMS.filter((item) => hasRole(user, item.role))

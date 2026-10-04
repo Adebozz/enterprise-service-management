@@ -33,6 +33,7 @@ src/
   auth/       tokenStore (in-memory token), session (single-flight refresh), AuthProvider, RequireAuth, roles
   app/        App, routes, AppLayout, navigation, queryClient
   pages/      LoginPage, HomePage, NotFoundPage, ForbiddenPage
+  tickets/    MyTicketsPage, NewIncidentPage, NewServiceRequestPage, TicketPage, Conversation, TicketActions
   components/ui/  shadcn/ui components (generated, owned by us)
   test/       MSW server, fixtures, renderApp helper
 ```
@@ -43,3 +44,5 @@ src/
   callers) and retries each failed request once; if that fails, the app returns to the login page.
 - **Server state in TanStack Query**, no global store. 4xx errors aren't retried.
 - **Role checks in the UI are cosmetic.** The API enforces every permission.
+- **Workflow buttons come from the server** (`GET /api/tickets/{id}/transitions`), never from
+  frontend rules.

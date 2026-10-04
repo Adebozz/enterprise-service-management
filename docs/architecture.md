@@ -129,6 +129,24 @@ sequenceDiagram
 - **Routing:** `RequireAuth` redirects anonymous users to `/login` and back afterwards (only
   same-app paths, so it can't become an open redirect). Role checks are UX only.
 
+### Requester portal (M10)
+
+| Route | Page |
+|---|---|
+| `/tickets` | My tickets (`view=REQUESTED`), Open/All filter and page in the URL |
+| `/tickets/new/incident`, `/tickets/new/request` | Forms with category → dependent subcategory |
+| `/tickets/:id` | Details, public conversation + reply, action buttons |
+
+- **Action buttons come from `GET /transitions`**: the UI never encodes the workflow. Moves
+  needing a reason open a dialog; moves needing resolution/fulfilment inputs are support-only and
+  get their forms in M11.
+- **Optimistic locking in the UI:** moves send the ticket's `version`; on 409 the page explains
+  that someone else changed the ticket and reloads it rather than overwriting.
+- **Forms:** Zod mirrors server validation for instant feedback; server `fieldErrors` and codes
+  such as `INVALID_CATEGORY` are mapped onto the matching field.
+- **Cache:** hierarchical query keys (`['tickets', …]`), so one invalidation refreshes lists and
+  detail after any change.
+
 ## Configuration
 
 - 12-factor: environment variables (`ESM_DB_URL`, `ESM_DB_USERNAME`, `ESM_DB_PASSWORD`, ...).
@@ -396,8 +414,8 @@ the SQL from constant fragments, and every request value is a bind parameter.
 | M7 | Queue, filtering, full-text search | **Done** |
 | M8 | OpenAPI polish, `docs/api.md` | **Done** |
 | M9 | Frontend foundation (auth, layout, generated API types) | **Done** |
-| M10 | Requester portal | Next |
-| M11 | Agent portal | |
+| M10 | Requester portal | **Done** |
+| M11 | Agent portal | Next |
 | M12 | Full Docker Compose, production Dockerfiles, seed data | |
 | M13 | GitHub Actions CI | |
 | M14 | Documentation, ADRs, screenshots | |
