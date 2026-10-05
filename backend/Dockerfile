@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage: compile and package with the Maven wrapper -------------------------------
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 
 # Dependencies change far less often than code: resolve them in their own cached layer.
@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/root/.m2 \
  && java -Djarmode=tools -jar target/esm-backend-*.jar extract --layers --launcher --destination target/extracted
 
 # ---- Runtime stage: JRE only, non-root, layered for cache-friendly pushes --------------------
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 RUN groupadd --system --gid 10001 esm && useradd --system --uid 10001 --gid esm --no-create-home esm
 WORKDIR /app
 
