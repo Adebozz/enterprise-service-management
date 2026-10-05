@@ -507,3 +507,41 @@ queue (P1 first) → seeded ticket with internal note, status notes and a 7-entr
 **Tests:** +1 unit (weak demo password refused) and +3 integration (`DemoDataSeederIT`: states
 via the real rules, idempotency, demo sign-in and requester visibility). Total: 279 unit + 190
 integration; frontend 43.
+
+## M13: Continuous integration (2026-10-05)
+
+**What was built**
+- A GitHub Actions workflow on every pull request and push to `main`, as three parallel jobs:
+  - **backend:** `./mvnw verify`, covering formatting, unit tests, Testcontainers integration tests
+    against real PostgreSQL, the OpenAPI snapshot test and coverage floors. Reports are uploaded as
+    an artifact.
+  - **frontend:** lint, strict type-check, a check that the generated API types match the contract,
+    the tests and a production build.
+  - **stack:** builds both Docker images, starts the Compose stack (waiting on every health check)
+    and runs an end-to-end smoke test through nginx.
+- **JaCoCo coverage floors** enforced at `verify`: 90% lines and 80% branches overall, and 90% /
+  85% on the security- and rule-critical packages (auth, ticket access, assignment, priority,
+  transitions, workflow). Each floor is set a few points below measured coverage, so that only a
+  real drop fails the build.
+- `scripts/smoke-test.sh` makes 13 checks of what a browser depends on: the app and SPA fallback,
+  security headers, the `/api` proxy, problem+json errors, actuator not reachable from outside, demo
+  sign-in, requester visibility, and role enforcement (403) through the proxy.
+- Dependabot for Maven, npm, Actions and Docker base images, grouped weekly. The TypeScript major
+  version is held back with the reason recorded.
+
+**Decisions and checks worth discussing**
+- *Contract drift is closed from both sides:* the backend job proves the code matches
+  `docs/openapi.json`, and the frontend job proves the generated types match the same file.
+- *Supply chain:* the actions are pinned to full commit SHAs (tags can be moved), the workflow
+  token is read-only, and CI does not push images yet because nothing deploys them.
+- *Gates that can't pass silently:* I raised the package floor to 99% temporarily to prove that
+  the package patterns really match (four packages were then reported as violations). I also
+  stopped the web container to prove the smoke test fails, and it reported all 13 checks failing
+  with exit 1.
+- *Linted:* the workflow passes actionlint (which also runs shellcheck on its `run:` steps), and
+  the smoke script passes shellcheck.
+
+**Verified locally** with the same commands CI runs: backend `verify` passed with all coverage
+checks met (279 unit + 190 integration), the frontend steps passed (43 tests), and the Compose stack
+plus smoke test passed 13/13. The first GitHub-hosted run happens on the next push.
+

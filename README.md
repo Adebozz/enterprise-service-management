@@ -1,5 +1,7 @@
 # Enterprise Service Management Platform
 
+[![CI](https://github.com/Adebozz/enterprise-service-management/actions/workflows/ci.yml/badge.svg)](https://github.com/Adebozz/enterprise-service-management/actions/workflows/ci.yml)
+
 A full-stack IT service management platform, in the spirit of a focused ServiceNow / Jira Service
 Management: employees raise incidents and service requests, and support teams triage, assign,
 investigate and resolve them under explicit workflows, SLAs and a complete audit trail.
@@ -30,7 +32,8 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Requester portal: my tickets (URL-driven filter/paging), report a problem, request something, ticket page with conversation and server-driven actions | Done (M10) |
 | Agent portal: queues (mine/team/unassigned/all) with search, filters and priority sort; take/release/assign/transfer; resolve/fulfil; internal notes; readable history; route-level code splitting | Done (M11) |
 | Docker: multi-stage non-root images, nginx single-origin proxy with CSP, health-ordered compose, demo data through the real services | Done (M12) |
-| CI, final docs | Planned for Phase 1, see [Roadmap](#roadmap) |
+| CI (GitHub Actions): backend verify with Testcontainers and coverage floors, frontend lint/types/contract/tests/build, Docker images + end-to-end smoke test; Dependabot | Done (M13) |
+| Final docs and screenshots | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 
@@ -40,8 +43,8 @@ Actuator), PostgreSQL 17, Flyway, springdoc-openapi.
 **Frontend:** React 19, TypeScript 5.9 (strict), Vite 8, Tailwind CSS 4, shadcn/ui (Radix), React
 Router 7, TanStack Query 5, React Hook Form + Zod 4, openapi-fetch + openapi-typescript; tested with
 Vitest, React Testing Library and MSW.
-**Infrastructure:** Docker (multi-stage builds), Docker Compose, nginx.
-**Planned:** GitHub Actions, AWS (ECS Fargate, RDS, S3, CloudFront), Terraform.
+**Infrastructure:** Docker (multi-stage builds), Docker Compose, nginx, GitHub Actions, Dependabot.
+**Planned:** AWS (ECS Fargate, RDS, S3, CloudFront), Terraform.
 
 ## Repository layout
 
@@ -129,7 +132,26 @@ cd backend
 - **Integration tests** (`*IT`, Failsafe) start the full application against a real PostgreSQL 17
   container. H2 is deliberately not used, so tests run against the same SQL dialect, constraints
   and migrations as production.
-- The coverage report is written to `backend/target/site/jacoco/index.html`.
+- The coverage report is written to `backend/target/site/jacoco/index.html`. `verify` fails if
+  coverage drops below the floors in `backend/pom.xml`: 90% lines / 80% branches overall, and
+  90% / 85% for the security- and rule-critical packages (auth, ticket access, assignment,
+  priority, transitions, workflow).
+- **End-to-end smoke test** of the running Docker stack (nginx headers, `/api` proxy, problem
+  responses, demo sign-in, role enforcement through the proxy):
+
+  ```bash
+  docker compose up --build --wait && ./scripts/smoke-test.sh
+  ```
+
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request and push to
+`main`, as three parallel jobs: **backend** (`./mvnw verify`: formatting, unit and Testcontainers
+integration tests, OpenAPI snapshot, coverage floors; reports uploaded as an artifact),
+**frontend** (lint, type-check, generated-API-types check, tests, production build) and **stack**
+(builds both Docker images, starts the Compose stack and runs the smoke test). Actions are pinned
+to commit SHAs with read-only permissions; [Dependabot](.github/dependabot.yml) proposes weekly
+updates for Maven, npm, Actions and base images.
 
 ## Error responses
 

@@ -435,5 +435,5 @@ the SQL from constant fragments, and every request value is a bind parameter.
 | M10 | Requester portal | **Done** |
 | M11 | Agent portal | **Done** |
 | M12 | Full Docker Compose, production Dockerfiles, seed data | **Done** |
-| M13 | GitHub Actions CI | Next |
-| M14 | Documentation, ADRs, screenshots | |
+| M13 | GitHub Actions CI, coverage floors, smoke test, Dependabot | **Done** |
+| M14 | Documentation, ADRs, screenshots | Next |
