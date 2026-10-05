@@ -144,6 +144,17 @@ body.
   `LOGOUT`) and clears the query cache, so the next user never sees the previous user's data.
 - The post-login redirect only accepts same-app paths (`/…`, not `//evil.example`).
 
+## Implemented (M12): containers and the web tier
+
+- Both images run as **non-root** (backend uid 10001, nginx uid 101) and contain no secrets.
+- Only the web container is published, and only on `127.0.0.1`. The backend is reachable solely
+  through the nginx proxy.
+- Security headers on every response (including hashed assets): CSP with `script-src 'self'`,
+  `X-Frame-Options: DENY` + `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`,
+  `Permissions-Policy`. The one CSP relaxation (`style-src 'unsafe-inline'`) was verified as
+  necessary rather than assumed; see deployment.md.
+- Demo accounts exist only under the `demo` profile and require an explicit password.
+
 ## Known limitations (security)
 
 - **No login rate limiting or lockout yet.** Planned at the edge (AWS WAF rate-based rule on

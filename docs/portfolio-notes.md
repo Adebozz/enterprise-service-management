@@ -470,3 +470,40 @@ with names.
 **Tests:** backend +2 integration tests (history names, enum code rejected) → 278 unit + 187
 integration; frontend +14 (agent ticket page 5, queue 5, history sentences 4, requester sees no
 staff panels 1, replacing one obsolete test) → 43.
+
+---
+
+## M12: Containers & demo data (2026-10-05)
+
+**What was built**
+- Multi-stage Dockerfiles: the backend uses a cached dependency layer and **Spring Boot layered jar**
+  on a JRE runtime as uid 10001 with container-aware heap; the web image builds with Node and is
+  served by **unprivileged nginx** (83 MB).
+- nginx as the single entry point: SPA fallback, `/api` reverse proxy (the same single-origin
+  layout as the planned CloudFront setup), immutable caching for hashed assets, and security headers
+  including a CSP.
+- Compose with **health-ordered start-up** (postgres → backend readiness → web). The backend
+  isn't published. The whole stack is healthy in ~17 s once built.
+- A demo seeder that creates 7 users, 3 teams, 9 categories and 8 tickets in every interesting
+  state **through the real services, as the real users**, so the data obeys every rule and has a
+  genuine audit history. Idempotent and profile-gated.
+
+**Decisions and checks worth discussing**
+- *Seeding through services, not SQL:* a SQL seed could create states the application forbids.
+  Going through services means the demo is also a smoke test of the whole domain, and
+  `DemoDataSeederIT` asserts every ticket has an actor-attributed creation event.
+- *nginx `add_header` inheritance trap:* headers declared at server level disappear in any location
+  that adds its own header. I used an included snippet per location and verified headers on both
+  `/` and `/assets/`.
+- *CSP verified, not assumed:* I tried `style-src 'self'`; Chrome blocked the Radix dialog's
+  injected scroll-lock style, so `'unsafe-inline'` stays for styles only, with the reason recorded.
+- *Separate demo database* (`esm_demo`), so the containerised demo never collides with IDE
+  development data.
+
+**Verified** in a browser against the containerised stack: sign in as the demo team lead → team
+queue (P1 first) → seeded ticket with internal note, status notes and a 7-entry history → lead-only
+"Assign to" member list → Radix dialog renders with no CSP violations.
+
+**Tests:** +1 unit (weak demo password refused) and +3 integration (`DemoDataSeederIT`: states
+via the real rules, idempotency, demo sign-in and requester visibility). Total: 279 unit + 190
+integration; frontend 43.

@@ -1,8 +1,11 @@
-# Local development stack.
-# M0: PostgreSQL only. Backend and frontend services are added in M12.
+# Local environment.
 #
 #   cp .env.example .env
-#   docker compose up -d
+#   docker compose up --build        # whole stack: http://localhost:3000 (demo data, demo accounts)
+#   docker compose up -d postgres    # database only, for running the backend from an IDE
+#
+# Start-up order follows health, not just container start: postgres (accepting connections)
+# -> backend (readiness probe UP, migrations done) -> web.
 name: esm
 
 services:
@@ -16,11 +19,47 @@ services:
       - "127.0.0.1:${ESM_DB_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: prod,demo
+      ESM_DB_URL: jdbc:postgresql://postgres:5432/esm_demo
+      ESM_DB_USERNAME: ${ESM_DB_USERNAME}
+      ESM_DB_PASSWORD: ${ESM_DB_PASSWORD}
+      ESM_JWT_SECRET: ${ESM_JWT_SECRET:?set ESM_JWT_SECRET in .env}
+      ESM_ALLOWED_ORIGINS: http://localhost:${ESM_WEB_PORT:-3000}
+      ESM_DEMO_PASSWORD: ${ESM_DEMO_PASSWORD:?set ESM_DEMO_PASSWORD in .env}
+    # No published port: only the web container is reachable, as in production.
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The JRE image has no curl; bash's /dev/tcp is enough for a plain HTTP probe.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  web:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:${ESM_WEB_PORT:-3000}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres-data:

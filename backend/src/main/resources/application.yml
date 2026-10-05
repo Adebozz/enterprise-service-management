@@ -60,6 +60,8 @@ esm:
       HIGH:   { HIGH: P1, MEDIUM: P2, LOW: P3 }
       MEDIUM: { HIGH: P2, MEDIUM: P3, LOW: P4 }
       LOW:    { HIGH: P3, MEDIUM: P4, LOW: P4 }
+  demo:
+    password: ${ESM_DEMO_PASSWORD:}   # only read when the "demo" profile is active
   bootstrap:
     admin:
       email: ${ESM_BOOTSTRAP_ADMIN_EMAIL:}

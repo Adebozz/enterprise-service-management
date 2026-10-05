@@ -29,7 +29,8 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | Web app foundation: React 19 + TypeScript (strict), typed client generated from the contract, in-memory access token with single-flight silent refresh, protected routes, sign-in/out | Done (M9) |
 | Requester portal: my tickets (URL-driven filter/paging), report a problem, request something, ticket page with conversation and server-driven actions | Done (M10) |
 | Agent portal: queues (mine/team/unassigned/all) with search, filters and priority sort; take/release/assign/transfer; resolve/fulfil; internal notes; readable history; route-level code splitting | Done (M11) |
-| Docker, CI, final docs | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Docker: multi-stage non-root images, nginx single-origin proxy with CSP, health-ordered compose, demo data through the real services | Done (M12) |
+| CI, final docs | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 
@@ -39,7 +40,8 @@ Actuator), PostgreSQL 17, Flyway, springdoc-openapi.
 **Frontend:** React 19, TypeScript 5.9 (strict), Vite 8, Tailwind CSS 4, shadcn/ui (Radix), React
 Router 7, TanStack Query 5, React Hook Form + Zod 4, openapi-fetch + openapi-typescript; tested with
 Vitest, React Testing Library and MSW.
-**Planned:** Docker images, GitHub Actions, AWS (ECS Fargate, RDS, S3, CloudFront), Terraform.
+**Infrastructure:** Docker (multi-stage builds), Docker Compose, nginx.
+**Planned:** GitHub Actions, AWS (ECS Fargate, RDS, S3, CloudFront), Terraform.
 
 ## Repository layout
 
@@ -49,26 +51,51 @@ enterprise-service-management/
 ├── frontend/           React + TypeScript web app (see frontend/README.md)
 ├── infrastructure/     Terraform for AWS (Phase 3)
 ├── docs/               Architecture, database, security, ADRs, portfolio notes
-├── docker-compose.yml  Local PostgreSQL (backend/frontend services added in M12)
+├── docker/             Compose support files (Postgres init script)
+├── docker-compose.yml  Full local stack (postgres, backend, web) or database only
 └── .env.example        Local configuration template (copy to .env, never commit .env)
 ```
 
 ## Running locally
 
-Prerequisites: **JDK 21** and **Docker** (Docker Desktop on macOS/Windows).
+### Option 1: the whole system in Docker (quickest)
+
+Prerequisite: **Docker** (Docker Desktop on macOS/Windows). Nothing else.
 
 ```bash
-cp .env.example .env            # local-only settings; .env is git-ignored
-docker compose up -d --wait     # PostgreSQL 17 on localhost:5432
-cd backend
-./mvnw spring-boot:run          # API on http://localhost:8080
+cp .env.example .env
+docker compose up --build
 ```
 
-Useful URLs:
+Open **http://localhost:3000** once all three containers report healthy (about 20 seconds after the
+first build). The stack starts in health order (PostgreSQL → backend → web) and comes with demo
+data: teams, categories, and tickets in every state, each with a real audit history.
 
-- Health: http://localhost:8080/actuator/health
-- OpenAPI JSON: http://localhost:8080/v3/api-docs
-- Swagger UI: http://localhost:8080/swagger-ui.html
+**Demo accounts** (password for all: the `ESM_DEMO_PASSWORD` value in `.env`, `Demo-Password-2026`
+by default; **local demos only**):
+
+| Email | Role | Try |
+|---|---|---|
+| `rita@demo.local` | Requester | My tickets, confirm a resolved incident, reply to a question |
+| `sam@demo.local` | Requester | Raise an incident or request |
+| `nina@demo.local` | Agent (Network) | Queue, take/resolve, internal notes, history |
+| `hugo@demo.local` | Agent (Hardware) | Another team's queue |
+| `iris@demo.local` | Agent (Identity & Access) | Service requests |
+| `lead@demo.local` | Team lead (Network) | Assign to team members |
+| `admin@demo.local` | Administrator | Everything |
+
+The stack uses its own database (`esm_demo`), separate from the `esm` database used for IDE
+development, so the two never interfere. Details: [docs/deployment.md](docs/deployment.md).
+
+### Option 2: develop with hot reload
+
+Prerequisites: **JDK 21**, **Node 22** and **Docker**.
+
+```bash
+cp .env.example .env
+docker compose up -d --wait postgres   # database only, on localhost:5432
+cd backend && ./mvnw spring-boot:run   # API on http://localhost:8080
+```
 
 In a second terminal, start the web app and open http://localhost:5173:
 
@@ -77,24 +104,13 @@ cd frontend && npm install && npm run dev
 ```
 
 There's no database setup step. Flyway applies migrations automatically on startup, and the first
-admin account is created from the `ESM_BOOTSTRAP_ADMIN_*` values in `.env`.
+admin account is created from the `ESM_BOOTSTRAP_ADMIN_*` values in `.env` (`admin@esm.local`,
+local development only).
 
-### Development credentials (local only)
+Backend URLs: health http://localhost:8080/actuator/health, Swagger UI
+http://localhost:8080/swagger-ui.html (sign in with `POST /api/auth/login`, then **Authorize**).
 
-| Account | Password | Source |
-|---|---|---|
-| `admin@esm.local` (ADMIN) | `ChangeMe-LocalAdmin-2026` | `.env.example` bootstrap values. Local development only; never deploy them |
-
-```bash
-curl -s -c cookies.txt -H 'Content-Type: application/json' \
-  -d '{"email":"admin@esm.local","password":"ChangeMe-LocalAdmin-2026"}' \
-  http://localhost:8080/api/auth/login
-```
-
-Use the returned `accessToken` as `Authorization: Bearer <token>`. In Swagger UI, click
-**Authorize**.
-
-Alternative with no docker-compose: `./mvnw spring-boot:test-run` starts the app against a
+Alternative with no docker-compose: `./mvnw spring-boot:test-run` starts the backend against a
 throwaway Testcontainers PostgreSQL.
 
 ## Testing
@@ -142,6 +158,7 @@ log line written while handling the request.
 - [Database design](docs/database.md)
 - [Security model](docs/security.md)
 - [Performance notes](docs/performance.md)
+- [Deployment & containers](docs/deployment.md)
 - Architecture Decision Records: [docs/adr](docs/adr)
 
 ## Roadmap
