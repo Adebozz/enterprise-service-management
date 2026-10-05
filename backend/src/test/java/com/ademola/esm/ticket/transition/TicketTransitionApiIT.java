@@ -174,6 +174,18 @@ class TicketTransitionApiIT {
     }
 
     @Test
+    void unknownResolutionCodeIsRejectedByTheContract() {
+        String id = assignedIncident();
+        move(agentToken, id, 0, "IN_PROGRESS", null);
+
+        MvcTestResult result = move(agentToken, id, 1, "RESOLVED", "{\"resolutionCode\": \"MAGIC\", \"notes\": \"x\"}");
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.code").isEqualTo("MALFORMED_REQUEST");
+        assertThat(status(id)).isEqualTo("IN_PROGRESS");
+    }
+
+    @Test
     void staleVersionIsAConflict() {
         String id = assignedIncident();
         move(agentToken, id, 0, "IN_PROGRESS", null);

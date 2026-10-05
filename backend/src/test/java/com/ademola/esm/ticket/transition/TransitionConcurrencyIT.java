@@ -8,6 +8,7 @@ import com.ademola.esm.support.DatabaseCleaner;
 import com.ademola.esm.support.Fixtures;
 import com.ademola.esm.support.IntegrationTest;
 import com.ademola.esm.support.TestUsers;
+import com.ademola.esm.ticket.incident.ResolutionCode;
 import com.ademola.esm.user.Role;
 import com.ademola.esm.user.User;
 import java.util.ArrayList;
@@ -89,8 +90,8 @@ class TransitionConcurrencyIT {
         CountDownLatch start = new CountDownLatch(1);
         List<Future<String>> outcomes = new ArrayList<>();
         try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
-            outcomes.add(
-                    pool.submit(attempt(agentA, new TransitionRequest("RESOLVED", 0L, null, "FIXED", "done"), start)));
+            outcomes.add(pool.submit(
+                    attempt(agentA, new TransitionRequest("RESOLVED", 0L, null, ResolutionCode.FIXED, "done"), start)));
             outcomes.add(pool.submit(
                     attempt(agentB, new TransitionRequest("WAITING_FOR_USER", 0L, "need info", null, null), start)));
             start.countDown();

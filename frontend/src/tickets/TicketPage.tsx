@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
+import { useCurrentUser } from '@/auth/AuthContext'
+import { hasRole } from '@/auth/roles'
 import { isApiError } from '@/api/errors'
 import { ticketQuery, transitionsQuery } from '@/api/queries'
 import type { Ticket } from '@/api/types'
@@ -8,12 +10,17 @@ import { QueryError } from '@/components/QueryError'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PriorityBadge, StatusBadge } from './badges'
+import { AssignmentPanel } from './AssignmentPanel'
 import { Conversation } from './Conversation'
+import { History } from './History'
 import { TicketActions } from './TicketActions'
 import { LEVEL_LABEL, TYPE_LABEL, formatDateTime, isClosed } from './labels'
 
 export function TicketPage() {
   const { id = '' } = useParams()
+  const user = useCurrentUser()
+  // Staff features are offered by role; the API decides per ticket (e.g. history is support-only).
+  const isStaff = hasRole(user, 'AGENT')
   const ticket = useQuery(ticketQuery(id))
   const transitions = useQuery(transitionsQuery(id))
 
@@ -44,8 +51,8 @@ export function TicketPage() {
   return (
     <article className="grid gap-8">
       <header className="grid gap-3">
-        <Link to="/tickets" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-          ← My tickets
+        <Link to={isStaff ? '/queue' : '/tickets'} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+          {isStaff ? '← Queue' : '← My tickets'}
         </Link>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-mono text-muted-foreground">{t.reference}</span>
@@ -64,9 +71,13 @@ export function TicketPage() {
             </h2>
             <p className="mt-2 whitespace-pre-wrap">{t.description}</p>
           </section>
-          <Conversation ticketId={t.id} closed={isClosed(t.status)} />
+          <Conversation ticketId={t.id} closed={isClosed(t.status)} canWriteInternal={isStaff} />
+          {isStaff && <History ticketId={t.id} />}
         </div>
-        <TicketFacts ticket={t} />
+        <div className="grid content-start gap-4">
+          {isStaff && <AssignmentPanel ticket={t} />}
+          <TicketFacts ticket={t} />
+        </div>
       </div>
     </article>
   )

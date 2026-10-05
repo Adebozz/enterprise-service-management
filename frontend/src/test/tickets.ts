@@ -11,6 +11,29 @@ export const requester: AuthenticatedUser = {
   role: 'REQUESTER',
 }
 
+export const agent: AuthenticatedUser = {
+  id: '0199b2c4-6a1e-7c3e-9f00-000000000201',
+  email: 'alex@example.com',
+  displayName: 'Alex Agent',
+  role: 'AGENT',
+}
+
+/** Staff pages also read the profile (teams) and the team list. */
+export function staffContext(user: AuthenticatedUser, teamIds: string[] = ['team-network']) {
+  server.use(
+    http.get('/api/users/me', () =>
+      HttpResponse.json({ ...user, teams: teamIds.map((id) => ({ id, name: id === 'team-network' ? 'Network Team' : 'Hardware Team' })) }),
+    ),
+    http.get('/api/teams', () =>
+      HttpResponse.json([
+        { id: 'team-network', name: 'Network Team', description: null, active: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z', version: 0 },
+        { id: 'team-hardware', name: 'Hardware Team', description: null, active: true, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z', version: 0 },
+      ]),
+    ),
+    http.get('/api/tickets/:id/history', () => HttpResponse.json([])),
+  )
+}
+
 /** Signs the user in as the app starts (the silent refresh succeeds). */
 export function signedInAs(user: AuthenticatedUser) {
   server.use(http.post('/api/auth/refresh', () => HttpResponse.json(sessionFor(user))))

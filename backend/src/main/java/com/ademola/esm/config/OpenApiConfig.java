@@ -8,6 +8,7 @@ import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.ObjectSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
@@ -27,8 +28,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.PropertyCustomizer;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.JsonNode;
 
 /**
  * The OpenAPI contract (served at /v3/api-docs, committed as docs/openapi.json).
@@ -44,6 +47,15 @@ public class OpenApiConfig {
     static final String PROBLEM = "ApiProblem";
     private static final String PROBLEM_JSON = "application/problem+json";
     private static final Set<String> PUBLIC_PATHS = Set.of("/api/auth/login", "/api/auth/refresh", "/api/auth/logout");
+
+    static {
+        // Free-form JSON (audit before/after values). Without this, swagger-core describes Jackson's
+        // JsonNode *class* (isArray, bigDecimal...) instead of "any JSON object".
+        SpringDocUtils.getConfig()
+                .replaceWithSchema(
+                        JsonNode.class,
+                        new ObjectSchema().additionalProperties(true).description("Free-form JSON object"));
+    }
 
     @Bean
     OpenAPI esmOpenApi() {
@@ -69,21 +81,30 @@ public class OpenApiConfig {
     }
 
     /**
-     * Nullable object references. swagger-core marks a {@code @Nullable} scalar as
-     * {@code type: [string, null]}, but OpenAPI 3.1 ignores keywords next to {@code $ref}, so a
-     * nullable object needs {@code oneOf: [$ref, null]} to reach the generated types.
+     * Nullability for {@code @Nullable} properties. swagger-core already marks nullable scalars as
+     * {@code type: [string, null]}. OpenAPI 3.1 ignores keywords next to {@code $ref}, so a nullable
+     * object reference becomes {@code oneOf: [$ref, null]}; inline replaced schemas get "null" added.
      */
     @Bean
     PropertyCustomizer nullableReferences() {
         return (property, type) -> {
             boolean nullable = type.getCtxAnnotations() != null
                     && Arrays.stream(type.getCtxAnnotations()).anyMatch(a -> a instanceof Nullable);
-            if (nullable && property.get$ref() != null) {
+            if (!nullable) {
+                return property;
+            }
+            if (property.get$ref() != null) {
                 Schema<?> wrapped = new Schema<>();
                 wrapped.setOneOf(
                         List.of(new Schema<>().$ref(property.get$ref()), new Schema<>().types(Set.of("null"))));
                 wrapped.setDescription(property.getDescription());
                 return wrapped;
+            }
+            // Inline schemas (e.g. replaced types such as JsonNode) need "null" added explicitly.
+            if (property.getTypes() != null && !property.getTypes().contains("null")) {
+                Set<String> types = new java.util.LinkedHashSet<>(property.getTypes());
+                types.add("null");
+                property.setTypes(types);
             }
             return property;
         };

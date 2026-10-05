@@ -33,7 +33,9 @@ src/
   auth/       tokenStore (in-memory token), session (single-flight refresh), AuthProvider, RequireAuth, roles
   app/        App, routes, AppLayout, navigation, queryClient
   pages/      LoginPage, HomePage, NotFoundPage, ForbiddenPage
-  tickets/    MyTicketsPage, NewIncidentPage, NewServiceRequestPage, TicketPage, Conversation, TicketActions
+  tickets/    MyTicketsPage, NewIncidentPage, NewServiceRequestPage, TicketPage, Conversation, TicketActions,
+              AssignmentPanel, History (+ historyText), labels, badges
+  queue/      AgentQueuePage (support staff)
   components/ui/  shadcn/ui components (generated, owned by us)
   test/       MSW server, fixtures, renderApp helper
 ```

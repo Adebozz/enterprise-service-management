@@ -432,3 +432,41 @@ with a reason (it appears as a status note in the conversation; the reply box cl
 empty, All list shows the cancelled ticket, and no other user's tickets.
 
 **Tests:** 15 new frontend tests (my tickets 4, incident form 4, ticket page 7). Frontend total: 29.
+
+---
+
+## M11: Agent portal (2026-10-05)
+
+**What was built**
+- Queue page: Mine / Team / Unassigned / All, search (reference, full text, names), type and
+  priority filters, priority-then-oldest default sort, "best match" when searching, all URL-driven.
+- Staff ticket view: take / release / assign (team leads, from the member list) / transfer;
+  generalised action dialog (reason, resolution code + notes, fulfilment notes) driven by the
+  server's `requirements`; internal notes visibly marked; a readable history timeline.
+- Route-level code splitting: main bundle **596 → 434 KB (188 → 137 KB gzipped)** while adding
+  features.
+
+**Contract improvements (backend)**
+- Resolution codes became a typed enum in the API, and the UI's label map is
+  `Record<ResolutionCode, string>`: a new backend code breaks the frontend build until it is
+  labelled. Exhaustiveness checked by the compiler.
+- History entries carry a `names` map (users/teams/categories found in audit values, one batch
+  query per kind), so the timeline reads "assigned it to Alex Agent".
+- Found and fixed a contract bug: swagger-core described Jackson's `JsonNode` *class* (24 boolean
+  "fields") instead of "any JSON object". Mapped it to a free-form object, then caught that the
+  replacement had lost nullability. Generalised the nullable customizer, and added a contract
+  assertion so neither can regress.
+
+**Incident worth telling:** midway through, the Mac's disk filled up (317 MB free) and Docker's
+storage began failing with I/O errors. I diagnosed it (`df`, `docker system df`) rather than
+retrying, reported the reclaimable space without deleting anything myself, and resumed once the
+user freed space, re-running the interrupted verification first.
+
+**Verified end to end** in a browser against the real backend as an agent: Unassigned queue (P1
+first, cancelled ticket excluded) → open INC-000003 → Take → Start work (offered only once
+assigned) → internal note → Resolve with "Fixed" + notes → history shows five readable entries
+with names.
+
+**Tests:** backend +2 integration tests (history names, enum code rejected) → 278 unit + 187
+integration; frontend +14 (agent ticket page 5, queue 5, history sentences 4, requester sees no
+staff panels 1, replacing one obsolete test) → 43.

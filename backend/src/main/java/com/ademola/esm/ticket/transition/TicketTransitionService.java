@@ -87,7 +87,12 @@ public class TicketTransitionService {
         }
 
         String from = item.getStatusName();
-        TransitionInput input = new TransitionInput(request.reason(), request.resolutionCode(), request.notes());
+        TransitionInput input = new TransitionInput(
+                request.reason(),
+                request.resolutionCode() == null
+                        ? null
+                        : request.resolutionCode().name(),
+                request.notes());
         item.transition(request.targetStatus(), input, clock.instant());
 
         audit.record(new AuditRecord(

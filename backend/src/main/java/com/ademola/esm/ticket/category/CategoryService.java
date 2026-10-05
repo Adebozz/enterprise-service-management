@@ -51,6 +51,14 @@ public class CategoryService {
         return tree(c -> true);
     }
 
+    /** Names for many categories in one query. */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> namesOf(java.util.Collection<UUID> ids) {
+        Map<UUID, String> names = new java.util.HashMap<>();
+        categories.findAllById(ids).forEach(category -> names.put(category.getId(), category.getName()));
+        return names;
+    }
+
     /** Display name lookup for other ticket packages. */
     @Transactional(readOnly = true)
     public String nameOf(UUID categoryId) {

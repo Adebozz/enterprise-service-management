@@ -147,6 +147,24 @@ sequenceDiagram
 - **Cache:** hierarchical query keys (`['tickets', …]`), so one invalidation refreshes lists and
   detail after any change.
 
+### Agent portal (M11)
+
+| Route | Page |
+|---|---|
+| `/queue` (AGENT+) | Tabs Mine / Team / Unassigned / All; search, type and priority filters; sort (default priority then oldest, "best match" when searching); all in the URL |
+| `/tickets/:id` (staff view) | Plus an assignment panel, a resolve/fulfil dialog, internal notes and a history timeline |
+
+- **Typed resolution codes:** `TransitionRequest.resolutionCode` is an enum in the contract, and
+  the UI's labels are a `Record<ResolutionCode, string>`, so a new backend code fails the frontend
+  build until it is labelled.
+- **History with names:** the history API resolves user, team and category ids found in audit
+  values (`names` map, one query per kind), and the UI turns entries into sentences
+  (`historyText.ts`, unit-tested).
+- **Transfers:** after moving a ticket to another team the agent may lose access (by design), so
+  the UI returns to the queue with a notice instead of showing "not found".
+- **Code splitting:** pages behind sign-in are React Router `lazy` routes. The main bundle went from
+  596 KB (188 KB gzipped) to 434 KB (137 KB gzipped) while the app grew.
+
 ## Configuration
 
 - 12-factor: environment variables (`ESM_DB_URL`, `ESM_DB_USERNAME`, `ESM_DB_PASSWORD`, ...).
@@ -415,7 +433,7 @@ the SQL from constant fragments, and every request value is a bind parameter.
 | M8 | OpenAPI polish, `docs/api.md` | **Done** |
 | M9 | Frontend foundation (auth, layout, generated API types) | **Done** |
 | M10 | Requester portal | **Done** |
-| M11 | Agent portal | Next |
-| M12 | Full Docker Compose, production Dockerfiles, seed data | |
+| M11 | Agent portal | **Done** |
+| M12 | Full Docker Compose, production Dockerfiles, seed data | Next |
 | M13 | GitHub Actions CI | |
 | M14 | Documentation, ADRs, screenshots | |

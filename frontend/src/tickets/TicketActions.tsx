@@ -8,26 +8,44 @@ import { isApiError, unwrap } from '@/api/errors'
 import { queryKeys } from '@/api/queries'
 import type { AvailableTransition, Ticket, TransitionRequest } from '@/api/types'
 import { FieldError } from '@/components/FieldError'
+import { NativeSelect } from '@/components/NativeSelect'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { RESOLUTION_CODES, RESOLUTION_LABEL } from './labels'
+
+type Requirement = AvailableTransition['requirements'][number]
+
+interface ActionForm {
+  reason: string | undefined
+  resolutionCode: string | undefined
+  notes: string | undefined
+}
+
+/** Builds validation for exactly the inputs this move requires (as listed by the server). */
+function schemaFor(requirements: Requirement[]) {
+  const needs = (r: Requirement) => requirements.includes(r)
+  const optional = z.string().optional()
+  return z.object({
+    reason: needs('REASON')
+      ? z.string().trim().min(1, { error: 'Please give a reason' }).max(1000, { error: 'Keep it under 1000 characters' })
+      : optional,
+    resolutionCode: needs('RESOLUTION') ? z.enum(RESOLUTION_CODES, { error: 'Choose how it was resolved' }) : optional,
+    notes:
+      needs('RESOLUTION') || needs('FULFILMENT_NOTES')
+        ? z.string().trim().min(1, { error: 'Describe what was done' }).max(10_000, { error: 'Keep it under 10,000 characters' })
+        : optional,
+  })
+}
+
+/** Moves whose inputs are typed into a dialog; ASSIGNEE is about ticket state, never typed. */
+const needsDialog = (t: AvailableTransition) => t.requirements.some((r) => r !== 'ASSIGNEE')
 
 /**
- * Requirements this screen can collect. Moves needing a resolution or fulfilment notes belong to
- * support staff and get their inputs in the agent portal (M11); until then they aren't offered here
- * rather than shown as buttons that can only fail.
- */
-const SUPPORTED = new Set<AvailableTransition['requirements'][number]>(['REASON'])
-
-const reasonSchema = z.object({
-  reason: z.string().trim().min(1, { error: 'Please give a reason' }).max(1000, { error: 'Keep it under 1000 characters' }),
-})
-
-/**
- * One button per move the SERVER says this user can make now. The frontend never encodes the
- * workflow, so it can't drift from the backend's rules.
+ * One button per move the SERVER says this user can make now, with a dialog that collects whatever
+ * that move requires. The frontend never encodes the workflow, so it can't drift from the backend.
  */
 export function TicketActions({ ticket, transitions }: { ticket: Ticket; transitions: AvailableTransition[] }) {
   const queryClient = useQueryClient()
@@ -43,10 +61,16 @@ export function TicketActions({ ticket, transitions }: { ticket: Ticket; transit
     },
   })
 
-  const run = async (target: AvailableTransition, reason?: string) => {
+  const run = async (target: AvailableTransition, input: Partial<ActionForm> = {}) => {
     setMessage(null)
     try {
-      await transition.mutateAsync({ targetStatus: target.targetStatus, version: ticket.version, reason })
+      await transition.mutateAsync({
+        targetStatus: target.targetStatus,
+        version: ticket.version,
+        reason: input.reason || undefined,
+        resolutionCode: (input.resolutionCode || undefined) as TransitionRequest['resolutionCode'],
+        notes: input.notes || undefined,
+      })
       setPending(null)
     } catch (error) {
       setPending(null)
@@ -59,8 +83,7 @@ export function TicketActions({ ticket, transitions }: { ticket: Ticket; transit
     }
   }
 
-  const available = transitions.filter((t) => t.requirements.every((r) => SUPPORTED.has(r)))
-  if (available.length === 0 && !message) return null
+  if (transitions.length === 0 && !message) return null
 
   return (
     <div className="grid gap-3">
@@ -70,54 +93,83 @@ export function TicketActions({ ticket, transitions }: { ticket: Ticket; transit
         </Alert>
       )}
       <div className="flex flex-wrap gap-2">
-        {available.map((t) => (
+        {transitions.map((t) => (
           <Button
             key={t.targetStatus}
             variant={t.targetStatus === 'CANCELLED' ? 'outline' : 'default'}
             disabled={transition.isPending}
-            onClick={() => (t.requirements.includes('REASON') ? setPending(t) : void run(t))}
+            onClick={() => (needsDialog(t) ? setPending(t) : void run(t))}
           >
             {t.label}
           </Button>
         ))}
       </div>
-      {pending && <ReasonDialog transition={pending} onCancel={() => setPending(null)} onConfirm={(reason) => run(pending, reason)} />}
+      {pending && <ActionDialog transition={pending} onCancel={() => setPending(null)} onConfirm={(input) => run(pending, input)} />}
     </div>
   )
 }
 
-function ReasonDialog({
+function ActionDialog({
   transition,
   onCancel,
   onConfirm,
 }: {
   transition: AvailableTransition
   onCancel: () => void
-  onConfirm: (reason: string) => Promise<void>
+  onConfirm: (input: ActionForm) => Promise<void>
 }) {
-  const { register, handleSubmit, formState } = useForm<z.infer<typeof reasonSchema>>({
-    resolver: zodResolver(reasonSchema),
-    defaultValues: { reason: '' },
+  const needs = (r: Requirement) => transition.requirements.includes(r)
+  const { register, handleSubmit, formState } = useForm<ActionForm>({
+    resolver: zodResolver(schemaFor(transition.requirements)),
+    defaultValues: { reason: '', resolutionCode: '', notes: '' },
   })
+  const { errors } = formState
+
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent>
-        <form onSubmit={handleSubmit(({ reason }) => onConfirm(reason))} noValidate className="grid gap-4">
+        <form onSubmit={handleSubmit(onConfirm)} noValidate className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{transition.label}</DialogTitle>
-            <DialogDescription>Your reason is added to the conversation, so the support team sees it.</DialogDescription>
+            <DialogDescription>
+              {needs('REASON')
+                ? 'Your reason is added to the conversation, so everyone involved sees it.'
+                : 'This is shown to the requester on the ticket.'}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2">
-            <Label htmlFor="reason">Reason</Label>
-            <Textarea
-              id="reason"
-              rows={4}
-              aria-invalid={formState.errors.reason ? true : undefined}
-              aria-describedby={formState.errors.reason ? 'reason-error' : undefined}
-              {...register('reason')}
-            />
-            <FieldError id="reason-error" message={formState.errors.reason?.message} />
-          </div>
+          {needs('REASON') && (
+            <div className="grid gap-2">
+              <Label htmlFor="reason">Reason</Label>
+              <Textarea id="reason" rows={4} aria-invalid={errors.reason ? true : undefined} aria-describedby={errors.reason ? 'reason-error' : undefined} {...register('reason')} />
+              <FieldError id="reason-error" message={errors.reason?.message} />
+            </div>
+          )}
+          {needs('RESOLUTION') && (
+            <div className="grid gap-2">
+              <Label htmlFor="resolutionCode">Resolution</Label>
+              <NativeSelect
+                id="resolutionCode"
+                aria-invalid={errors.resolutionCode ? true : undefined}
+                aria-describedby={errors.resolutionCode ? 'resolutionCode-error' : undefined}
+                {...register('resolutionCode')}
+              >
+                <option value="">Select how it was resolved</option>
+                {RESOLUTION_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {RESOLUTION_LABEL[code]}
+                  </option>
+                ))}
+              </NativeSelect>
+              <FieldError id="resolutionCode-error" message={errors.resolutionCode?.message} />
+            </div>
+          )}
+          {(needs('RESOLUTION') || needs('FULFILMENT_NOTES')) && (
+            <div className="grid gap-2">
+              <Label htmlFor="notes">{needs('RESOLUTION') ? 'Resolution notes' : 'What was delivered?'}</Label>
+              <Textarea id="notes" rows={4} aria-invalid={errors.notes ? true : undefined} aria-describedby={errors.notes ? 'notes-error' : undefined} {...register('notes')} />
+              <FieldError id="notes-error" message={errors.notes?.message} />
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onCancel}>
               Back

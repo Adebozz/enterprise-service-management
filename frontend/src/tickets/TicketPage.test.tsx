@@ -94,14 +94,16 @@ describe('ticket page', () => {
     expect(backend.transitionRequests).toEqual([{ targetStatus: 'IN_PROGRESS', version: 2, reason: 'Dropped again this morning' }])
   })
 
-  it('does not offer support-only moves that need inputs this screen doesn’t collect', async () => {
+  it('does not show staff panels to requesters', async () => {
     signedInAs(requester)
-    ticketBackend(aTicket({ status: 'IN_PROGRESS' }), [{ targetStatus: 'RESOLVED', label: 'Resolve', requirements: ['RESOLUTION'] }])
+    ticketBackend(aTicket(), [])
 
     renderApp('/tickets/ticket-1')
 
     await screen.findByRole('heading', { name: 'Wi-Fi keeps dropping' })
-    expect(screen.queryByRole('button', { name: 'Resolve' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Assignment' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'History' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Internal note' })).not.toBeInTheDocument()
   })
 
   it('explains a concurrent change and reloads instead of overwriting it', async () => {

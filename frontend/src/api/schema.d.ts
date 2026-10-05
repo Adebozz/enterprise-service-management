@@ -576,11 +576,23 @@ export interface components {
             /** @enum {string} */
             action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED";
             actor: components["schemas"]["NamedRef"] | null;
-            metadata: components["schemas"]["JsonNode"] | null;
-            newValue: components["schemas"]["JsonNode"] | null;
+            /** @description Free-form JSON object */
+            metadata: {
+                [key: string]: unknown;
+            } | null;
+            names: {
+                [key: string]: string;
+            };
+            /** @description Free-form JSON object */
+            newValue: {
+                [key: string]: unknown;
+            } | null;
             /** Format: date-time */
             occurredAt: string;
-            oldValue: components["schemas"]["JsonNode"] | null;
+            /** @description Free-form JSON object */
+            oldValue: {
+                [key: string]: unknown;
+            } | null;
         };
         IncidentDetails: {
             affectedService: string | null;
@@ -588,34 +600,6 @@ export interface components {
             reopenCount: number;
             resolutionCode: string | null;
             resolutionNotes: string | null;
-        };
-        JsonNode: {
-            array: boolean;
-            bigDecimal: boolean;
-            bigInteger: boolean;
-            binary: boolean;
-            boolean: boolean;
-            container: boolean;
-            double: boolean;
-            embeddedValue: boolean;
-            empty: boolean;
-            float: boolean;
-            floatingPointNumber: boolean;
-            int: boolean;
-            integralNumber: boolean;
-            long: boolean;
-            missingNode: boolean;
-            /** @enum {string} */
-            nodeType: "ARRAY" | "BINARY" | "BOOLEAN" | "MISSING" | "NULL" | "NUMBER" | "OBJECT" | "POJO" | "STRING";
-            null: boolean;
-            number: boolean;
-            object: boolean;
-            pojo: boolean;
-            short: boolean;
-            string: boolean;
-            /** @deprecated */
-            textual: boolean;
-            valueNode: boolean;
         };
         LoginRequest: {
             email: string;
@@ -769,7 +753,8 @@ export interface components {
         TransitionRequest: {
             notes?: string;
             reason?: string;
-            resolutionCode?: string;
+            /** @enum {string} */
+            resolutionCode?: "FIXED" | "WORKAROUND" | "NO_FAULT_FOUND" | "DUPLICATE" | "USER_ERROR" | "NOT_REPRODUCIBLE";
             targetStatus: string;
             /** Format: int64 */
             version: number;

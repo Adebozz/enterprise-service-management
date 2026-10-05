@@ -129,6 +129,14 @@ class ApiContractIT {
                 .contains("null");
         assertThat(summary.path("properties").path("createdAt").path("type").asString())
                 .isEqualTo("string");
+        // Free-form JSON (audit values) is "any object or null", not Jackson's JsonNode class.
+        assertThat(spec.path("components").path("schemas").has("JsonNode")).isFalse();
+        assertThat(schema("HistoryEntryResponse")
+                        .path("properties")
+                        .path("oldValue")
+                        .path("type")
+                        .toString())
+                .contains("object", "null");
         // Request schemas keep validation-derived "required": optional fields may be omitted.
         assertThat(names(schema("CreateIncidentRequest").path("required")))
                 .doesNotContain("subcategoryId", "affectedService");

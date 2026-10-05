@@ -91,6 +91,14 @@ public class TeamService {
         return Set.copyOf(members.findTeamIdsOf(userId));
     }
 
+    /** Names for many teams in one query (e.g. for a history timeline). */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> namesOf(java.util.Collection<UUID> ids) {
+        Map<UUID, String> names = new java.util.HashMap<>();
+        teams.findAllById(ids).forEach(team -> names.put(team.getId(), team.getName()));
+        return names;
+    }
+
     /** Name lookup for display purposes (e.g. "assigned to Network Team" on a ticket). */
     @Transactional(readOnly = true)
     public TeamSummary summaryOf(UUID teamId) {

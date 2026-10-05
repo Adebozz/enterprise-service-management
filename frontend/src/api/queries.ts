@@ -13,7 +13,10 @@ export const queryKeys = {
   ticket: (id: string) => ['tickets', 'detail', id] as const,
   comments: (id: string) => ['tickets', 'detail', id, 'comments'] as const,
   transitions: (id: string) => ['tickets', 'detail', id, 'transitions'] as const,
+  history: (id: string) => ['tickets', 'detail', id, 'history'] as const,
   categories: (type: TicketType) => ['categories', type] as const,
+  teams: ['teams'] as const,
+  teamMembers: (teamId: string) => ['teams', teamId, 'members'] as const,
 }
 
 export const myProfileQuery = {
@@ -45,4 +48,21 @@ export const categoriesQuery = (type: TicketType) => ({
   queryKey: queryKeys.categories(type),
   queryFn: async () => unwrap(await api.GET('/api/categories', { params: { query: { type } } })),
   staleTime: 5 * 60_000, // reference data: changes rarely
+})
+
+export const historyQuery = (id: string) => ({
+  queryKey: queryKeys.history(id),
+  queryFn: async () => unwrap(await api.GET('/api/tickets/{id}/history', { params: { path: { id } } })),
+})
+
+export const teamsQuery = {
+  queryKey: queryKeys.teams,
+  queryFn: async () => unwrap(await api.GET('/api/teams')),
+  staleTime: 5 * 60_000,
+}
+
+export const teamMembersQuery = (teamId: string) => ({
+  queryKey: queryKeys.teamMembers(teamId),
+  queryFn: async () => unwrap(await api.GET('/api/teams/{id}/members', { params: { path: { id: teamId } } })),
+  staleTime: 60_000,
 })

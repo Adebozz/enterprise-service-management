@@ -2049,32 +2049,32 @@
             } ]
           },
           "metadata" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/JsonNode"
-            }, {
-              "type" : "null"
-            } ]
+            "type" : [ "object", "null" ],
+            "additionalProperties" : true,
+            "description" : "Free-form JSON object"
+          },
+          "names" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
           },
           "newValue" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/JsonNode"
-            }, {
-              "type" : "null"
-            } ]
+            "type" : [ "object", "null" ],
+            "additionalProperties" : true,
+            "description" : "Free-form JSON object"
           },
           "occurredAt" : {
             "type" : "string",
             "format" : "date-time"
           },
           "oldValue" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/JsonNode"
-            }, {
-              "type" : "null"
-            } ]
+            "type" : [ "object", "null" ],
+            "additionalProperties" : true,
+            "description" : "Free-form JSON object"
           }
         },
-        "required" : [ "action", "actor", "metadata", "newValue", "occurredAt", "oldValue" ]
+        "required" : [ "action", "actor", "metadata", "names", "newValue", "occurredAt", "oldValue" ]
       },
       "IncidentDetails" : {
         "type" : "object",
@@ -2094,86 +2094,6 @@
           }
         },
         "required" : [ "affectedService", "reopenCount", "resolutionCode", "resolutionNotes" ]
-      },
-      "JsonNode" : {
-        "type" : "object",
-        "properties" : {
-          "array" : {
-            "type" : "boolean"
-          },
-          "bigDecimal" : {
-            "type" : "boolean"
-          },
-          "bigInteger" : {
-            "type" : "boolean"
-          },
-          "binary" : {
-            "type" : "boolean"
-          },
-          "boolean" : {
-            "type" : "boolean"
-          },
-          "container" : {
-            "type" : "boolean"
-          },
-          "double" : {
-            "type" : "boolean"
-          },
-          "embeddedValue" : {
-            "type" : "boolean"
-          },
-          "empty" : {
-            "type" : "boolean"
-          },
-          "float" : {
-            "type" : "boolean"
-          },
-          "floatingPointNumber" : {
-            "type" : "boolean"
-          },
-          "int" : {
-            "type" : "boolean"
-          },
-          "integralNumber" : {
-            "type" : "boolean"
-          },
-          "long" : {
-            "type" : "boolean"
-          },
-          "missingNode" : {
-            "type" : "boolean"
-          },
-          "nodeType" : {
-            "type" : "string",
-            "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ]
-          },
-          "null" : {
-            "type" : "boolean"
-          },
-          "number" : {
-            "type" : "boolean"
-          },
-          "object" : {
-            "type" : "boolean"
-          },
-          "pojo" : {
-            "type" : "boolean"
-          },
-          "short" : {
-            "type" : "boolean"
-          },
-          "string" : {
-            "type" : "boolean"
-          },
-          "textual" : {
-            "type" : "boolean",
-            "deprecated" : true
-          },
-          "valueNode" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "array", "bigDecimal", "bigInteger", "binary", "boolean", "container", "double", "embeddedValue", "empty", "float", "floatingPointNumber", "int", "integralNumber", "long", "missingNode", "nodeType", "null", "number", "object", "pojo", "short", "string", "textual", "valueNode" ]
       },
       "LoginRequest" : {
         "type" : "object",
@@ -2586,8 +2506,7 @@
           },
           "resolutionCode" : {
             "type" : "string",
-            "maxLength" : 40,
-            "minLength" : 0
+            "enum" : [ "FIXED", "WORKAROUND", "NO_FAULT_FOUND", "DUPLICATE", "USER_ERROR", "NOT_REPRODUCIBLE" ]
           },
           "targetStatus" : {
             "type" : "string",

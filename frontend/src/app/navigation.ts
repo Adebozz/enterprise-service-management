@@ -10,6 +10,7 @@ export interface NavItem {
 /** Grows with each portal milestone: requester (M10), agent (M11), admin (Phase 2). */
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', role: 'REQUESTER' },
+  { to: '/queue', label: 'Queue', role: 'AGENT' },
   { to: '/tickets', label: 'My tickets', role: 'REQUESTER' },
 ]
 

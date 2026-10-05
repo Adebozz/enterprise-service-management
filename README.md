@@ -28,7 +28,8 @@ investigate and resolve them under explicit workflows, SLAs and a complete audit
 | API contract: OpenAPI 3.1 snapshot with typed errors and exact nullability, guarded by a contract test; [API reference](docs/api.md) | Done (M8) |
 | Web app foundation: React 19 + TypeScript (strict), typed client generated from the contract, in-memory access token with single-flight silent refresh, protected routes, sign-in/out | Done (M9) |
 | Requester portal: my tickets (URL-driven filter/paging), report a problem, request something, ticket page with conversation and server-driven actions | Done (M10) |
-| Agent portal, Docker, CI | Planned for Phase 1, see [Roadmap](#roadmap) |
+| Agent portal: queues (mine/team/unassigned/all) with search, filters and priority sort; take/release/assign/transfer; resolve/fulfil; internal notes; readable history; route-level code splitting | Done (M11) |
+| Docker, CI, final docs | Planned for Phase 1, see [Roadmap](#roadmap) |
 
 ## Tech stack
 
