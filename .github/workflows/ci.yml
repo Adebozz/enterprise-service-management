@@ -21,7 +21,8 @@ concurrency:
 jobs:
   backend:
     name: Backend (unit + integration tests, coverage, formatting)
-    runs-on: ubuntu-latest
+    # A fixed image rather than ubuntu-latest: an OS upgrade becomes a reviewed change.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
@@ -50,7 +51,7 @@ jobs:
 
   frontend:
     name: Frontend (lint, types, API contract, tests, build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -72,7 +73,7 @@ jobs:
 
   stack:
     name: Docker images + end-to-end smoke test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

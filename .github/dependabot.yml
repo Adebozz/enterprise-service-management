@@ -34,3 +34,8 @@ updates:
     directories: [/backend, /frontend]
     schedule:
       interval: weekly
+    ignore:
+      # Runtime majors (Java 21 LTS, Node 22 LTS) are deliberate upgrades that also touch the pom,
+      # setup-java/setup-node in CI and the docs, so they are done by hand, not by a bot PR.
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
