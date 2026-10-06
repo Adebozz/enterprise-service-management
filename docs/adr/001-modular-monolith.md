@@ -34,7 +34,9 @@ on each other circularly communicate through in-process Spring application event
 ## Consequences
 
 - Single transaction boundary, simple deployment, and easy local development and testing.
-- Module boundaries depend on discipline plus package-private visibility. An automated boundary
-  check (Spring Modulith or ArchUnit) is planned so this becomes enforced rather than claimed.
+- Module boundaries are enforced by `ArchitectureTest` (ArchUnit), not just by convention: no
+  dependency cycles between top-level modules or between `ticket`'s sub-packages, `common`
+  depends on no feature module, and controllers never use repositories. Each rule was checked by adding a deliberate violation and
+  watching it fail. Package-private visibility does the rest.
 - If one module ever needed independent scaling (reporting is the likeliest candidate), clear module
   boundaries make extracting it possible later.

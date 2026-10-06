@@ -10,13 +10,16 @@ boundaries. See [ADR-001](adr/001-modular-monolith.md).
 
 ```mermaid
 flowchart LR
-    Browser -->|HTTPS| Edge["CloudFront (prod) / nginx or Vite proxy (local)"]
+    Browser -->|HTTPS| Edge["nginx (Docker) or Vite proxy (dev)<br/>CloudFront: planned"]
     Edge -->|"/*"| SPA["React SPA (static files)"]
-    Edge -->|"/api/*"| API["Spring Boot API<br/>(ECS Fargate in prod)"]
-    API --> DB[(PostgreSQL 17<br/>RDS in prod)]
-    API --> S3[(S3 attachments<br/>Phase 2)]
-    API -.secrets.-> SM[Secrets Manager]
+    Edge -->|"/api/*"| API["Spring Boot API<br/>ECS Fargate: planned"]
+    API --> DB[(PostgreSQL 17<br/>RDS: planned)]
+    API --> S3[(S3 attachments<br/>Phase 2, planned)]
+    API -.secrets.-> SM[Secrets Manager: planned]
 ```
+
+Today the system runs as Docker Compose (nginx, backend, PostgreSQL). The AWS components are the
+Phase 3 target and don't exist yet ([deployment.md](deployment.md)).
 
 **The SPA and API share one origin.** `/api/*` is routed to the backend by the edge (CloudFront in
 production, the Vite dev proxy or nginx locally). This removes CORS from production and lets the
@@ -53,6 +56,9 @@ Base package: `com.ademola.esm`
   When `user` needs `team` to react (a user demoted to REQUESTER must leave all teams), it publishes
   `UserRoleChangedEvent` and `team` listens. Listeners are synchronous and run in the same
   transaction, so the change is atomic. Phase 2 uses the same pattern for ticket → SLA.
+- **Boundaries are tested.** `ArchitectureTest` (ArchUnit) fails the build on a dependency cycle
+  between modules or between `ticket`'s sub-packages, on `common` depending on a feature, and on a
+  controller using a repository.
 
 Inside `ticket`, packages form a one-way graph (no cycles):
 
@@ -138,8 +144,9 @@ sequenceDiagram
 | `/tickets/:id` | Details, public conversation + reply, action buttons |
 
 - **Action buttons come from `GET /transitions`**: the UI never encodes the workflow. Moves
-  needing a reason open a dialog; moves needing resolution/fulfilment inputs are support-only and
-  get their forms in M11.
+  that need input (a reason, a resolution, fulfilment notes) open one dialog, built from the
+  requirements the server lists for that move. Labels come from the server too, and
+  `TransitionLabelsTest` keeps them unambiguous next to the dialog's "Back" button.
 - **Optimistic locking in the UI:** moves send the ticket's `version`; on 409 the page explains
   that someone else changed the ticket and reloads it rather than overwriting.
 - **Forms:** Zod mirrors server validation for instant feedback; server `fieldErrors` and codes
@@ -175,7 +182,7 @@ sequenceDiagram
   queries.
 - `ddl-auto=validate`: Flyway owns the schema, and Hibernate only verifies it.
 
-## API (implemented so far)
+## API summary
 
 The full reference is [api.md](api.md) and the machine-readable contract is
 [openapi.json](openapi.json), guarded by `ApiContractIT`. The tables below summarise by milestone.
@@ -406,15 +413,17 @@ the SQL from constant fragments, and every request value is a bind parameter.
   duplicate-email create leaves no audit row).
 - The actor comes from `ActorProvider` (implemented by `auth` from the JWT principal; empty for
   system actions such as the admin bootstrap). The correlation id comes from the MDC.
-- Audited so far: user created/updated/password changed, team created/updated/member
-  added/removed, category created/updated, ticket created. Values hold only changed fields and never
-  secrets.
+- Audited actions: user created/updated/password changed, team created/updated/member
+  added/removed, category created/updated, ticket created, status changed, assignment changed and
+  comment added. Values hold only changed fields and never secrets; the ticket history timeline is
+  read from these entries.
 - Append-only at three levels: `@Immutable` entity, a repository with no update/delete methods, and
   a database trigger.
 
-## Observability (implemented so far)
+## Observability
 
 - Correlation ID on every log line (`logging.pattern.correlation`) and in every error response.
+- Structured JSON (ECS) logs in the `prod` profile, ready for a log aggregator.
 - Actuator `health`, `health/liveness` and `health/readiness` are public, with no component
   details. Every other actuator endpoint is unexposed.
 
@@ -436,4 +445,4 @@ the SQL from constant fragments, and every request value is a bind parameter.
 | M11 | Agent portal | **Done** |
 | M12 | Full Docker Compose, production Dockerfiles, seed data | **Done** |
 | M13 | GitHub Actions CI, coverage floors, smoke test, Dependabot | **Done** |
-| M14 | Documentation, ADRs, screenshots | Next |
+| M14 | Documentation, screenshots, module-boundary tests | **Done** |

@@ -49,7 +49,7 @@ public final class ServiceRequestWorkflow {
             .allowFromEach(
                     List.of(SUBMITTED, APPROVAL_PENDING, APPROVED, IN_PROGRESS),
                     CANCELLED,
-                    "Cancel",
+                    "Cancel request",
                     Set.of(REQUESTER, SUPPORT),
                     Set.of(REASON))
             .build();

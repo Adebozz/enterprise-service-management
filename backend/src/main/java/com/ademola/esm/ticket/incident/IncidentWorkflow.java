@@ -51,7 +51,7 @@ public final class IncidentWorkflow {
             .allowFromEach(
                     List.of(NEW, ASSIGNED, IN_PROGRESS, WAITING_FOR_USER),
                     CANCELLED,
-                    "Cancel",
+                    "Cancel ticket",
                     Set.of(REQUESTER, SUPPORT),
                     Set.of(REASON))
             .build();

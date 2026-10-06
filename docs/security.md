@@ -3,12 +3,12 @@
 ## Implemented (M0)
 
 - **Deny by default.** Only `/actuator/health/**`, `/actuator/info` and the OpenAPI/Swagger
-  endpoints are public. Every other request requires authentication, and until M2 adds login, they
-  all receive 401.
+  endpoints are public (Swagger is disabled in the `prod` profile), as are the login, refresh and
+  logout endpoints. Every other request requires authentication.
 - **Stateless.** No HTTP session, no form login, no HTTP Basic.
 - **CSRF protection is disabled for the API.** API calls authenticate with a bearer token in the
   `Authorization` header, which a browser never attaches automatically, so CSRF does not apply.
-  The single cookie (refresh token, M2) will be restricted to `/api/auth`, `SameSite=Strict`, and
+  The only cookie (the refresh token, M2) is restricted to `/api/auth`, `SameSite=Strict`, and
   protected by an `Origin` check.
 - **Safe errors.** Stack traces and exception messages are never returned. Unexpected exceptions
   produce a generic 500 problem response, and full details go to the log under the request's

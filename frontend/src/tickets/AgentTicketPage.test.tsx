@@ -78,6 +78,17 @@ describe('ticket page for support staff', () => {
     ])
   })
 
+  it('does not mark the ticket as one of "My tickets" in the navigation', async () => {
+    signedInAs(agent)
+    staffContext(agent)
+    backend(aTicket())
+    renderApp('/tickets/ticket-1')
+
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    await screen.findByRole('heading', { level: 1 })
+    expect(within(nav).getByRole('link', { name: 'My tickets' })).not.toHaveAttribute('aria-current')
+  })
+
   it('takes an unassigned ticket from the team queue', async () => {
     signedInAs(agent)
     staffContext(agent)

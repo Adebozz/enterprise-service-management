@@ -70,7 +70,9 @@ version, health probes, actuator exposure, OpenAPI, and the full error contract 
   in the same transaction, so the change stays atomic without a circular dependency.
 - *Membership as an entity instead of `@ManyToMany`*, so the join row can carry `joined_at` and
   later be the target of a composite foreign key. It references the user by ID only, and the
-  member list is one JPQL join projected directly into a DTO, so there's no N+1.
+  member list is one JPQL join projected directly into a DTO, so there's no N+1. *(In M5 the
+  composite foreign key was replaced by triggers, because it froze ticket history when people
+  changed teams; see ADR-008.)*
 - *Case-insensitive uniqueness in the database.* A `CHECK (email = lower(btrim(email)))` combined
   with a plain `UNIQUE`, and a unique index on `lower(name)` for teams. Duplicate races are caught
   at the constraint and translated to a 409.
@@ -393,7 +395,7 @@ reload keeps the session (one refresh); no token in `localStorage`, `sessionStor
 `document.cookie`; sign-out → server revoked both tokens (`LOGOUT`).
 
 **Known limitation:** the single JS bundle is 596 KB (188 KB gzipped). Route-level code splitting is
-planned with the agent portal (M11).
+planned with the agent portal (M11). *(Done in M11: 434 KB, 137 KB gzipped.)*
 
 **Tests:** 14 frontend tests (API client 6, login 3, session lifecycle 5).
 
@@ -543,5 +545,83 @@ integration; frontend 43.
 
 **Verified locally** with the same commands CI runs: backend `verify` passed with all coverage
 checks met (279 unit + 190 integration), the frontend steps passed (43 tests), and the Compose stack
-plus smoke test passed 13/13. The first GitHub-hosted run happens on the next push.
+plus smoke test passed 13/13. On GitHub (run on `7a65155`), all three jobs passed in parallel,
+and the whole run took under two minutes (backend ~1m40s, stack ~1m40s, frontend ~30s).
+
+**Adjusted after the first runs**
+- The first push's backend and frontend jobs were cancelled because GitHub never assigned them a
+  hosted runner (its own capacity issue; the annotations say so). That was not a test failure, and
+  I didn't treat it as one.
+- Dependabot's first scan proposed Java 21→25 and Node 22→26 base images. Runtime majors are
+  deliberate upgrades that touch the pom, CI and docs, so major Docker bumps are now ignored. The
+  runner is also pinned to `ubuntu-24.04` instead of `ubuntu-latest`, so an OS change is a reviewed
+  change.
+
+## M14: Documentation, screenshots and boundary tests (2026-10-06)
+
+**What was built**
+- A README written for a reader with two minutes:
+  - what the project is, and a one-command demo with the demo accounts;
+  - features shown with real screenshots;
+  - the engineering highlights, each linked to its ADR or doc;
+  - a Mermaid architecture diagram;
+  - the testing and CI approach;
+  - a roadmap that separates what's built from what's planned.
+- Seven screenshots taken from the running Docker stack and its demo data, with a headless-Chrome
+  script that is read-only: it submits nothing and backs out of the one dialog it opens. The
+  requester and agent views of the same ticket show internal notes being withheld.
+- **Module boundaries enforced by ArchUnit** (`ArchitectureTest`), turning an ADR-001 promise into
+  a build rule:
+  - no dependency cycles between modules or between `ticket`'s sub-packages;
+  - `common` doesn't depend on any feature;
+  - controllers never use repositories.
+- A docs pass:
+  - stale wording fixed (the security doc still described pre-login behaviour; the audit list
+    and the "so far" sections were out of date);
+  - the architecture diagram now labels the AWS components as planned;
+  - the README no longer lists an `infrastructure/` folder that doesn't exist;
+  - all relative links checked.
+
+**Found and fixed while taking the screenshots**
+- *An ambiguous destructive button.* The cancel dialog offered "Back" and "Cancel", where "Cancel"
+  meant cancelling the ticket. Labels belong to the server's workflow definitions, so the fix went
+  there ("Cancel ticket", "Cancel request"). `TransitionLabelsTest` now forbids labels that read
+  like dialog controls and requires distinct labels from each status.
+- *Wrong navigation highlight.* "My tickets" was highlighted on any `/tickets/...` page, including
+  a ticket an agent opened from the queue. A frontend test now covers it.
+
+**Checks that each new rule can fail:** a deliberate violation was added for each ArchUnit rule
+(each one failed, then the violating class was deleted), and the label test failed against the
+old labels. The nav test also failed without its fix.
+
+**Tests:** +7 backend unit tests (4 architecture rules, 3 label rules) and +1 frontend test. Total:
+286 unit + 190 integration (backend), 44 frontend, plus the 13-check smoke test. Coverage
+unchanged: 95.0% lines / 84.6% branches overall.
+
+---
+
+## Phase 1 summary (2026-10-06)
+
+**Built and tested:**
+- **Product:** a two-portal service desk (requester and agent) for incidents and service
+  requests, with routing, a priority matrix, workflows as data, assignment, internal notes,
+  full-text queues, a history timeline and an append-only audit trail.
+- **Backend:**
+  - Spring Boot 4.1 / Java 21 modular monolith with tested module boundaries;
+  - PostgreSQL 17 with 7 Flyway migrations, including constraints and triggers;
+  - JWT plus rotating refresh-token authentication;
+  - an OpenAPI 3.1 contract snapshot-tested against the code.
+- **Frontend:** React 19 + strict TypeScript with types generated from that contract, a
+  memory-only access token and server-driven workflow actions.
+- **Delivery:** non-root Docker images, nginx with a CSP, a health-ordered Compose stack with demo
+  data, and GitHub Actions CI with coverage floors and an end-to-end smoke test.
+- **Tests:** 286 backend unit tests, 190 backend integration tests against real PostgreSQL,
+  44 frontend tests and a 13-check smoke test. Backend coverage is 95.0% lines and 84.6% branches,
+  with enforced floors.
+
+**Not built (planned for Phase 2/3, and not to be claimed):**
+- SLA engine, service catalogue and approvals, problem and change management, attachments,
+  notifications, an admin UI;
+- reporting, load testing (so there are no throughput or latency figures), AWS deployment
+  (ECS/RDS/S3/CloudFront/Terraform) and login rate limiting.
 

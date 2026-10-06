@@ -34,7 +34,8 @@ export function AppLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === '/'}
+                // "My tickets" is the list only: a ticket an agent opened from the queue isn't theirs.
+                end={item.to === '/' || item.to === '/tickets'}
                 className={({ isActive }) =>
                   cn(
                     'rounded-md px-3 py-1.5 text-sm whitespace-nowrap hover:bg-muted',
