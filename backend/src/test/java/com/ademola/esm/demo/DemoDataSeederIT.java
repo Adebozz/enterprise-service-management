@@ -62,6 +62,17 @@ class DemoDataSeederIT {
                 .isPositive();
     }
 
+    /** Otherwise a requester with, say, a login problem has nowhere sensible to report it. */
+    @Test
+    void everyTeamCanReceiveIncidents() {
+        assertThat(jdbc.queryForList(
+                        "select t.name from teams t where not exists (select 1 from categories c"
+                                + " where c.default_team_id = t.id and c.parent_id is null and c.active"
+                                + " and c.applies_to in ('INCIDENT', 'ANY'))",
+                        String.class))
+                .isEmpty();
+    }
+
     @Test
     void runningAgainChangesNothing() {
         int tickets = count("work_items");

@@ -173,6 +173,11 @@ class DemoDataSeeder implements ApplicationRunner {
         UUID newAccount = category(admin, "NEW_ACCOUNT", "New account", access, null, CategoryScope.SERVICE_REQUEST);
         UUID drive =
                 category(admin, "SHARED_DRIVE", "Shared drive access", access, null, CategoryScope.SERVICE_REQUEST);
+        // Account problems are incidents too ("I can't sign in"), so Identity & Access also gets an
+        // incident category; "Access & accounts" above is for requesting access, not reporting faults.
+        UUID accountLogin = category(admin, "ACCOUNT_LOGIN", "Account & login", null, identity, CategoryScope.INCIDENT);
+        category(admin, "SIGN_IN", "Can't sign in", accountLogin, null, CategoryScope.INCIDENT);
+        category(admin, "MFA", "Multi-factor authentication", accountLogin, null, CategoryScope.INCIDENT);
 
         // 1. P2 incident: support is waiting for the requester's answer.
         UUID wifiTicket = incident(

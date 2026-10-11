@@ -625,3 +625,20 @@ unchanged: 95.0% lines / 84.6% branches overall.
 - reporting, load testing (so there are no throughput or latency figures), AWS deployment
   (ECS/RDS/S3/CloudFront/Terraform) and login rate limiting.
 
+
+## After Phase 1: findings from hands-on testing (2026-10-11)
+
+I clicked through every demo role in the containerised app; the backend logged no warnings or
+errors. Two findings came from that session:
+
+- **A gap in the demo taxonomy (fixed).** A requester filed a login problem under Hardware ›
+  Laptop, because the Identity & Access team only had a service-request category, so account faults
+  couldn't be reported as incidents. I added "Account & login" (with "Can't sign in" and
+  "Multi-factor authentication"), routed to Identity & Access. `DemoDataSeederIT` now checks that
+  *every* team can receive incidents through some category; it failed with
+  `["Identity & Access"]` before the fix. The running demo got the same categories through the
+  admin API, so they went through validation and are in the audit trail.
+- **Resume doesn't require a reply (kept, noted for Phase 2).** A requester can move a ticket from
+  "Waiting for user" back to "In progress" without writing anything. Many service desks resume
+  automatically when the requester replies. That belongs with the Phase 2 SLA work, where waiting
+  for the user pauses the SLA clock.

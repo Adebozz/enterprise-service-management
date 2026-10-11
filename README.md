@@ -36,7 +36,7 @@ the `ESM_DEMO_PASSWORD` value in `.env` (local demos only).
 | `admin@demo.local` | Administrator | Every ticket |
 
 The demo data is created through the real application services on first start: 7 people,
-3 teams, 9 categories and 8 tickets across their lifecycles, each with a genuine audit history.
+3 teams, 12 categories and 8 tickets across their lifecycles, each with a genuine audit history.
 
 ## What it does
 
