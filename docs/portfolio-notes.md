@@ -642,3 +642,35 @@ errors. Two findings came from that session:
   "Waiting for user" back to "In progress" without writing anything. Many service desks resume
   automatically when the requester replies. That belongs with the Phase 2 SLA work, where waiting
   for the user pauses the SLA clock.
+
+---
+
+## M15: SLA policies and clocks (2026-11-11)
+
+**What was built**
+- A new `sla` module (depends on `ticket`, never the reverse) with migration V8.
+- `sla_policies`: response and resolution targets for each ticket type and priority, seeded as
+  reference data (P1 incident: respond in 15 minutes, resolve in 4 hours).
+- `SlaClock`: one clock per ticket and metric that can run, pause, resume, complete, reopen, be
+  cancelled and be given a new target, keeping the time already used. It derives a status: on
+  track, at risk, breached, paused, met, missed or cancelled.
+- Database CHECKs that keep a clock's fields consistent with its state, and a partial index for the
+  breach job to come. Design recorded in ADR-010.
+- **Not yet connected to tickets.** Clocks don't start or react to status changes until M16.
+
+**What I learned (good interview material)**
+- **Store stretches, not just a deadline.** Keeping `elapsed_ms` plus `running_since` makes pause,
+  reopen and retarget simple moves of time between two fields. Storing only a deadline would have
+  lost the time already used.
+- **Order matters when a target changes.** A clock that was already overdue under its old target
+  must keep that original breach time before the new target applies, otherwise a longer target
+  would hide a real breach. A unit test pins this.
+- **Seeded reference data and test cleanup collide.** The integration-test cleaner truncates every
+  table, which would have wiped the seeded policies. It now keeps `sla_policies`, and a test checks
+  that the policies survive a clean.
+
+**Tests:** 21 new unit tests (clock arithmetic with exact instants: at-risk threshold, pause and
+resume, breach recording, met and missed, reopen, retargeting, invalid calls) and 9 new integration
+tests (seeded targets for all 8 combinations, missing-policy error, policy and clock constraints,
+clock round trip, cascade delete). Total: 307 unit + 200 integration. The `sla` package is at
+96.5% line and 100% branch coverage.

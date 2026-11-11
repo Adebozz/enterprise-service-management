@@ -38,7 +38,8 @@ Base package: `com.ademola.esm`
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
 | `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
-| `sla`, `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
+| `sla` | SLA policies per ticket type and priority, and response/resolution clocks with pause, reopen and breach recording. Depends on `ticket`; wiring to ticket events comes in M16 | In progress (M15) |
+| `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
 
 ### Module conventions

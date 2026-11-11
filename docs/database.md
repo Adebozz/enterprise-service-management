@@ -109,6 +109,23 @@ or depends on what it describes. **A `BEFORE UPDATE OR DELETE` trigger raises `r
 making it append-only at the database level. Indexes: `(entity_type, entity_id, occurred_at)` for
 timelines and `(actor_id, occurred_at)`.
 
+### sla_policies (Phase 2, M15)
+
+One row per `ticket_type` × `priority` (UNIQUE), seeded by V8 with the default targets:
+`response_minutes` and `resolution_minutes`, both positive, response no later than resolution
+(CHECK). Reference data rather than demo data: every ticket must find its policy, so admins change
+the numbers but never the rows. The integration-test cleaner keeps this table.
+
+### sla_clocks (Phase 2, M15)
+
+One clock per ticket and `metric` (`RESPONSE | RESOLUTION`, UNIQUE with `work_item_id` →
+work_items, `ON DELETE CASCADE`). Time is stored as `elapsed_ms` (finished running stretches) plus
+`running_since` (the current stretch), so pausing and reopening keep the time already used.
+`state` is `RUNNING | PAUSED | COMPLETED | CANCELLED`; CHECKs tie `running_since` and `due_at` to
+`RUNNING` and `completed_at` to `COMPLETED`. `breached_at` records a breach permanently. The
+partial index `(due_at) WHERE state = 'RUNNING' AND breached_at IS NULL` is what the breach job
+scans. See [ADR-010](adr/010-sla-clocks.md).
+
 ## Conventions
 
 - Migrations are **immutable once merged**. A fix is a new migration.
@@ -138,5 +155,5 @@ erDiagram
     users ||--o{ comments : writes
 ```
 
-Tables still to come in Phase 2: (`sla_*`, `catalogue_items`, `approvals`,
+Tables still to come in Phase 2: (`catalogue_items`, `approvals`,
 `problems`, `changes`, `attachments`, `notifications`).
