@@ -20,5 +20,8 @@ public enum AuditAction {
     COMMENT_ADDED,
     // service levels
     SLA_BREACHED,
-    SLA_POLICY_UPDATED
+    SLA_POLICY_UPDATED,
+    // service catalogue
+    CATALOGUE_ITEM_CREATED,
+    CATALOGUE_ITEM_UPDATED
 }

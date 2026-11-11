@@ -49,6 +49,7 @@ export function TicketPage() {
   }
 
   const t = ticket.data
+  const fromCatalogue = (t.serviceRequest?.answers.length ?? 0) > 0
   return (
     <article className="grid gap-8">
       <header className="grid gap-3">
@@ -68,7 +69,7 @@ export function TicketPage() {
         <div className="grid content-start gap-8">
           <section aria-labelledby="description-heading">
             <h2 id="description-heading" className="text-lg font-semibold">
-              Description
+              {fromCatalogue ? 'Request details' : 'Description'}
             </h2>
             <p className="mt-2 whitespace-pre-wrap">{t.description}</p>
           </section>

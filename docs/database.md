@@ -14,6 +14,8 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V5__assignment_membership_rules.sql` | Replaces V4's composite assignee FK with two triggers (see below); index `(assigned_team_id, assignee_id)` (M5) |
 | `V6__comments.sql` | `comments` (M6) |
 | `V7__ticket_search_and_queue_indexes.sql` | `search_vector` generated column + GIN index, partial index for the unassigned queue, category indexes (M7) |
+| `V8__sla.sql` | `sla_policies` (seeded with default targets), `sla_clocks` + breach index (M15) |
+| `V9__service_catalogue.sql` | `catalogue_items`; foreign key and `catalogue_answers` on `service_requests` (M18) |
 
 ### users
 
@@ -126,6 +128,20 @@ work_items, `ON DELETE CASCADE`). Time is stored as `elapsed_ms` (finished runni
 partial index `(due_at) WHERE state = 'RUNNING' AND breached_at IS NULL` is what the breach job
 scans. See [ADR-010](adr/010-sla-clocks.md).
 
+### catalogue_items (Phase 2, M18)
+
+`name` (unique ignoring case, through a unique index on `lower(name)`), `summary`, `description`,
+`category_id` and optional `subcategory_id` (→ categories; they route the request, so the item
+needs no team of its own), `form_fields` (**jsonb**, CHECK: an array), `active`, timestamps and
+`version`. The form is JSON rather than a table of fields because it is always read and saved
+whole and never queried by field; `CatalogueForm` validates it on every save. Items are withdrawn
+(`active = false`), never deleted.
+
+`service_requests.catalogue_item_id` now references `catalogue_items`, and
+`service_requests.catalogue_answers` (**jsonb**) keeps each answer with the question's label as it
+read when the request was raised. A CHECK makes the two columns go together: both NULL for a
+free-text request, item plus an answers array for a catalogue one.
+
 ## Conventions
 
 - Migrations are **immutable once merged**. A fix is a new migration.
@@ -155,5 +171,6 @@ erDiagram
     users ||--o{ comments : writes
 ```
 
-Tables still to come in Phase 2: (`catalogue_items`, `approvals`,
+Added in Phase 2 so far: `sla_policies`, `sla_clocks`, `catalogue_items` (described above).
+Tables still to come in Phase 2: (`approvals`,
 `problems`, `changes`, `attachments`, `notifications`).

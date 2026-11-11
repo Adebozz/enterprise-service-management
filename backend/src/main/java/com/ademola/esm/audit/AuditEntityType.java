@@ -5,5 +5,6 @@ public enum AuditEntityType {
     TEAM,
     CATEGORY,
     WORK_ITEM,
-    SLA_POLICY
+    SLA_POLICY,
+    CATALOGUE_ITEM
 }

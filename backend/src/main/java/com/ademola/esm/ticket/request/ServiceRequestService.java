@@ -40,7 +40,39 @@ public class ServiceRequestService {
                         request.subcategoryId(),
                         DEFAULT_IMPACT,
                         request.urgency() != null ? request.urgency() : DEFAULT_URGENCY));
-        ServiceRequest created = requests.save(new ServiceRequest(draft));
+        return save(new ServiceRequest(draft));
+    }
+
+    /**
+     * Records a request ordered from the catalogue. Not exposed over HTTP: the catalogue module
+     * validates the answers first, so this trusts them. Returns the entity so the caller can take
+     * further steps in the same transaction (approval, M19).
+     */
+    @PreAuthorize("isAuthenticated()")
+    public ServiceRequest createFromCatalogue(CurrentUser requester, CatalogueSubmission submission) {
+        var draft = intake.prepare(
+                requester,
+                new TicketIntake.NewTicket(
+                        WorkItemType.SERVICE_REQUEST,
+                        submission.title(),
+                        submission.description(),
+                        submission.categoryId(),
+                        submission.subcategoryId(),
+                        DEFAULT_IMPACT,
+                        submission.urgency() != null ? submission.urgency() : DEFAULT_URGENCY));
+        ServiceRequest created =
+                requests.save(new ServiceRequest(draft, submission.catalogueItemId(), submission.answers()));
+        intake.recordCreated(created);
+        log.info(
+                "Catalogue request created ref={} item={} team={}",
+                created.getReference(),
+                submission.catalogueItemId(),
+                created.getAssignedTeamId());
+        return created;
+    }
+
+    private TicketCreatedResponse save(ServiceRequest request) {
+        ServiceRequest created = requests.save(request);
         intake.recordCreated(created);
         log.info("Service request created ref={} team={}", created.getReference(), created.getAssignedTeamId());
         return TicketCreatedResponse.from(created);

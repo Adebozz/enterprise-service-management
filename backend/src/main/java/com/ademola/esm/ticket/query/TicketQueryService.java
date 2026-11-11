@@ -58,7 +58,7 @@ public class TicketQueryService {
                         i.getAffectedService(), i.getResolutionCode(), i.getResolutionNotes(), i.getReopenCount())
                 : null;
         ServiceRequestDetails serviceRequest = item instanceof ServiceRequest r
-                ? new ServiceRequestDetails(r.getCatalogueItemId(), r.getFulfilmentNotes())
+                ? new ServiceRequestDetails(r.getCatalogueItemId(), r.getCatalogueAnswers(), r.getFulfilmentNotes())
                 : null;
         return new TicketResponse(
                 item.getId(),

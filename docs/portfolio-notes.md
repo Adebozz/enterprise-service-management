@@ -744,3 +744,46 @@ tickets only, validation, versioning and authorization). 9 new frontend tests (q
 sort, Service levels panel and its hidden state, admin page saving and showing errors, admin-only
 navigation, duration formatting). Total: 316 unit + 217 integration backend tests, 55 frontend tests.
 The `sla` package is at 96.7% line and 90.8% branch coverage; the backend overall at 95.3% and 85.8%.
+
+## M18: Service catalogue (2026-11-11)
+
+**What was built**
+- A `catalogue` module: items with a name, summary, description, routing category and their own
+  form of up to 20 questions (short answer, paragraph, choice, date; required or optional, with
+  hints). Items are withdrawn, never deleted.
+- Ordering (`POST /api/catalogue/{id}/requests`): answers are checked against the item's form,
+  then an ordinary service request is raised, titled with the item's name and routed by its
+  category. The request keeps the answers with each question's wording at the time.
+- Admin API with optimistic locking, case-insensitive unique names and audit entries listing only
+  what changed.
+- Web app: "Request something" now opens the catalogue, with a "Something else" card for
+  free-text requests; each item's form is built from its questions, and server-side answer errors
+  appear next to their question. Admins get a *Catalogue* page and an item editor with a question
+  builder (add, reorder, remove, options one per line).
+- Demo data: three catalogue items and a laptop ordered from the catalogue.
+
+**What I learned (good interview material)**
+- **Snapshot what was asked.** Storing answers by key alone would let an admin's later edit
+  silently change what an old request says was asked. Copying the label in costs a few bytes per
+  answer ([ADR-011](adr/011-catalogue-forms-as-data.md)).
+- **JSON where the data moves as a whole.** A form is always read and saved whole, so a jsonb
+  column with one pure validator beat two child tables and a diff-and-merge on every save. The
+  ADR records when that would stop being true.
+- **Dependencies point one way.** The catalogue calls into the ticket module with a plain
+  `CatalogueSubmission`; the ticket module never imports the catalogue, and `ArchitectureTest`
+  would fail if it did.
+- **Tests find real bugs.** The editor test caught an existing item losing its subcategory: the
+  saved value was applied before the category list had loaded, so the browser dropped it. The
+  editor now waits for categories, and only clears the subcategory when the category really changes.
+
+**Tests:** 13 new unit tests (`CatalogueFormTest`: form rules, answer rules for each type,
+description text). 10 new integration tests (`CatalogueApiIT`: publish and browse, ordering and
+routing with answers kept, per-question errors with nothing raised, an item without questions,
+admin-only maintenance, duplicate names and invalid forms and categories, withdrawing, editing a
+form without rewriting old requests, stale versions, renames), plus seeder checks. 11 new frontend
+tests (catalogue browsing, form building and validation, ordering, server errors next to their
+question, admin list, creating with generated keys, editing without losing the subcategory,
+option validation, editor helpers). Total: 329 unit + 227 integration backend tests, 66 frontend
+tests.
+The `catalogue` package is at 97.7% line and 93.8% branch coverage; the backend overall at 95.6%
+and 86.6%.

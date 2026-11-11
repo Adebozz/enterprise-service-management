@@ -10,7 +10,21 @@ class DemoDataSeederTest {
     void refusesToSeedWithoutAStrongDemoPassword() {
         for (String weak : new String[] {null, "", "short"}) {
             DemoDataSeeder seeder = new DemoDataSeeder(
-                    new DemoProperties(weak), null, null, null, null, null, null, null, null, null, null, null, null);
+                    new DemoProperties(weak),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
 
             assertThatThrownBy(() -> seeder.run(null))
                     .isInstanceOf(IllegalStateException.class)

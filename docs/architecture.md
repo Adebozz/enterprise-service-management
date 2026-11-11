@@ -39,7 +39,8 @@ Base package: `com.ademola.esm`
 | `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check; ticket SLA and admin target APIs. Depends on `ticket`, never the reverse | Implemented (M15–M17) |
-| `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
+| `catalogue` | Service catalogue: items with their own short forms, admin maintenance, ordering. Validates answers, then raises an ordinary service request through `ServiceRequestService`. Depends on `ticket`, never the reverse | Implemented (M18) |
+| `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
 
 ### Module conventions
@@ -448,6 +449,33 @@ flowchart LR
   they agree. Staff only: requesters get `sla: null` in lists and 403 on the endpoint.
 - **Targets are snapshotted:** a clock keeps the target it started with, so an admin's change to
   `sla_policies` applies to tickets raised afterwards and never rewrites existing results.
+
+## Service catalogue (M18)
+
+Requesters pick an item ("New laptop", "Shared drive access") and answer only that item's
+questions, instead of describing their need in free text.
+
+- **One routing table.** An item names a category (and optionally a subcategory) that accepts
+  service requests, and the request goes wherever that category routes. Items don't name teams, so
+  re-routing a category re-routes its catalogue items too.
+- **Forms as data.** An item's questions are a JSON list (`FormField`: key, label, type, required,
+  options, hint), with four answer types: short text, paragraph, choice and date. `CatalogueForm`
+  is pure and holds every rule: how a valid form looks (unique keys, a choice needs at least two
+  different options, at most 20 questions) and how valid answers look. It reports all problems at
+  once as `fieldErrors`, through `InvalidFieldsException`, so each message lands next to its question.
+- **Ordering raises an ordinary service request.** `CatalogueRequestService` checks the answers
+  and hands `ServiceRequestService.createFromCatalogue` a `CatalogueSubmission`. The ticket side
+  never imports the catalogue (enforced by the module-cycle rule in `ArchitectureTest`). From then
+  on the request follows the same workflow, assignment, SLA and queue rules as any other.
+- **Answers are a snapshot.** The request stores each answer with the question's label as it read
+  at the time. Editing or withdrawing an item never changes what old requests say was asked. The
+  description also lists the answers as "Question: answer" lines, so search, the queue and every
+  existing screen show them without knowing about forms.
+- **Admins maintain the catalogue** (`/api/admin/catalogue`, web page *Catalogue*). Updates replace
+  the whole item, with an optimistic `version` check and one `CATALOGUE_ITEM_UPDATED` audit entry
+  that lists only what changed. The questions are summarised by their keys. In the editor, new
+  questions get a key made from their label, and existing questions keep theirs when relabelled,
+  so old answers still line up.
 
 ## Audit trail (M3)
 

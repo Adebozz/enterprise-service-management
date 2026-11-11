@@ -44,7 +44,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DomainException.class)
     ResponseEntity<ProblemDetail> handleDomain(DomainException ex, HttpServletRequest request) {
-        return respond(ex.code(), ex.getMessage(), request);
+        ResponseEntity<ProblemDetail> response = respond(ex.code(), ex.getMessage(), request);
+        if (ex instanceof InvalidFieldsException invalid) {
+            response.getBody().setProperty("fieldErrors", invalid.fieldErrors());
+        }
+        return response;
     }
 
     @ExceptionHandler(AuthenticationException.class)

@@ -16,6 +16,9 @@ export const queryKeys = {
   history: (id: string) => ['tickets', 'detail', id, 'history'] as const,
   sla: (id: string) => ['tickets', 'detail', id, 'sla'] as const,
   slaPolicies: ['sla-policies'] as const,
+  catalogue: ['catalogue'] as const,
+  catalogueItem: (id: string) => ['catalogue', 'item', id] as const,
+  adminCatalogue: ['catalogue', 'admin'] as const,
   categories: (type: TicketType) => ['categories', type] as const,
   teams: ['teams'] as const,
   teamMembers: (teamId: string) => ['teams', teamId, 'members'] as const,
@@ -79,3 +82,18 @@ export const teamMembersQuery = (teamId: string) => ({
   queryFn: async () => unwrap(await api.GET('/api/teams/{id}/members', { params: { path: { id: teamId } } })),
   staleTime: 60_000,
 })
+
+export const catalogueQuery = {
+  queryKey: queryKeys.catalogue,
+  queryFn: async () => unwrap(await api.GET('/api/catalogue')),
+}
+
+export const catalogueItemQuery = (id: string) => ({
+  queryKey: queryKeys.catalogueItem(id),
+  queryFn: async () => unwrap(await api.GET('/api/catalogue/{id}', { params: { path: { id } } })),
+})
+
+export const adminCatalogueQuery = {
+  queryKey: queryKeys.adminCatalogue,
+  queryFn: async () => unwrap(await api.GET('/api/admin/catalogue')),
+}

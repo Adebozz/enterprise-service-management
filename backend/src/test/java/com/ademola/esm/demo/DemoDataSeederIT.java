@@ -60,6 +60,13 @@ class DemoDataSeederIT {
                 .isZero();
         assertThat(jdbc.queryForObject("select count(*) from comments where visibility = 'INTERNAL'", Integer.class))
                 .isPositive();
+        // The catalogue has items, and one request was ordered from it with its answers kept.
+        assertThat(count("catalogue_items")).isEqualTo(3);
+        assertThat(jdbc.queryForObject(
+                        "select jsonb_array_length(catalogue_answers) from service_requests"
+                                + " where catalogue_item_id is not null",
+                        Integer.class))
+                .isEqualTo(3);
     }
 
     /** Otherwise a requester with, say, a login problem has nowhere sensible to report it. */

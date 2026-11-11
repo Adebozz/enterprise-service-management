@@ -5,6 +5,12 @@ import com.ademola.esm.audit.AuditEntityType;
 import com.ademola.esm.audit.AuditRecord;
 import com.ademola.esm.audit.AuditService;
 import com.ademola.esm.auth.CurrentUser;
+import com.ademola.esm.catalogue.CatalogueRequestService;
+import com.ademola.esm.catalogue.CatalogueService;
+import com.ademola.esm.catalogue.CreateCatalogueItemRequest;
+import com.ademola.esm.catalogue.FieldType;
+import com.ademola.esm.catalogue.FormField;
+import com.ademola.esm.catalogue.SubmitCatalogueRequest;
 import com.ademola.esm.team.CreateTeamRequest;
 import com.ademola.esm.team.TeamService;
 import com.ademola.esm.ticket.assignment.AssignmentRequest;
@@ -78,6 +84,8 @@ class DemoDataSeeder implements ApplicationRunner {
     private final TicketAssignmentService assignments;
     private final TicketTransitionService transitions;
     private final CommentService comments;
+    private final CatalogueService catalogue;
+    private final CatalogueRequestService catalogueRequests;
 
     DemoDataSeeder(
             DemoProperties properties,
@@ -92,7 +100,9 @@ class DemoDataSeeder implements ApplicationRunner {
             ServiceRequestService serviceRequests,
             TicketAssignmentService assignments,
             TicketTransitionService transitions,
-            CommentService comments) {
+            CommentService comments,
+            CatalogueService catalogue,
+            CatalogueRequestService catalogueRequests) {
         this.properties = properties;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -106,6 +116,8 @@ class DemoDataSeeder implements ApplicationRunner {
         this.assignments = assignments;
         this.transitions = transitions;
         this.comments = comments;
+        this.catalogue = catalogue;
+        this.catalogueRequests = catalogueRequests;
     }
 
     @Override
@@ -302,6 +314,87 @@ class DemoDataSeeder implements ApplicationRunner {
                 Impact.LOW,
                 Urgency.LOW);
         move(rita, signature, 0, "CANCELLED", "Found it under Settings, all good now.", null, null);
+
+        // The service catalogue: things requesters order with a short form instead of free text.
+        UUID laptopItem = catalogueItem(
+                admin,
+                "New laptop",
+                "A standard or developer laptop, set up and ready to use.",
+                "Delivered to your desk within five working days. Your old laptop is collected at the same time.",
+                hwCat,
+                laptop,
+                List.of(
+                        new FormField(
+                                "model",
+                                "Which model?",
+                                FieldType.SELECT,
+                                true,
+                                List.of("Standard (14in)", "Developer (16in, 32 GB)"),
+                                "Developer laptops are for engineering roles."),
+                        new FormField("neededBy", "Needed by", FieldType.DATE, false, null, null),
+                        new FormField(
+                                "oldAssetTag",
+                                "Asset tag of your current laptop",
+                                FieldType.TEXT,
+                                false,
+                                null,
+                                "On the sticker underneath, e.g. LT-04417."),
+                        new FormField("reason", "Why do you need it?", FieldType.LONG_TEXT, true, null, null)));
+        catalogueItem(
+                admin,
+                "Shared drive access",
+                "Read or edit access to a team's shared drive.",
+                "Access is added to your account and usually applies within 15 minutes.",
+                access,
+                drive,
+                List.of(
+                        new FormField("drive", "Which drive?", FieldType.TEXT, true, null, "For example FIN-Reports."),
+                        new FormField(
+                                "level",
+                                "Access level",
+                                FieldType.SELECT,
+                                true,
+                                List.of("Read only", "Read and edit"),
+                                null),
+                        new FormField("reason", "What do you need it for?", FieldType.LONG_TEXT, true, null, null)));
+        catalogueItem(
+                admin,
+                "New starter account",
+                "Email, Teams and system accounts for someone joining.",
+                "Raise this at least three working days before the start date.",
+                access,
+                newAccount,
+                List.of(
+                        new FormField("fullName", "Full name", FieldType.TEXT, true, null, null),
+                        new FormField("startDate", "Start date", FieldType.DATE, true, null, null),
+                        new FormField(
+                                "department",
+                                "Department",
+                                FieldType.SELECT,
+                                true,
+                                List.of("Sales", "Finance", "Engineering", "Operations"),
+                                null),
+                        new FormField(
+                                "systems",
+                                "Other systems they need",
+                                FieldType.LONG_TEXT,
+                                false,
+                                null,
+                                "CRM, finance system, and so on.")));
+
+        // 9. A laptop ordered from the catalogue, waiting in the Hardware queue.
+        as(
+                rita,
+                () -> catalogueRequests.submit(
+                        rita,
+                        laptopItem,
+                        new SubmitCatalogueRequest(
+                                Map.of(
+                                        "model", "Standard (14in)",
+                                        "oldAssetTag", "LT-04417",
+                                        "reason", "Replacing the laptop with the swollen battery."),
+                                null,
+                                Urgency.MEDIUM)));
     }
 
     // ----- helpers ------------------------------------------------------------------------------
@@ -331,6 +424,21 @@ class DemoDataSeeder implements ApplicationRunner {
                 admin,
                 () -> categories
                         .create(new CreateCategoryRequest(code, name, parent, team, scope))
+                        .id());
+    }
+
+    private UUID catalogueItem(
+            CurrentUser admin,
+            String name,
+            String summary,
+            String description,
+            UUID category,
+            UUID sub,
+            List<FormField> fields) {
+        return as(
+                admin,
+                () -> catalogue
+                        .create(new CreateCatalogueItemRequest(name, summary, description, category, sub, fields))
                         .id());
     }
 

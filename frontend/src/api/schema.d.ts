@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/api/admin/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every catalogue item, including withdrawn ones */
+        get: operations["listAllCatalogueItems"];
+        put?: never;
+        /** Add an item to the catalogue */
+        post: operations["createCatalogueItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/catalogue/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace an item's details and form, or withdraw it (requires current version) */
+        put: operations["updateCatalogueItem"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/categories": {
         parameters: {
             query?: never;
@@ -207,6 +242,57 @@ export interface paths {
         put?: never;
         /** Exchange the refresh-token cookie for a new access token (rotates the cookie) */
         post: operations["refreshSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Items requesters can order, with their forms */
+        get: operations["listCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalogue/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One catalogue item and its form */
+        get: operations["getCatalogueItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalogue/{id}/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Order an item: answers are checked against its form and a service request is raised */
+        post: operations["orderCatalogueItem"];
         delete?: never;
         options?: never;
         head?: never;
@@ -485,7 +571,7 @@ export interface components {
              * @description Stable machine-readable code: branch on this, never on detail
              * @enum {string}
              */
-            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
             /** @description Matches the X-Request-Id response header and server log lines */
             correlationId: string | null;
             /** @description Human-readable explanation; never contains internal details */
@@ -543,6 +629,19 @@ export interface components {
             requirements: ("REASON" | "RESOLUTION" | "FULFILMENT_NOTES" | "ASSIGNEE")[];
             targetStatus: string;
         };
+        CatalogueItemResponse: {
+            active: boolean;
+            category: components["schemas"]["NamedRef"];
+            description: string | null;
+            fields: components["schemas"]["FormField"][];
+            /** Format: uuid */
+            id: string;
+            name: string;
+            subcategory: components["schemas"]["NamedRef"] | null;
+            summary: string;
+            /** Format: int64 */
+            version: number;
+        };
         CategoryResponse: {
             active: boolean;
             /** @enum {string} */
@@ -573,6 +672,16 @@ export interface components {
             relatedStatus: string | null;
             /** @enum {string} */
             visibility: "PUBLIC" | "INTERNAL";
+        };
+        CreateCatalogueItemRequest: {
+            /** Format: uuid */
+            categoryId: string;
+            description?: string | null;
+            fields: components["schemas"]["FormField"][];
+            name: string;
+            /** Format: uuid */
+            subcategoryId?: string | null;
+            summary: string;
         };
         CreateCategoryRequest: {
             /** @enum {string} */
@@ -623,9 +732,18 @@ export interface components {
             field: string;
             message: string;
         };
+        FormField: {
+            helpText: string | null;
+            key: string;
+            label: string;
+            options: string[] | null;
+            required: boolean;
+            /** @enum {string} */
+            type: "TEXT" | "LONG_TEXT" | "SELECT" | "DATE";
+        };
         HistoryEntryResponse: {
             /** @enum {string} */
-            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED";
+            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED";
             actor: components["schemas"]["NamedRef"] | null;
             /** @description Free-form JSON object */
             metadata: {
@@ -700,7 +818,13 @@ export interface components {
             /** @enum {string} */
             status: "ON_TRACK" | "AT_RISK" | "BREACHED" | "PAUSED";
         };
+        RequestAnswer: {
+            key: string;
+            label: string;
+            value: string;
+        };
         ServiceRequestDetails: {
+            answers: components["schemas"]["RequestAnswer"][];
             /** Format: uuid */
             catalogueItemId: string | null;
             fulfilmentNotes: string | null;
@@ -736,6 +860,14 @@ export interface components {
             ticketType: "INCIDENT" | "SERVICE_REQUEST";
             /** Format: int64 */
             version: number;
+        };
+        SubmitCatalogueRequest: {
+            answers?: {
+                [key: string]: string;
+            } | null;
+            notes?: string | null;
+            /** @enum {string|null} */
+            urgency?: "LOW" | "MEDIUM" | "HIGH" | null;
         };
         TeamMemberResponse: {
             active: boolean;
@@ -854,6 +986,19 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
+        UpdateCatalogueItemRequest: {
+            active: boolean;
+            /** Format: uuid */
+            categoryId: string;
+            description?: string | null;
+            fields: components["schemas"]["FormField"][];
+            name: string;
+            /** Format: uuid */
+            subcategoryId?: string | null;
+            summary: string;
+            /** Format: int64 */
+            version: number;
+        };
         UpdateCategoryRequest: {
             active?: boolean;
             /** Format: uuid */
@@ -909,6 +1054,130 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAllCatalogueItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueItemResponse"][];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    createCatalogueItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCatalogueItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueItemResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    updateCatalogueItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCatalogueItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueItemResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
     listAllCategories: {
         parameters: {
             query?: never;
@@ -1567,6 +1836,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    listCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueItemResponse"][];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getCatalogueItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueItemResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    orderCatalogueItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitCatalogueRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketCreatedResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */

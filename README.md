@@ -9,7 +9,7 @@ trail.
 
 **Java 21 · Spring Boot 4.1 · PostgreSQL 17 · React 19 + TypeScript · Docker · GitHub Actions**
 
-> **Status: Phase 1 (MVP) complete; Phase 2 under way, with the SLA engine done.** Everything
+> **Status: Phase 1 (MVP) complete; Phase 2 under way, with the SLA engine and service catalogue done.** Everything
 > described here is built and tested. Planned work is listed separately under [Roadmap](#roadmap)
 > and labelled as planned.
 
@@ -34,16 +34,19 @@ the `ESM_DEMO_PASSWORD` value in `.env` (local demos only).
 | `hugo@demo.local` | Agent (Hardware) | Another team's queue |
 | `iris@demo.local` | Agent (Identity & Access) | Service requests |
 | `lead@demo.local` | Team lead (Network) | Assign work to team members |
-| `admin@demo.local` | Administrator | Every ticket, SLA targets |
+| `admin@demo.local` | Administrator | Every ticket, service catalogue, SLA targets |
 
 The demo data is created through the real application services on first start: 7 people,
-3 teams, 12 categories and 8 tickets across their lifecycles, each with a genuine audit history.
+3 teams, 12 categories, 3 catalogue items and 9 tickets across their lifecycles, each with a
+genuine audit history. Demo data is created only once, so a database from before an update keeps
+its old data; `docker compose down -v` then `up` starts again with the current demo.
 
 ## What it does
 
 **For requesters**
-- Report a problem (incident) or request something (service request), with categories that route
-  the ticket to the right team automatically.
+- Report a problem (incident), or order from the service catalogue: each item ("New laptop",
+  "Shared drive access") asks only its own questions. Anything not listed can still be requested
+  in free text. Categories route every ticket to the right team automatically.
 - Priority is derived from impact × urgency through a configurable matrix, never typed in.
 - Follow their own tickets, reply in the conversation, confirm a resolution or reopen it.
 
@@ -61,6 +64,9 @@ The demo data is created through the real application services on first start: 7
   their reply resumes the ticket automatically.
 
 **For administrators**
+- Maintain the service catalogue: add items, write their questions (short answer, paragraph,
+  choice or date), choose the category that routes them, and withdraw items. Requests already
+  raised keep the questions as they were asked.
 - Set the SLA targets for each ticket type and priority; changes apply to tickets raised afterwards.
 
 | Requester | Agent |
@@ -109,6 +115,11 @@ More: [sign-in](docs/screenshots/01-sign-in.png) · [reporting a problem](docs/s
   the `sla` module as events in the same transaction, so `ticket` never depends on it. A scheduled
   job claims overdue clocks with `FOR UPDATE SKIP LOCKED`, so several instances never record a
   breach twice ([ADR-010](docs/adr/010-sla-clocks.md)).
+- **Catalogue forms as data, answers as a snapshot.** Each item's questions are JSON checked by one
+  pure class that reports every problem per question. A request keeps its answers with the
+  questions worded as they were asked, so editing a form never rewrites old requests. Ordering
+  raises an ordinary service request, so routing, workflow and SLAs need no special cases
+  ([ADR-011](docs/adr/011-catalogue-forms-as-data.md)).
 
 ## Architecture
 
@@ -219,14 +230,16 @@ enterprise-service-management/
 **Phase 1 (done):** everything above except service levels. The milestone list is in
 [docs/architecture.md](docs/architecture.md#phase-1-milestones).
 
-**Phase 2, done so far:** the SLA engine (M15–M17): targets per type and priority, response and
-resolution clocks that pause and reopen, breach recording, auto-resume on the requester's reply,
-queue badges and sorting, and an admin screen for targets.
+**Phase 2, done so far:**
+- the SLA engine (M15–M17): targets per type and priority, response and resolution clocks that
+  pause and reopen, breach recording, auto-resume on the requester's reply, queue badges and
+  sorting, and an admin screen for targets;
+- the service catalogue (M18): items with their own forms, ordering, and an admin editor.
 
 **Not built yet:**
 - **Phase 2 (planned):**
   - business-hours SLA calendars (clocks run 24/7 today);
-  - service catalogue and approvals;
+  - approvals for catalogue items that need sign-off;
   - problem and change management;
   - attachments (S3);
   - notifications (breaches are recorded and shown, but nobody is alerted yet);

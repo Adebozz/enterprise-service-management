@@ -20,6 +20,8 @@ export const routes: RouteObject[] = [
         element: <AppLayout />,
         children: [
           { index: true, lazy: async () => ({ Component: (await import('@/pages/HomePage')).HomePage }) },
+          { path: 'catalogue', lazy: async () => ({ Component: (await import('@/catalogue/CataloguePage')).CataloguePage }) },
+          { path: 'catalogue/:id', lazy: async () => ({ Component: (await import('@/catalogue/OrderItemPage')).OrderItemPage }) },
           { path: 'tickets', lazy: async () => ({ Component: (await import('@/tickets/MyTicketsPage')).MyTicketsPage }) },
           { path: 'tickets/new/incident', lazy: async () => ({ Component: (await import('@/tickets/NewIncidentPage')).NewIncidentPage }) },
           {
@@ -35,6 +37,18 @@ export const routes: RouteObject[] = [
             element: <RequireAuth role="ADMIN" />,
             children: [
               { path: 'admin/sla', lazy: async () => ({ Component: (await import('@/admin/SlaPoliciesPage')).SlaPoliciesPage }) },
+              {
+                path: 'admin/catalogue',
+                lazy: async () => ({ Component: (await import('@/admin/CatalogueAdminPage')).CatalogueAdminPage }),
+              },
+              {
+                path: 'admin/catalogue/new',
+                lazy: async () => ({ Component: (await import('@/admin/CatalogueItemEditor')).CatalogueItemEditor }),
+              },
+              {
+                path: 'admin/catalogue/:id',
+                lazy: async () => ({ Component: (await import('@/admin/CatalogueItemEditor')).CatalogueItemEditor }),
+              },
             ],
           },
         ],

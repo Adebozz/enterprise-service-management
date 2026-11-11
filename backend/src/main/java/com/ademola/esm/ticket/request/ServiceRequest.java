@@ -11,7 +11,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** A standard request for something ("new laptop", "VPN access"). */
 @Entity
@@ -23,6 +26,10 @@ public class ServiceRequest extends WorkItem {
     @Column(name = "catalogue_item_id")
     private UUID catalogueItemId;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "catalogue_answers", updatable = false)
+    private List<RequestAnswer> catalogueAnswers;
+
     @Column(name = "fulfilment_notes", columnDefinition = "text")
     private String fulfilmentNotes;
 
@@ -30,6 +37,13 @@ public class ServiceRequest extends WorkItem {
 
     public ServiceRequest(WorkItemDraft draft) {
         super(draft, ServiceRequestStatus.SUBMITTED.name());
+    }
+
+    /** A request ordered from the catalogue: remembers the item and what the requester answered. */
+    public ServiceRequest(WorkItemDraft draft, UUID catalogueItemId, List<RequestAnswer> answers) {
+        this(draft);
+        this.catalogueItemId = catalogueItemId;
+        this.catalogueAnswers = List.copyOf(answers);
     }
 
     @Override
@@ -85,6 +99,11 @@ public class ServiceRequest extends WorkItem {
 
     public UUID getCatalogueItemId() {
         return catalogueItemId;
+    }
+
+    /** Empty for requests not raised from the catalogue. */
+    public List<RequestAnswer> getCatalogueAnswers() {
+        return catalogueAnswers == null ? List.of() : catalogueAnswers;
     }
 
     public String getFulfilmentNotes() {

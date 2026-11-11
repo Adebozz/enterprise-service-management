@@ -82,6 +82,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `EMAIL_ALREADY_EXISTS` | 409 | Another user has this email (case-insensitive) |
 | `TEAM_NAME_ALREADY_EXISTS` | 409 | Another team has this name (case-insensitive) |
 | `CATEGORY_CODE_ALREADY_EXISTS` | 409 | Category code taken |
+| `CATALOGUE_ITEM_NAME_ALREADY_EXISTS` | 409 | Another catalogue item has this name (case-insensitive) |
 | `LAST_ADMIN_REQUIRED` | 409 | Would leave no active administrator |
 | `MEMBER_HAS_OPEN_TICKETS` | 409 | Reassign the person's open tickets first |
 | `CURRENT_PASSWORD_INCORRECT` | 400 | Password change: current password wrong |
@@ -90,6 +91,8 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `ASSIGNEE_NOT_IN_TEAM` | 422 | Assignee must be an active member of the team |
 | `INVALID_CATEGORY` | 422 | Category not available for this ticket type / wrong parent |
 | `CATEGORY_TEAM_REQUIRED` | 422 | Top-level categories must route to a team |
+| `INVALID_CATALOGUE_FORM` | 422 | The item's questions don't fit together (duplicate keys, a choice with fewer than two options...); see `fieldErrors` (`fields[i].…`) |
+| `CATALOGUE_ANSWERS_INVALID` | 422 | Answers don't match the item's form; see `fieldErrors` (`answers.<key>`) |
 | `TRANSITION_REQUIREMENT_MISSING` | 422 | E.g. resolving without resolution code + notes |
 | `TICKET_NOT_ASSIGNED` | 422 | Work can't start before someone owns the ticket |
 | `INTERNAL_ERROR` | 500 | Unexpected; quote `correlationId` when reporting |
@@ -140,6 +143,22 @@ with status `ON_TRACK | AT_RISK | BREACHED | PAUSED`; it is always `null` for re
 `getTicketSla` returns both clocks with status `ON_TRACK | AT_RISK | BREACHED | PAUSED | MET |
 MISSED | CANCELLED`, target, elapsed and remaining seconds, and due, breach and completion times.
 
+### Service catalogue
+
+| Method | Path | operationId | Who |
+|---|---|---|---|
+| GET | `/api/catalogue` | `listCatalogue` | signed in; available items only |
+| GET | `/api/catalogue/{id}` | `getCatalogueItem` | signed in (withdrawn items: admins only) |
+| POST | `/api/catalogue/{id}/requests` | `orderCatalogueItem` | signed in → 201, like `createServiceRequest` |
+
+An item's `fields` are its questions: `key`, `label`, `type` (`TEXT` up to 500 characters,
+`LONG_TEXT` up to 4,000, `SELECT` one of `options`, `DATE` as `2026-12-01`), `required` and an
+optional `helpText`. To order, send `answers` keyed by question key, plus optional `notes` and
+`urgency`. Every problem is reported at once, one `fieldErrors` entry per question. The new
+request is titled with the item's name, routed by the item's category, and its description lists
+each answer; `serviceRequest.answers` on the ticket keeps the questions as they were worded when
+it was raised.
+
 ### Teams
 
 | Method | Path | operationId | Who |
@@ -161,6 +180,8 @@ MISSED | CANCELLED`, target, elapsed and remaining seconds, and due, breach and 
 | PATCH | `/api/admin/categories/{id}` | `updateCategory` |
 | GET | `/api/admin/sla-policies` | `listSlaPolicies` |
 | PUT | `/api/admin/sla-policies/{id}` | `updateSlaPolicy` (needs `version`; applies to tickets raised afterwards) |
+| GET / POST | `/api/admin/catalogue` | `listAllCatalogueItems` / `createCatalogueItem` (201) |
+| PUT | `/api/admin/catalogue/{id}` | `updateCatalogueItem` (whole item incl. `active`; needs `version`) |
 
 ## Walkthrough: an incident from report to closure
 
