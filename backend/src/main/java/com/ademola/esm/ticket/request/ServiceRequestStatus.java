@@ -1,6 +1,6 @@
 package com.ademola.esm.ticket.request;
 
-/** Service-request lifecycle. Approval states are used once the approval engine exists (Phase 2). */
+/** Service-request lifecycle. Approval states are driven by the {@code approval} module (M19). */
 public enum ServiceRequestStatus {
     SUBMITTED,
     APPROVAL_PENDING,

@@ -16,6 +16,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V7__ticket_search_and_queue_indexes.sql` | `search_vector` generated column + GIN index, partial index for the unassigned queue, category indexes (M7) |
 | `V8__sla.sql` | `sla_policies` (seeded with default targets), `sla_clocks` + breach index (M15) |
 | `V9__service_catalogue.sql` | `catalogue_items`; foreign key and `catalogue_answers` on `service_requests` (M18) |
+| `V10__approvals.sql` | `catalogue_items.approval_required`, `approvals` + pending index (M19) |
 
 ### users
 
@@ -142,6 +143,16 @@ whole and never queried by field; `CatalogueForm` validates it on every save. It
 read when the request was raised. A CHECK makes the two columns go together: both NULL for a
 free-text request, item plus an answers array for a catalogue one.
 
+### approvals (Phase 2, M19)
+
+One row per request that needs sign-off (`work_item_id` UNIQUE → work_items, `ON DELETE CASCADE`).
+`status` is `PENDING | APPROVED | REJECTED | WITHDRAWN`. `decided_by` (→ users), `decided_at` and
+`comment` (at most 2,000 characters). CHECKs: only a pending approval has no `decided_at`; exactly
+approvals and rejections have a `decided_by`; a rejection has a non-blank comment. Who may decide
+isn't stored: it follows the request's assigned team at decision time. The partial index
+`(created_at) WHERE status = 'PENDING'` serves the inbox. `catalogue_items.approval_required`
+(default false) marks items whose requests need it.
+
 ## Conventions
 
 - Migrations are **immutable once merged**. A fix is a new migration.
@@ -171,6 +182,6 @@ erDiagram
     users ||--o{ comments : writes
 ```
 
-Added in Phase 2 so far: `sla_policies`, `sla_clocks`, `catalogue_items` (described above).
-Tables still to come in Phase 2: (`approvals`,
+Added in Phase 2 so far: `sla_policies`, `sla_clocks`, `catalogue_items`, `approvals` (described
+above). Tables still to come in Phase 2: (
 `problems`, `changes`, `attachments`, `notifications`).

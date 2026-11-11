@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -120,6 +121,45 @@ public class TicketTransitionService {
         // response carries the new version.
         workItems.flush();
         return queries.get(user, ticketId);
+    }
+
+    /**
+     * A move only the system may make (approval outcomes, for example), on behalf of another module
+     * that has already decided it is allowed. Audited with the given trigger; a note, when present,
+     * is posted as a public comment by {@code noteAuthorId}, like a transition reason.
+     *
+     * @throws com.ademola.esm.ticket.workflow.InvalidTransitionException (409) if the ticket has
+     *     meanwhile moved somewhere this transition doesn't start from, e.g. it was cancelled
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void applySystemTransition(
+            UUID ticketId, String targetStatus, String trigger, UUID noteAuthorId, String note) {
+        WorkItem item =
+                workItems.findById(ticketId).orElseThrow(() -> new ResourceNotFoundException("Ticket", ticketId));
+        Transition<?> transition = item.workflow().require(item.getStatusName(), targetStatus);
+        if (!transition.isAllowedFor(Set.of(Actor.SYSTEM))) {
+            throw new IllegalStateException("'" + transition.label() + "' is not a system transition");
+        }
+        String from = item.getStatusName();
+        Instant now = clock.instant();
+        item.transition(targetStatus, TransitionInput.NONE, now);
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("transition", transition.label());
+        metadata.put("trigger", trigger);
+        audit.record(new AuditRecord(
+                AuditAction.TICKET_STATUS_CHANGED,
+                AuditEntityType.WORK_ITEM,
+                item.getId(),
+                Map.of("status", from),
+                Map.of("status", item.getStatusName()),
+                metadata));
+        events.publishEvent(TicketChangedEvent.changed(item, now));
+        if (note != null && !note.isBlank()) {
+            comments.recordStatusNote(item, noteAuthorId, note.trim(), item.getStatusName());
+        }
+        log.info("Ticket {} {} -> {} ({})", item.getReference(), from, item.getStatusName(), trigger);
+        workItems.flush();
     }
 
     /** The moves the caller may make now. Drives the UI's buttons, so rules live only here. */

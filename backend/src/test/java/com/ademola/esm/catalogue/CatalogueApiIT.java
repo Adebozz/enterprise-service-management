@@ -80,6 +80,7 @@ class CatalogueApiIT {
                 .asArray()
                 .isEmpty();
         assertThat(created).bodyJson().extractingPath("$.fields[2].helpText").isEqualTo("A sentence is enough");
+        assertThat(created).bodyJson().extractingPath("$.approvalRequired").isEqualTo(false); // the default
 
         MvcTestResult list = get("requester@example.com", "/api/catalogue");
         assertThat(list).hasStatusOk();
@@ -107,7 +108,7 @@ class CatalogueApiIT {
                 .bodyJson()
                 .extractingPath("$.description")
                 .isEqualTo(
-                        "Which model?: Developer\nWhy do you need it?: Mine is five years old\n\nDesk 4, second floor");
+                        "Which model? Developer\nWhy do you need it? Mine is five years old\n\nDesk 4, second floor");
         assertThat(view).bodyJson().extractingPath("$.urgency").isEqualTo("HIGH");
         assertThat(view).bodyJson().extractingPath("$.assignedTeam.name").isEqualTo("Hardware Team");
         assertThat(view).bodyJson().extractingPath("$.subcategory.name").isEqualTo("Laptop");
@@ -264,7 +265,7 @@ class CatalogueApiIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"name": "%s", "summary": "Order one", "categoryId": "%s", "subcategoryId": "%s",
-                         "fields": %s, "active": %s, "version": %d}""".formatted(name, hardware, laptop, fields, active, version))
+                         "fields": %s, "approvalRequired": false, "active": %s, "version": %d}""".formatted(name, hardware, laptop, fields, active, version))
                 .exchange();
     }
 

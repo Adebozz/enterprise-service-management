@@ -19,10 +19,12 @@ record UpdateCatalogueItemRequest(
         @NotNull UUID categoryId,
         @Nullable UUID subcategoryId,
         @NotNull @Size(max = CatalogueForm.MAX_FIELDS) List<@Valid @NotNull FormField> fields,
+        @NotNull Boolean approvalRequired,
         @NotNull Boolean active,
         @NotNull Long version) {
 
     CatalogueItem.ItemDetails details() {
-        return new CatalogueItem.ItemDetails(name, summary, description, categoryId, subcategoryId, fields);
+        return new CatalogueItem.ItemDetails(
+                name, summary, description, categoryId, subcategoryId, fields, approvalRequired);
     }
 }

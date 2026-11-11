@@ -172,6 +172,7 @@ class DemoDataSeeder implements ApplicationRunner {
             teams.addMember(network, nina.id());
             teams.addMember(hardware, hugo.id());
             teams.addMember(identity, iris.id());
+            teams.addMember(identity, lead.id()); // also leads Identity & Access, so approves access requests
             return null;
         });
 
@@ -339,8 +340,9 @@ class DemoDataSeeder implements ApplicationRunner {
                                 false,
                                 null,
                                 "On the sticker underneath, e.g. LT-04417."),
-                        new FormField("reason", "Why do you need it?", FieldType.LONG_TEXT, true, null, null)));
-        catalogueItem(
+                        new FormField("reason", "Why do you need it?", FieldType.LONG_TEXT, true, null, null)),
+                false);
+        UUID driveItem = catalogueItem(
                 admin,
                 "Shared drive access",
                 "Read or edit access to a team's shared drive.",
@@ -356,7 +358,8 @@ class DemoDataSeeder implements ApplicationRunner {
                                 true,
                                 List.of("Read only", "Read and edit"),
                                 null),
-                        new FormField("reason", "What do you need it for?", FieldType.LONG_TEXT, true, null, null)));
+                        new FormField("reason", "What do you need it for?", FieldType.LONG_TEXT, true, null, null)),
+                true); // access to data needs a team lead's sign-off
         catalogueItem(
                 admin,
                 "New starter account",
@@ -380,7 +383,8 @@ class DemoDataSeeder implements ApplicationRunner {
                                 FieldType.LONG_TEXT,
                                 false,
                                 null,
-                                "CRM, finance system, and so on.")));
+                                "CRM, finance system, and so on.")),
+                false);
 
         // 9. A laptop ordered from the catalogue, waiting in the Hardware queue.
         as(
@@ -393,6 +397,20 @@ class DemoDataSeeder implements ApplicationRunner {
                                         "model", "Standard (14in)",
                                         "oldAssetTag", "LT-04417",
                                         "reason", "Replacing the laptop with the swollen battery."),
+                                null,
+                                Urgency.MEDIUM)));
+
+        // 10. Shared drive access waiting for the Identity & Access team lead's approval.
+        as(
+                sam,
+                () -> catalogueRequests.submit(
+                        sam,
+                        driveItem,
+                        new SubmitCatalogueRequest(
+                                Map.of(
+                                        "drive", "SALES-Forecasts",
+                                        "level", "Read and edit",
+                                        "reason", "I'm taking over the quarterly forecast from Priya."),
                                 null,
                                 Urgency.MEDIUM)));
     }
@@ -434,11 +452,13 @@ class DemoDataSeeder implements ApplicationRunner {
             String description,
             UUID category,
             UUID sub,
-            List<FormField> fields) {
+            List<FormField> fields,
+            boolean approvalRequired) {
         return as(
                 admin,
                 () -> catalogue
-                        .create(new CreateCatalogueItemRequest(name, summary, description, category, sub, fields))
+                        .create(new CreateCatalogueItemRequest(
+                                name, summary, description, category, sub, fields, approvalRequired))
                         .id());
     }
 

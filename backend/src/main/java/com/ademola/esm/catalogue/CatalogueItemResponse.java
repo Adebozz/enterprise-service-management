@@ -14,5 +14,6 @@ public record CatalogueItemResponse(
         NamedRef category,
         @Nullable NamedRef subcategory,
         List<FormField> fields,
+        boolean approvalRequired,
         boolean active,
         long version) {}

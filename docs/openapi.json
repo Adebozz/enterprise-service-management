@@ -895,6 +895,106 @@
         "tags" : [ "Admin: users" ]
       }
     },
+    "/api/approvals" : {
+      "get" : {
+        "operationId" : "listMyPendingApprovals",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PendingApprovalResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Requests waiting for the caller's approval (team leads of the request's team, and admins)",
+        "tags" : [ "Approvals" ]
+      }
+    },
+    "/api/approvals/{id}/decision" : {
+      "post" : {
+        "operationId" : "decideApproval",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApprovalDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApprovalResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Approve or reject (a reason is required to reject; requires current version)",
+        "tags" : [ "Approvals" ]
+      }
+    },
     "/api/auth/login" : {
       "post" : {
         "operationId" : "login",
@@ -1638,6 +1738,54 @@
         "tags" : [ "Tickets" ]
       }
     },
+    "/api/tickets/{id}/approval" : {
+      "get" : {
+        "operationId" : "getTicketApproval",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApprovalResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "The ticket's approval, for anyone who can see the ticket (404 if it needs none)",
+        "tags" : [ "Approvals" ]
+      }
+    },
     "/api/tickets/{id}/assignment" : {
       "put" : {
         "operationId" : "assignTicket",
@@ -2115,7 +2263,7 @@
           "code" : {
             "type" : "string",
             "description" : "Stable machine-readable code: branch on this, never on detail",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "APPROVAL_NOT_PERMITTED", "APPROVAL_ALREADY_DECIDED", "APPROVAL_REASON_REQUIRED", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
           },
           "correlationId" : {
             "type" : [ "string", "null" ],
@@ -2157,6 +2305,64 @@
           }
         },
         "required" : [ "code", "correlationId", "detail", "fieldErrors", "instance", "status", "timestamp", "title", "type" ]
+      },
+      "ApprovalDecisionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "comment" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "decision" : {
+            "type" : "string",
+            "enum" : [ "APPROVE", "REJECT" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "decision", "version" ]
+      },
+      "ApprovalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "canDecide" : {
+            "type" : "boolean"
+          },
+          "comment" : {
+            "type" : [ "string", "null" ]
+          },
+          "decidedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "decidedBy" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/NamedRef"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "requestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "APPROVED", "REJECTED", "WITHDRAWN" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "canDecide", "comment", "decidedAt", "decidedBy", "id", "requestedAt", "status", "version" ]
       },
       "AssignmentRequest" : {
         "type" : "object",
@@ -2252,6 +2458,9 @@
           "active" : {
             "type" : "boolean"
           },
+          "approvalRequired" : {
+            "type" : "boolean"
+          },
           "category" : {
             "$ref" : "#/components/schemas/NamedRef"
           },
@@ -2286,7 +2495,7 @@
             "format" : "int64"
           }
         },
-        "required" : [ "active", "category", "description", "fields", "id", "name", "subcategory", "summary", "version" ]
+        "required" : [ "active", "approvalRequired", "category", "description", "fields", "id", "name", "subcategory", "summary", "version" ]
       },
       "CategoryResponse" : {
         "type" : "object",
@@ -2375,6 +2584,9 @@
       "CreateCatalogueItemRequest" : {
         "type" : "object",
         "properties" : {
+          "approvalRequired" : {
+            "type" : [ "boolean", "null" ]
+          },
           "categoryId" : {
             "type" : "string",
             "format" : "uuid"
@@ -2599,7 +2811,7 @@
         "properties" : {
           "action" : {
             "type" : "string",
-            "enum" : [ "USER_CREATED", "USER_UPDATED", "PASSWORD_CHANGED", "TEAM_CREATED", "TEAM_UPDATED", "TEAM_MEMBER_ADDED", "TEAM_MEMBER_REMOVED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "TICKET_CREATED", "TICKET_STATUS_CHANGED", "TICKET_ASSIGNMENT_CHANGED", "COMMENT_ADDED", "SLA_BREACHED", "SLA_POLICY_UPDATED", "CATALOGUE_ITEM_CREATED", "CATALOGUE_ITEM_UPDATED" ]
+            "enum" : [ "USER_CREATED", "USER_UPDATED", "PASSWORD_CHANGED", "TEAM_CREATED", "TEAM_UPDATED", "TEAM_MEMBER_ADDED", "TEAM_MEMBER_REMOVED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "TICKET_CREATED", "TICKET_STATUS_CHANGED", "TICKET_ASSIGNMENT_CHANGED", "COMMENT_ADDED", "SLA_BREACHED", "SLA_POLICY_UPDATED", "CATALOGUE_ITEM_CREATED", "CATALOGUE_ITEM_UPDATED", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "APPROVAL_WITHDRAWN" ]
           },
           "actor" : {
             "oneOf" : [ {
@@ -2765,6 +2977,47 @@
           }
         },
         "required" : [ "content", "page", "size", "totalElements", "totalPages" ]
+      },
+      "PendingApprovalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "priority" : {
+            "type" : "string",
+            "enum" : [ "P1", "P2", "P3", "P4" ]
+          },
+          "reference" : {
+            "type" : "string"
+          },
+          "requestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "requester" : {
+            "$ref" : "#/components/schemas/NamedRef"
+          },
+          "team" : {
+            "$ref" : "#/components/schemas/NamedRef"
+          },
+          "ticketId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "description", "id", "priority", "reference", "requestedAt", "requester", "team", "ticketId", "title", "version" ]
       },
       "QueueSla" : {
         "type" : "object",
@@ -3231,6 +3484,9 @@
           "active" : {
             "type" : "boolean"
           },
+          "approvalRequired" : {
+            "type" : "boolean"
+          },
           "categoryId" : {
             "type" : "string",
             "format" : "uuid"
@@ -3267,7 +3523,7 @@
             "format" : "int64"
           }
         },
-        "required" : [ "active", "categoryId", "fields", "name", "summary", "version" ]
+        "required" : [ "active", "approvalRequired", "categoryId", "fields", "name", "summary", "version" ]
       },
       "UpdateCategoryRequest" : {
         "type" : "object",

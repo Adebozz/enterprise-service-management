@@ -57,7 +57,7 @@ describe('the service catalogue', () => {
             id: 'ticket-9',
             type: 'SERVICE_REQUEST',
             title: 'New laptop',
-            description: 'Which model?: Developer',
+            description: 'Which model? Developer',
             status: 'SUBMITTED',
             incident: null,
             serviceRequest: { catalogueItemId: 'item-laptop', answers: [{ key: 'model', label: 'Which model?', value: 'Developer' }], fulfilmentNotes: null },

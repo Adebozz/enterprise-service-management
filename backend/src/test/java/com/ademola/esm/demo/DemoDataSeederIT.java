@@ -60,13 +60,19 @@ class DemoDataSeederIT {
                 .isZero();
         assertThat(jdbc.queryForObject("select count(*) from comments where visibility = 'INTERNAL'", Integer.class))
                 .isPositive();
-        // The catalogue has items, and one request was ordered from it with its answers kept.
+        // The catalogue has items; requests ordered from it keep their answers, and the one that
+        // needs sign-off is waiting for it.
         assertThat(count("catalogue_items")).isEqualTo(3);
-        assertThat(jdbc.queryForObject(
+        assertThat(jdbc.queryForList(
                         "select jsonb_array_length(catalogue_answers) from service_requests"
                                 + " where catalogue_item_id is not null",
                         Integer.class))
-                .isEqualTo(3);
+                .containsExactlyInAnyOrder(3, 3);
+        assertThat(jdbc.queryForObject(
+                        "select w.status from approvals a join work_items w on w.id = a.work_item_id"
+                                + " where a.status = 'PENDING'",
+                        String.class))
+                .isEqualTo("APPROVAL_PENDING");
     }
 
     /** Otherwise a requester with, say, a login problem has nowhere sensible to report it. */

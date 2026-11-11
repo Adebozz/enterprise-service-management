@@ -148,6 +148,7 @@ public class CatalogueService {
                                 ? null
                                 : new NamedRef(item.getSubcategoryId(), names.get(item.getSubcategoryId())),
                         item.getFields(),
+                        item.isApprovalRequired(),
                         item.isActive(),
                         item.getVersion()))
                 .toList();
@@ -162,6 +163,7 @@ public class CatalogueService {
         view.put("categoryId", item.getCategoryId());
         view.put("subcategoryId", item.getSubcategoryId());
         view.put("fields", item.getFields().stream().map(FormField::key).toList());
+        view.put("approvalRequired", item.isApprovalRequired());
         view.put("active", item.isActive());
         return view;
     }

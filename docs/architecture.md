@@ -40,7 +40,8 @@ Base package: `com.ademola.esm`
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check; ticket SLA and admin target APIs. Depends on `ticket`, never the reverse | Implemented (M15–M17) |
 | `catalogue` | Service catalogue: items with their own short forms, admin maintenance, ordering. Validates answers, then raises an ordinary service request through `ServiceRequestService`. Depends on `ticket`, never the reverse | Implemented (M18) |
-| `approval`, `attachment`, `notification` | Phase 2 | Planned |
+| `approval` | Sign-off for catalogue requests: pending approvals, the decision rules (`ApprovalPolicy`), the approvals inbox and decisions, which drive SYSTEM transitions on the request. Withdraws approvals of requests cancelled while waiting, through `TicketChangedEvent`. Depends on `ticket`, `team` and `user`; `catalogue` depends on it | Implemented (M19) |
+| `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
 
 ### Module conventions
@@ -313,7 +314,7 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> SUBMITTED
     SUBMITTED --> IN_PROGRESS: Start fulfilment (support, needs assignee)
-    SUBMITTED --> APPROVAL_PENDING: Request approval (system, Phase 2)
+    SUBMITTED --> APPROVAL_PENDING: Request approval (system, M19)
     APPROVAL_PENDING --> APPROVED: system
     APPROVAL_PENDING --> REJECTED: system
     APPROVED --> IN_PROGRESS: Start fulfilment
@@ -476,6 +477,40 @@ questions, instead of describing their need in free text.
   that lists only what changed. The questions are summarised by their keys. In the editor, new
   questions get a key made from their label, and existing questions keep theirs when relabelled,
   so old answers still line up.
+
+## Approvals (M19)
+
+A catalogue item can need sign-off ("Shared drive access"). Each request for it waits until someone
+approves it, before support can start work.
+
+```mermaid
+stateDiagram-v2
+    [*] --> SUBMITTED: ordered
+    SUBMITTED --> APPROVAL_PENDING: item needs approval (system, same transaction)
+    APPROVAL_PENDING --> APPROVED: team lead / admin approves
+    APPROVAL_PENDING --> REJECTED: team lead / admin rejects (reason required)
+    APPROVAL_PENDING --> CANCELLED: requester cancels (approval withdrawn)
+    APPROVED --> IN_PROGRESS: support starts fulfilment
+```
+
+- **No way around it.** The approval moves were already SYSTEM-only in the workflow (M4), so
+  nobody can approve through the transitions endpoint, and support can't start work from
+  `APPROVAL_PENDING`. `ApprovalService` makes the moves through
+  `TicketTransitionService.applySystemTransition`, which audits them with a `trigger`
+  (`APPROVAL_REQUIRED`, `APPROVAL`) and posts the approver's comment to the conversation.
+- **Who decides follows the request, and isn't stored.** `ApprovalPolicy` (pure) allows team leads
+  of the team the request is assigned to *now*, and admins. A request transferred while waiting
+  moves to the new team's leads. Nobody, whatever their role, decides their own request.
+- **One approval per request,** decided once: `PENDING` → `APPROVED | REJECTED | WITHDRAWN`, with
+  database CHECKs (a decision has a time; approvals and rejections have a person; a rejection has
+  a reason). Deciding twice, or after the requester cancelled, is a 409.
+- **Clocks pause while waiting.** `APPROVAL_PENDING` was already a WAITING phase for SLAs. Approval
+  resumes the clocks, and rejection cancels them.
+- **Cancelled while waiting:** the approval module listens to `TicketChangedEvent`. When a request
+  leaves `APPROVAL_PENDING` without a decision, the approval becomes `WITHDRAWN` (audited) and
+  leaves every inbox.
+- **The inbox** (`GET /api/approvals`) loads pending approvals and keeps those the caller may
+  decide. Fine at today's volumes; a large organisation would filter by team in SQL instead.
 
 ## Audit trail (M3)
 

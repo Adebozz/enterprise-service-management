@@ -25,12 +25,12 @@ import java.util.Set;
  *
  * <pre>
  * SUBMITTED --start fulfilment--> IN_PROGRESS --fulfil--> FULFILLED --confirm & close--> CLOSED
- *     \--(system, Phase 2)--> APPROVAL_PENDING --> APPROVED --start fulfilment--^     |
+ *     \--(system, approvals)--> APPROVAL_PENDING --> APPROVED --start fulfilment--^     |
  *                                             \--> REJECTED            reopen <------/
  * SUBMITTED / APPROVAL_PENDING / APPROVED / IN_PROGRESS --cancel--> CANCELLED
  * </pre>
  *
- * Approval moves are SYSTEM-only: the approval engine (Phase 2) drives them, and no user can
+ * Approval moves are SYSTEM-only: the {@code approval} module drives them (M19), and no user can
  * approve a request by calling the transitions endpoint.
  */
 public final class ServiceRequestWorkflow {

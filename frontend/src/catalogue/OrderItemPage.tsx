@@ -79,6 +79,9 @@ function OrderForm({ item }: { item: CatalogueItem }) {
         <h1 className="text-2xl font-semibold">{name}</h1>
         <p className="mt-1 text-muted-foreground">{summary}</p>
         {description && <p className="mt-3 whitespace-pre-wrap">{description}</p>}
+        {item.approvalRequired && (
+          <p className="mt-3 text-sm text-muted-foreground">A team lead approves this request before work starts. You can follow it in My tickets.</p>
+        )}
       </div>
       <form onSubmit={onSubmit} noValidate className="grid gap-5">
         {formError && (

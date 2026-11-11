@@ -64,6 +64,7 @@ describe('catalogue administration', () => {
     await user.selectOptions(screen.getByLabelText('Answer type'), 'Choice from a list')
     await user.type(screen.getByLabelText('Options, one per line'), '24 inch{Enter}27 inch')
     await user.click(screen.getByLabelText('Required'))
+    await user.click(screen.getByLabelText('Needs approval'))
     await user.click(screen.getByRole('button', { name: 'Add item' }))
 
     await screen.findByRole('heading', { name: 'Service catalogue' })
@@ -73,6 +74,7 @@ describe('catalogue administration', () => {
       summary: 'A second screen',
       categoryId: 'cat-hardware',
       fields: [{ key: 'screenSize', label: 'Screen size', type: 'SELECT', required: true, options: ['24 inch', '27 inch'], helpText: null }],
+      approvalRequired: true,
     })
   })
 

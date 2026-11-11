@@ -787,3 +787,45 @@ option validation, editor helpers). Total: 329 unit + 227 integration backend te
 tests.
 The `catalogue` package is at 97.7% line and 93.8% branch coverage; the backend overall at 95.6%
 and 86.6%.
+
+## M19: Approvals (2026-11-11)
+
+**What was built**
+- Catalogue items can need approval. Ordering one raises the request straight into "awaiting
+  approval", in the same transaction, with its SLA clocks paused.
+- An `approval` module: one approval per request, decided once (approved, rejected or withdrawn).
+  Team leads of the request's team and admins decide, never the requester, and a rejection must
+  say why. The decision moves the request through SYSTEM transitions, audited with their trigger,
+  and the comment reaches the requester in the conversation.
+- A request cancelled while waiting has its approval withdrawn automatically, through the existing
+  `TicketChangedEvent`.
+- Web app: an *Approvals* inbox for team leads, an Approval panel on the ticket (status, who
+  decided and why, and the decision buttons for whoever may decide), a "Needs approval" option in
+  the catalogue editor, and a note on the order page.
+- Demo: Leo Lead also leads Identity & Access, and Sam's shared drive request waits for him.
+
+**What I learned (good interview material)**
+- **Designing for it early paid off.** The M4 workflow already had approval states as SYSTEM-only
+  moves, and the M15 SLA phases already paused clocks while awaiting approval. Approvals needed
+  no workflow or SLA changes, only a module that makes those system moves.
+- **Derive permissions, don't store them.** Storing an approver per request would go stale when a
+  request is transferred or a lead changes. Deciding "team leads of the assigned team, now" at
+  decision time is always current.
+- **Segregation of duties.** "Not your own request" applies to every role, admins included, and
+  the error says why, rather than giving a generic 403.
+- **Events for the reverse direction.** Cancelling is a ticket action; withdrawing the approval is
+  the approval module's business. A listener on the existing event keeps `ticket` unaware of
+  approvals.
+
+**Tests:** 9 new unit tests (`ApprovalPolicyTest`: who may decide, including self-approval;
+`ApprovalTest`: decisions are final, rejections need reasons, withdrawals have no decider). 10 new
+integration tests (`ApprovalApiIT`: held with clocks paused and no way to start work, the inbox
+per role, approving resumes clocks and posts the comment, rejecting needs a reason and cancels
+clocks, who may decide, no approving through the transitions endpoint, final decisions and stale
+versions, withdrawal on cancel, items without approval, hidden from others), 4 for the new system
+transition (`SystemTransitionIT`, added when the stricter workflow coverage floor caught its
+untested branches), plus seeder and catalogue checks. 9 new frontend tests (inbox approve and reject, the reason prompt, a decision
+lost to someone else, navigation by role, the ticket panel for requester and team lead, no panel
+when none is needed, history text). Total: 338 unit + 241 integration backend tests, 75 frontend
+tests. The `approval` package is at 100% line and branch coverage; the backend overall at 95.9% and
+87.3%.

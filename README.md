@@ -9,7 +9,7 @@ trail.
 
 **Java 21 · Spring Boot 4.1 · PostgreSQL 17 · React 19 + TypeScript · Docker · GitHub Actions**
 
-> **Status: Phase 1 (MVP) complete; Phase 2 under way, with the SLA engine and service catalogue done.** Everything
+> **Status: Phase 1 (MVP) complete; Phase 2 under way, with the SLA engine, service catalogue and approvals done.** Everything
 > described here is built and tested. Planned work is listed separately under [Roadmap](#roadmap)
 > and labelled as planned.
 
@@ -33,12 +33,12 @@ the `ESM_DEMO_PASSWORD` value in `.env` (local demos only).
 | `nina@demo.local` | Agent (Network) | Queue, take/resolve, internal notes, history |
 | `hugo@demo.local` | Agent (Hardware) | Another team's queue |
 | `iris@demo.local` | Agent (Identity & Access) | Service requests |
-| `lead@demo.local` | Team lead (Network) | Assign work to team members |
+| `lead@demo.local` | Team lead (Network, Identity & Access) | Assign work to team members, approve a shared drive request |
 | `admin@demo.local` | Administrator | Every ticket, service catalogue, SLA targets |
 
 The demo data is created through the real application services on first start: 7 people,
-3 teams, 12 categories, 3 catalogue items and 9 tickets across their lifecycles, each with a
-genuine audit history. Demo data is created only once, so a database from before an update keeps
+3 teams, 12 categories, 3 catalogue items and 10 tickets across their lifecycles (one waiting for
+approval), each with a genuine audit history. Demo data is created only once, so a database from before an update keeps
 its old data; `docker compose down -v` then `up` starts again with the current demo.
 
 ## What it does
@@ -47,6 +47,8 @@ its old data; `docker compose down -v` then `up` starts again with the current d
 - Report a problem (incident), or order from the service catalogue: each item ("New laptop",
   "Shared drive access") asks only its own questions. Anything not listed can still be requested
   in free text. Categories route every ticket to the right team automatically.
+- Items that need sign-off (access to data, for example) wait for a team lead's approval, and the
+  requester sees who decided and why.
 - Priority is derived from impact × urgency through a configurable matrix, never typed in.
 - Follow their own tickets, reply in the conversation, confirm a resolution or reopen it.
 
@@ -58,6 +60,8 @@ its old data; `docker compose down -v` then `up` starts again with the current d
   code and notes to resolve, delivery notes to fulfil.
 - Internal notes that requesters never see. The filtering happens in SQL, not in the browser.
 - A readable history of every change, built from the audit trail.
+- Team leads approve or reject requests for their teams, from an *Approvals* inbox or the ticket
+  itself; nobody approves their own request, and a rejection must say why.
 - Service levels: every ticket has a response and a resolution target by type and priority.
   Queues show each ticket as on track, at risk, breached or paused and can sort by the next
   deadline; the ticket page shows both clocks. Waiting for the requester pauses the clock, and
@@ -65,7 +69,8 @@ its old data; `docker compose down -v` then `up` starts again with the current d
 
 **For administrators**
 - Maintain the service catalogue: add items, write their questions (short answer, paragraph,
-  choice or date), choose the category that routes them, and withdraw items. Requests already
+  choice or date), choose the category that routes them, mark items that need approval, and
+  withdraw items. Requests already
   raised keep the questions as they were asked.
 - Set the SLA targets for each ticket type and priority; changes apply to tickets raised afterwards.
 
@@ -234,12 +239,14 @@ enterprise-service-management/
 - the SLA engine (M15–M17): targets per type and priority, response and resolution clocks that
   pause and reopen, breach recording, auto-resume on the requester's reply, queue badges and
   sorting, and an admin screen for targets;
-- the service catalogue (M18): items with their own forms, ordering, and an admin editor.
+- the service catalogue (M18): items with their own forms, ordering, and an admin editor;
+- approvals (M19): requests for items that need sign-off wait, with their SLA clocks paused, until
+  a team lead of the receiving team or an admin approves or rejects them.
 
 **Not built yet:**
 - **Phase 2 (planned):**
   - business-hours SLA calendars (clocks run 24/7 today);
-  - approvals for catalogue items that need sign-off;
+  - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
   - problem and change management;
   - attachments (S3);
   - notifications (breaches are recorded and shown, but nobody is alerted yet);

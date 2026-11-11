@@ -197,6 +197,40 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/api/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Requests waiting for the caller's approval (team leads of the request's team, and admins) */
+        get: operations["listMyPendingApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/approvals/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject (a reason is required to reject; requires current version) */
+        post: operations["decideApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -435,6 +469,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/{id}/approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The ticket's approval, for anyone who can see the ticket (404 if it needs none) */
+        get: operations["getTicketApproval"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets/{id}/assignment": {
         parameters: {
             query?: never;
@@ -571,7 +622,7 @@ export interface components {
              * @description Stable machine-readable code: branch on this, never on detail
              * @enum {string}
              */
-            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
             /** @description Matches the X-Request-Id response header and server log lines */
             correlationId: string | null;
             /** @description Human-readable explanation; never contains internal details */
@@ -597,6 +648,28 @@ export interface components {
              * @example about:blank
              */
             type: string;
+        };
+        ApprovalDecisionRequest: {
+            comment?: string | null;
+            /** @enum {string} */
+            decision: "APPROVE" | "REJECT";
+            /** Format: int64 */
+            version: number;
+        };
+        ApprovalResponse: {
+            canDecide: boolean;
+            comment: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedBy: components["schemas"]["NamedRef"] | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            requestedAt: string;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+            /** Format: int64 */
+            version: number;
         };
         AssignmentRequest: {
             /** Format: uuid */
@@ -631,6 +704,7 @@ export interface components {
         };
         CatalogueItemResponse: {
             active: boolean;
+            approvalRequired: boolean;
             category: components["schemas"]["NamedRef"];
             description: string | null;
             fields: components["schemas"]["FormField"][];
@@ -674,6 +748,7 @@ export interface components {
             visibility: "PUBLIC" | "INTERNAL";
         };
         CreateCatalogueItemRequest: {
+            approvalRequired?: boolean | null;
             /** Format: uuid */
             categoryId: string;
             description?: string | null;
@@ -743,7 +818,7 @@ export interface components {
         };
         HistoryEntryResponse: {
             /** @enum {string} */
-            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED";
+            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED" | "APPROVAL_REQUESTED" | "APPROVAL_DECIDED" | "APPROVAL_WITHDRAWN";
             actor: components["schemas"]["NamedRef"] | null;
             /** @description Free-form JSON object */
             metadata: {
@@ -809,6 +884,23 @@ export interface components {
             totalElements: number;
             /** Format: int32 */
             totalPages: number;
+        };
+        PendingApprovalResponse: {
+            description: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            priority: "P1" | "P2" | "P3" | "P4";
+            reference: string;
+            /** Format: date-time */
+            requestedAt: string;
+            requester: components["schemas"]["NamedRef"];
+            team: components["schemas"]["NamedRef"];
+            /** Format: uuid */
+            ticketId: string;
+            title: string;
+            /** Format: int64 */
+            version: number;
         };
         QueueSla: {
             /** Format: date-time */
@@ -988,6 +1080,7 @@ export interface components {
         };
         UpdateCatalogueItemRequest: {
             active: boolean;
+            approvalRequired: boolean;
             /** Format: uuid */
             categoryId: string;
             description?: string | null;
@@ -1760,6 +1853,88 @@ export interface operations {
             };
         };
     };
+    listMyPendingApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingApprovalResponse"][];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    decideApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -2287,6 +2462,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getTicketApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalResponse"];
                 };
             };
             /** @description Missing, invalid or expired access token */

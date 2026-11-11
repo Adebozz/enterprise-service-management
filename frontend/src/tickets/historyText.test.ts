@@ -57,6 +57,29 @@ suite('history sentences', () => {
     ).toBe('changed the status from waiting for user to in progress by replying')
   })
 
+  it('describes a request held for approval, and the decision', () => {
+    expect(
+      describe(
+        entry({
+          action: 'TICKET_STATUS_CHANGED',
+          oldValue: { status: 'SUBMITTED' },
+          newValue: { status: 'APPROVAL_PENDING' },
+          metadata: { transition: 'Request approval', trigger: 'APPROVAL_REQUIRED' },
+        }),
+      ),
+    ).toBe('sent the request for approval')
+    expect(
+      describe(
+        entry({
+          action: 'TICKET_STATUS_CHANGED',
+          oldValue: { status: 'APPROVAL_PENDING' },
+          newValue: { status: 'APPROVED' },
+          metadata: { transition: 'Approve', trigger: 'APPROVAL' },
+        }),
+      ),
+    ).toBe('changed the status from approval pending to approved')
+  })
+
   it('names the target an SLA breach was for', () => {
     expect(describe(entry({ action: 'SLA_BREACHED', metadata: { metric: 'RESPONSE' } }))).toBe(
       'flagged the response time target as breached',

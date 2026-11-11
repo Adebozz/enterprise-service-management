@@ -1,5 +1,6 @@
 package com.ademola.esm.catalogue;
 
+import com.ademola.esm.approval.ApprovalService;
 import com.ademola.esm.auth.CurrentUser;
 import com.ademola.esm.ticket.intake.TicketCreatedResponse;
 import com.ademola.esm.ticket.request.CatalogueSubmission;
@@ -14,7 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Ordering from the catalogue: check the answers against the item's form, then raise an ordinary
- * service request routed by the item's category. From there it is handled like any other request.
+ * service request routed by the item's category, held for approval if the item needs it. From
+ * there it is handled like any other request.
  */
 @Service
 @Transactional
@@ -22,10 +24,13 @@ public class CatalogueRequestService {
 
     private final CatalogueService catalogue;
     private final ServiceRequestService serviceRequests;
+    private final ApprovalService approvals;
 
-    CatalogueRequestService(CatalogueService catalogue, ServiceRequestService serviceRequests) {
+    CatalogueRequestService(
+            CatalogueService catalogue, ServiceRequestService serviceRequests, ApprovalService approvals) {
         this.catalogue = catalogue;
         this.serviceRequests = serviceRequests;
+        this.approvals = approvals;
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -42,6 +47,9 @@ public class CatalogueRequestService {
                         item.getSubcategoryId(),
                         request.urgency(),
                         answers));
+        if (item.isApprovalRequired()) {
+            approvals.requireApproval(created.getId()); // in this transaction: no request ever skips it
+        }
         return TicketCreatedResponse.from(created);
     }
 }

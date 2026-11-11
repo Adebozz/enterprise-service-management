@@ -72,6 +72,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `TRANSITION_NOT_PERMITTED` | 403 | Valid status change, but not for you (e.g. a requester resolving) |
 | `ASSIGNMENT_NOT_PERMITTED` | 403 | You can't make this ownership change |
 | `COMMENT_NOT_PERMITTED` | 403 | Internal notes are for support on this ticket |
+| `APPROVAL_NOT_PERMITTED` | 403 | Only team leads of the request's team, and admins, decide approvals; never the requester |
 | `RESOURCE_NOT_FOUND` | 404 | Doesn't exist, or you may not see it |
 | `METHOD_NOT_ALLOWED` | 405 | Wrong HTTP method for this path |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Send `application/json` |
@@ -79,6 +80,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `INVALID_STATUS_TRANSITION` | 409 | Not a move in this ticket type's lifecycle |
 | `TICKET_NOT_ASSIGNABLE` | 409 | Resolved/closed tickets can't change owner |
 | `TICKET_CLOSED` | 409 | Closed tickets accept no comments |
+| `APPROVAL_ALREADY_DECIDED` | 409 | The approval was already approved, rejected or withdrawn |
 | `EMAIL_ALREADY_EXISTS` | 409 | Another user has this email (case-insensitive) |
 | `TEAM_NAME_ALREADY_EXISTS` | 409 | Another team has this name (case-insensitive) |
 | `CATEGORY_CODE_ALREADY_EXISTS` | 409 | Category code taken |
@@ -92,6 +94,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `INVALID_CATEGORY` | 422 | Category not available for this ticket type / wrong parent |
 | `CATEGORY_TEAM_REQUIRED` | 422 | Top-level categories must route to a team |
 | `INVALID_CATALOGUE_FORM` | 422 | The item's questions don't fit together (duplicate keys, a choice with fewer than two options...); see `fieldErrors` (`fields[i].…`) |
+| `APPROVAL_REASON_REQUIRED` | 422 | Rejecting a request needs a comment saying why |
 | `CATALOGUE_ANSWERS_INVALID` | 422 | Answers don't match the item's form; see `fieldErrors` (`answers.<key>`) |
 | `TRANSITION_REQUIREMENT_MISSING` | 422 | E.g. resolving without resolution code + notes |
 | `TICKET_NOT_ASSIGNED` | 422 | Work can't start before someone owns the ticket |
@@ -153,11 +156,27 @@ MISSED | CANCELLED`, target, elapsed and remaining seconds, and due, breach and 
 
 An item's `fields` are its questions: `key`, `label`, `type` (`TEXT` up to 500 characters,
 `LONG_TEXT` up to 4,000, `SELECT` one of `options`, `DATE` as `2026-12-01`), `required` and an
-optional `helpText`. To order, send `answers` keyed by question key, plus optional `notes` and
+optional `helpText`. `approvalRequired` (default `false`) holds each request for sign-off (see
+Approvals). To order, send `answers` keyed by question key, plus optional `notes` and
 `urgency`. Every problem is reported at once, one `fieldErrors` entry per question. The new
 request is titled with the item's name, routed by the item's category, and its description lists
-each answer; `serviceRequest.answers` on the ticket keeps the questions as they were worded when
+each answer ("Question: answer"); `serviceRequest.answers` on the ticket keeps the questions as they were worded when
 it was raised.
+
+### Approvals
+
+| Method | Path | operationId | Who |
+|---|---|---|---|
+| GET | `/api/approvals` | `listMyPendingApprovals` | team leads and admins; only requests they may decide |
+| GET | `/api/tickets/{id}/approval` | `getTicketApproval` | anyone who can see the ticket; 404 if it needs none |
+| POST | `/api/approvals/{id}/decision` | `decideApproval` | team leads of the request's team, admins; never the requester |
+
+Ordering an item with `approvalRequired` raises the request straight into `APPROVAL_PENDING`,
+with its SLA clocks paused. A decision is `APPROVE` (comment optional) or `REJECT` (comment
+required), with the approval's `version`. It moves the request to `APPROVED`, where support can
+start work, or to `REJECTED`, which ends it. The comment is posted to the conversation. A request
+cancelled while waiting has its approval `WITHDRAWN`. `canDecide` in the response tells the caller
+whether they may decide now.
 
 ### Teams
 

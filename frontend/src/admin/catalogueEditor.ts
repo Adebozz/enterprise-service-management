@@ -18,6 +18,7 @@ export interface ItemDraft {
   categoryId: string
   subcategoryId: string
   active: boolean
+  approvalRequired: boolean
   questions: QuestionDraft[]
 }
 
@@ -38,6 +39,7 @@ export function toDraft(item?: CatalogueItem): ItemDraft {
     categoryId: item?.category.id ?? '',
     subcategoryId: item?.subcategory?.id ?? '',
     active: item?.active ?? true,
+    approvalRequired: item?.approvalRequired ?? false,
     questions: (item?.fields ?? []).map((field) => ({
       key: field.key,
       label: field.label,

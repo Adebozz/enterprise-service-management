@@ -37,6 +37,9 @@ class CatalogueItem extends BaseEntity {
     @Column(name = "form_fields", nullable = false)
     private List<FormField> fields;
 
+    @Column(name = "approval_required", nullable = false)
+    private boolean approvalRequired;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -53,7 +56,8 @@ class CatalogueItem extends BaseEntity {
             String description,
             UUID categoryId,
             UUID subcategoryId,
-            List<FormField> fields) {}
+            List<FormField> fields,
+            boolean approvalRequired) {}
 
     void apply(ItemDetails details) {
         this.name = details.name().trim();
@@ -65,6 +69,7 @@ class CatalogueItem extends BaseEntity {
         this.categoryId = details.categoryId();
         this.subcategoryId = details.subcategoryId();
         this.fields = List.copyOf(details.fields());
+        this.approvalRequired = details.approvalRequired();
     }
 
     void setActive(boolean active) {
@@ -93,6 +98,10 @@ class CatalogueItem extends BaseEntity {
 
     List<FormField> getFields() {
         return fields;
+    }
+
+    boolean isApprovalRequired() {
+        return approvalRequired;
     }
 
     boolean isActive() {

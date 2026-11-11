@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
+import { ApprovalPanel } from '@/approvals/ApprovalPanel'
 import { useCurrentUser } from '@/auth/AuthContext'
 import { hasRole } from '@/auth/roles'
 import { isApiError } from '@/api/errors'
@@ -49,7 +50,7 @@ export function TicketPage() {
   }
 
   const t = ticket.data
-  const fromCatalogue = (t.serviceRequest?.answers.length ?? 0) > 0
+  const fromCatalogue = Boolean(t.serviceRequest?.catalogueItemId)
   return (
     <article className="grid gap-8">
       <header className="grid gap-3">
@@ -77,6 +78,7 @@ export function TicketPage() {
           {isStaff && <History ticketId={t.id} />}
         </div>
         <div className="grid content-start gap-4">
+          {fromCatalogue && <ApprovalPanel ticketId={t.id} />}
           {isStaff && <SlaPanel ticketId={t.id} />}
           {isStaff && <AssignmentPanel ticket={t} />}
           <TicketFacts ticket={t} />

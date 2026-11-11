@@ -22,7 +22,9 @@ export function describe(entry: HistoryEntry): string {
       let sentence = `changed the status from ${statusLabel(from ?? '?').toLowerCase()} to ${statusLabel(to ?? '?').toLowerCase()}`
       const code = text(entry.metadata, 'resolutionCode')
       if (code && code in RESOLUTION_LABEL) sentence += ` (${RESOLUTION_LABEL[code as keyof typeof RESOLUTION_LABEL]})`
-      if (text(entry.metadata, 'trigger') === 'REQUESTER_REPLY') sentence += ' by replying'
+      const trigger = text(entry.metadata, 'trigger')
+      if (trigger === 'REQUESTER_REPLY') sentence += ' by replying'
+      if (trigger === 'APPROVAL_REQUIRED') return 'sent the request for approval'
       return sentence
     }
     case 'SLA_BREACHED':

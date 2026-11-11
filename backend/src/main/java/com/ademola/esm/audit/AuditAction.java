@@ -23,5 +23,9 @@ public enum AuditAction {
     SLA_POLICY_UPDATED,
     // service catalogue
     CATALOGUE_ITEM_CREATED,
-    CATALOGUE_ITEM_UPDATED
+    CATALOGUE_ITEM_UPDATED,
+    // approvals
+    APPROVAL_REQUESTED,
+    APPROVAL_DECIDED,
+    APPROVAL_WITHDRAWN
 }

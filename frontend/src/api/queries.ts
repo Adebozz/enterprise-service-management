@@ -1,5 +1,5 @@
 import { api } from './client'
-import { unwrap } from './errors'
+import { isApiError, unwrap } from './errors'
 import type { TicketListParams, TicketType } from './types'
 
 /**
@@ -15,6 +15,9 @@ export const queryKeys = {
   transitions: (id: string) => ['tickets', 'detail', id, 'transitions'] as const,
   history: (id: string) => ['tickets', 'detail', id, 'history'] as const,
   sla: (id: string) => ['tickets', 'detail', id, 'sla'] as const,
+  approval: (id: string) => ['tickets', 'detail', id, 'approval'] as const,
+  /** Under ['tickets'], so any ticket change also refreshes the inbox. */
+  approvals: ['tickets', 'approvals'] as const,
   slaPolicies: ['sla-policies'] as const,
   catalogue: ['catalogue'] as const,
   catalogueItem: (id: string) => ['catalogue', 'item', id] as const,
@@ -96,4 +99,22 @@ export const catalogueItemQuery = (id: string) => ({
 export const adminCatalogueQuery = {
   queryKey: queryKeys.adminCatalogue,
   queryFn: async () => unwrap(await api.GET('/api/admin/catalogue')),
+}
+
+/** The ticket's approval, or null when it needs none (the API answers 404). */
+export const ticketApprovalQuery = (id: string) => ({
+  queryKey: queryKeys.approval(id),
+  queryFn: async () => {
+    try {
+      return unwrap(await api.GET('/api/tickets/{id}/approval', { params: { path: { id } } }))
+    } catch (error) {
+      if (isApiError(error) && error.code === 'RESOURCE_NOT_FOUND') return null
+      throw error
+    }
+  },
+})
+
+export const pendingApprovalsQuery = {
+  queryKey: queryKeys.approvals,
+  queryFn: async () => unwrap(await api.GET('/api/approvals')),
 }

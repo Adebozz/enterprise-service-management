@@ -92,14 +92,20 @@ final class CatalogueForm {
     }
 
     /**
-     * The ticket description: every answer as "Question: answer", then the requester's own notes.
+     * The ticket description: every answer as "Question: answer" ("Which model? Developer" when the
+     * question already ends in punctuation), then the requester's own notes.
      * Answers are also stored separately; this makes them readable everywhere a description is
      * shown, and searchable, without each of those places knowing about forms.
      */
     static String describe(List<RequestAnswer> answers, String notes) {
         StringBuilder text = new StringBuilder();
         for (RequestAnswer answer : answers) {
-            text.append(answer.label()).append(": ").append(answer.value()).append('\n');
+            String label = answer.label();
+            boolean punctuated = label.endsWith("?") || label.endsWith(":");
+            text.append(label)
+                    .append(punctuated ? " " : ": ")
+                    .append(answer.value())
+                    .append('\n');
         }
         if (notes != null && !notes.isBlank()) {
             if (!text.isEmpty()) {

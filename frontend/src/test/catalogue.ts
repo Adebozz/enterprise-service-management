@@ -13,6 +13,7 @@ export function aCatalogueItem(overrides: Partial<CatalogueItem> = {}): Catalogu
       { key: 'neededBy', label: 'Needed by', type: 'DATE', required: false, options: [], helpText: null },
       { key: 'reason', label: 'Why do you need it?', type: 'LONG_TEXT', required: true, options: [], helpText: 'A sentence is enough.' },
     ],
+    approvalRequired: false,
     active: true,
     version: 0,
     ...overrides,

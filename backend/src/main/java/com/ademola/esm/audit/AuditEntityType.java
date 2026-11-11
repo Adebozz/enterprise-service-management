@@ -6,5 +6,6 @@ public enum AuditEntityType {
     CATEGORY,
     WORK_ITEM,
     SLA_POLICY,
-    CATALOGUE_ITEM
+    CATALOGUE_ITEM,
+    APPROVAL
 }

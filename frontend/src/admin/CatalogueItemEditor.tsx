@@ -68,6 +68,7 @@ function ItemForm({ item }: { item?: CatalogueItem }) {
         categoryId: draft.categoryId,
         subcategoryId: draft.subcategoryId || undefined,
         fields: toFields(draft.questions),
+        approvalRequired: draft.approvalRequired,
       }
       return item
         ? unwrap(
@@ -174,6 +175,15 @@ function ItemForm({ item }: { item?: CatalogueItem }) {
           />
           <p className="text-sm text-muted-foreground">Requests go to the team this category routes to.</p>
         </fieldset>
+        <div className="grid gap-1">
+          <div className="flex items-center gap-2">
+            <input id="approvalRequired" type="checkbox" className="size-4 accent-primary" aria-describedby="approvalRequired-help" {...register('approvalRequired')} />
+            <Label htmlFor="approvalRequired">Needs approval</Label>
+          </div>
+          <p id="approvalRequired-help" className="pl-6 text-sm text-muted-foreground">
+            A team lead of the receiving team, or an admin, must approve each request before work starts.
+          </p>
+        </div>
         {item && (
           <div className="flex items-center gap-2">
             <input id="active" type="checkbox" className="size-4 accent-primary" {...register('active')} />

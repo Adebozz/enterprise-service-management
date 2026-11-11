@@ -151,10 +151,12 @@ class CatalogueFormTest {
         void listsEachAnswerThenTheNotes() {
             List<RequestAnswer> answers = List.of(
                     new RequestAnswer("model", "Which model?", "Developer"),
-                    new RequestAnswer("reason", "Why?", "Broke"));
+                    new RequestAnswer("tag", "Asset tag", "LT-1"),
+                    new RequestAnswer("room", "Room:", "4.02"));
 
+            // A question that already ends in punctuation gets no extra colon.
             assertThat(CatalogueForm.describe(answers, "  Please deliver to desk 4 "))
-                    .isEqualTo("Which model?: Developer\nWhy?: Broke\n\nPlease deliver to desk 4");
+                    .isEqualTo("Which model? Developer\nAsset tag: LT-1\nRoom: 4.02\n\nPlease deliver to desk 4");
         }
 
         @Test
