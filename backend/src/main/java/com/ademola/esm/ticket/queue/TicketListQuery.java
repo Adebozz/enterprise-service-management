@@ -2,6 +2,8 @@ package com.ademola.esm.ticket.queue;
 
 import com.ademola.esm.auth.CurrentUser;
 import com.ademola.esm.user.Role;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -43,7 +45,9 @@ final class TicketListQuery {
             "priority", "w.priority",
             "reference", "w.reference",
             "status", "w.status",
-            "title", "lower(w.title)");
+            "title", "lower(w.title)",
+            // Paused targets and tickets without one have no deadline: NULLs sort last ascending.
+            "slaDueAt", "s.due_at");
 
     private static final Pattern REFERENCE = Pattern.compile("^(INC|REQ)-0*(\\d{1,10})$", Pattern.CASE_INSENSITIVE);
 
@@ -53,13 +57,32 @@ final class TicketListQuery {
                    w.category_id, c.name AS category_name,
                    w.assigned_team_id, t.name AS team_name,
                    w.assignee_id, a.display_name AS assignee_name,
-                   w.requester_id, r.display_name AS requester_name
+                   w.requester_id, r.display_name AS requester_name,
+                   s.metric AS sla_metric, s.due_at AS sla_due_at,
+                   CASE
+                       WHEN s.state IS NULL THEN NULL
+                       WHEN s.breached_at IS NOT NULL OR s.elapsed_ms + %1$s >= s.target_minutes * 60000.0 THEN 'BREACHED'
+                       WHEN s.state = 'PAUSED' THEN 'PAUSED'
+                       WHEN s.elapsed_ms + %1$s >= s.target_minutes * 60000.0 * CAST(:slaAtRisk AS double precision)
+                           THEN 'AT_RISK'
+                       ELSE 'ON_TRACK'
+                   END AS sla_status
             FROM work_items w
             JOIN categories c ON c.id = w.category_id
             JOIN teams t ON t.id = w.assigned_team_id
             JOIN users r ON r.id = w.requester_id
             LEFT JOIN users a ON a.id = w.assignee_id
-            """;
+            LEFT JOIN LATERAL (
+                SELECT sc.metric, sc.state, sc.elapsed_ms, sc.running_since, sc.due_at, sc.breached_at, sc.target_minutes
+                FROM sla_clocks sc
+                WHERE sc.work_item_id = w.id AND sc.state IN ('RUNNING', 'PAUSED')
+                ORDER BY sc.metric = 'RESPONSE' DESC
+                LIMIT 1
+            ) s ON true
+            """.formatted(
+                    // milliseconds counted in the current running stretch (0 while paused)
+                    "CASE WHEN s.state = 'RUNNING'"
+                            + " THEN extract(epoch FROM CAST(:slaNow AS timestamptz) - s.running_since) * 1000 ELSE 0 END");
 
     record Sql(String text, MapSqlParameterSource params) {}
 
@@ -72,7 +95,21 @@ final class TicketListQuery {
     private final MapSqlParameterSource params = new MapSqlParameterSource();
     private String fullTextQuery;
 
-    private TicketListQuery() {}
+    private TicketListQuery() {
+        // Defaults keep the SQL valid on its own (tests, EXPLAIN); the service sets real values.
+        params.addValue("slaNow", null);
+        params.addValue("slaAtRisk", 1.0);
+    }
+
+    /**
+     * The moment SLA badges are computed for, and the share of a target after which it is at risk.
+     * Uses the application clock rather than the database's {@code now()}, so tests control it.
+     */
+    TicketListQuery slaAsOf(Instant now, double atRiskFraction) {
+        params.addValue("slaNow", Timestamp.from(now));
+        params.addValue("slaAtRisk", atRiskFraction);
+        return this;
+    }
 
     static TicketListQuery build(CurrentUser user, Set<UUID> userTeams, TicketSearchParams p, NameMatches names) {
         TicketListQuery query = new TicketListQuery();

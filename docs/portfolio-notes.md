@@ -708,5 +708,39 @@ clock round trip, cascade delete). Total: 307 unit + 200 integration. The `sla` 
 (clock targets at creation, full lifecycle through the API, auto-resume and its audit, support
 replies not resuming, first response by comment, return to queue, cancel, breach job once and as
 the system, breach during an agent's change, tickets without clocks). 2 new frontend tests for the
-history wording. Total: 316 unit + 210 integration backend tests, 48 frontend tests. The `sla`
+history wording. Total: 316 unit + 210 integration backend tests, 46 frontend tests. The `sla`
 package is at 95.4% line and 94.8% branch coverage.
+
+---
+
+## M17: SLA in the API, the queues and an admin screen (2026-11-11)
+
+**What was built**
+- `GET /api/tickets/{id}/sla`: both clocks with status, target, elapsed and remaining time, for the
+  support staff handling the ticket (requesters get 403, like the history).
+- Queue rows carry the open target (`sla`: metric, status, due time) for staff only, and the queue
+  sorts by `slaDueAt`. Computed in the queue's SQL with a `LATERAL` join to `sla_clocks`, so the
+  read model stays one query.
+- Admin endpoints and the first admin screen: SLA targets per type and priority, with optimistic
+  locking, a response-before-resolution rule and an audit entry (`SLA_POLICY_UPDATED`). Changes apply
+  to tickets raised afterwards.
+- Web app: SLA column and "SLA due soonest" sort in the queue, a Service levels panel on the ticket
+  page, and the SLA targets page in the navigation for admins.
+
+**What I learned (good interview material)**
+- **One rule, two implementations, one test.** The badge is computed in SQL (for sorting and one
+  query per page) and in Java (for the ticket's own clocks). Both read the same
+  `esm.sla.at-risk-threshold`, and `SlaApiIT` checks they agree at each stage (at risk, breached,
+  paused). The alternative, one implementation behind an extra call per row, would have cost the
+  single-query queue.
+- **Snapshot targets, don't recompute.** Each clock keeps the target it started with, so editing a
+  policy can't silently turn yesterday's met tickets into breaches.
+- **Contract names are part of the API.** springdoc named a nested record `Clock` in the contract;
+  I renamed it `SlaClockView` before anyone generated code against it.
+
+**Tests:** 7 new integration tests (clocks endpoint and its access rules, queue badge for staff
+only, badge and detail agreeing over time, sort by deadline, admin list and update applying to new
+tickets only, validation, versioning and authorization). 9 new frontend tests (queue badge and
+sort, Service levels panel and its hidden state, admin page saving and showing errors, admin-only
+navigation, duration formatting). Total: 316 unit + 217 integration backend tests, 55 frontend tests.
+The `sla` package is at 96.7% line and 90.8% branch coverage; the backend overall at 95.3% and 85.8%.

@@ -45,6 +45,12 @@ class SlaPolicy extends BaseEntity {
         return priority;
     }
 
+    /** Bounds are checked by the caller and enforced again by the table's CHECK constraint. */
+    void changeTargets(int responseMinutes, int resolutionMinutes) {
+        this.responseMinutes = responseMinutes;
+        this.resolutionMinutes = resolutionMinutes;
+    }
+
     SlaTargets targets() {
         return new SlaTargets(Duration.ofMinutes(responseMinutes), Duration.ofMinutes(resolutionMinutes));
     }

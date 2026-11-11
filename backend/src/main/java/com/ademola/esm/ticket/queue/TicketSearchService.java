@@ -7,11 +7,13 @@ import com.ademola.esm.common.web.PageResponse;
 import com.ademola.esm.ticket.access.TicketAccessPolicy;
 import com.ademola.esm.ticket.incident.IncidentStatus;
 import com.ademola.esm.ticket.request.ServiceRequestStatus;
+import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,10 +33,22 @@ public class TicketSearchService {
 
     private final TicketSearchRepository repository;
     private final TicketAccessPolicy accessPolicy;
+    private final Clock clock;
+    private final double slaAtRiskThreshold;
 
-    public TicketSearchService(TicketSearchRepository repository, TicketAccessPolicy accessPolicy) {
+    /**
+     * @param slaAtRiskThreshold the same setting the {@code sla} module validates and uses for a
+     *     ticket's SLA details, read here by key because {@code ticket} doesn't depend on {@code sla}
+     */
+    public TicketSearchService(
+            TicketSearchRepository repository,
+            TicketAccessPolicy accessPolicy,
+            Clock clock,
+            @Value("${esm.sla.at-risk-threshold}") double slaAtRiskThreshold) {
         this.repository = repository;
         this.accessPolicy = accessPolicy;
+        this.clock = clock;
+        this.slaAtRiskThreshold = slaAtRiskThreshold;
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -46,8 +60,12 @@ public class TicketSearchService {
                 ? repository.matchNames(q)
                 : TicketListQuery.NameMatches.NONE;
 
-        TicketListQuery query = TicketListQuery.build(user, teams, params, names);
+        TicketListQuery query =
+                TicketListQuery.build(user, teams, params, names).slaAsOf(clock.instant(), slaAtRiskThreshold);
         List<TicketSummary> rows = repository.page(query.page(pageable));
+        if (!user.role().isStaff()) {
+            rows = rows.stream().map(TicketSummary::withoutSla).toList(); // service levels are internal
+        }
         long total = rows.size() < pageable.getPageSize() && pageable.getOffset() == 0
                 ? rows.size() // first page not full: no need for a second query
                 : repository.count(query.count());

@@ -7,7 +7,11 @@ import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.UUID;
 
-/** One row of a queue or search result, with names resolved in the same query. */
+/**
+ * One row of a queue or search result, with names resolved in the same query.
+ *
+ * @param sla the open SLA target, for support staff only; always {@code null} for requesters
+ */
 public record TicketSummary(
         UUID id,
         String reference,
@@ -22,4 +26,25 @@ public record TicketSummary(
         Instant createdAt,
         Instant updatedAt,
         @Nullable Instant firstRespondedAt,
-        @Nullable Instant resolvedAt) {}
+        @Nullable Instant resolvedAt,
+        @Nullable QueueSla sla) {
+
+    TicketSummary withoutSla() {
+        return new TicketSummary(
+                id,
+                reference,
+                type,
+                title,
+                status,
+                priority,
+                category,
+                assignedTeam,
+                assignee,
+                requester,
+                createdAt,
+                updatedAt,
+                firstRespondedAt,
+                resolvedAt,
+                null);
+    }
+}

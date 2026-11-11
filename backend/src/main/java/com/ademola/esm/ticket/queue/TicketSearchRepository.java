@@ -65,7 +65,18 @@ class TicketSearchRepository {
                 instant(rs, "created_at"),
                 instant(rs, "updated_at"),
                 instant(rs, "first_responded_at"),
-                instant(rs, "resolved_at"));
+                instant(rs, "resolved_at"),
+                sla(rs));
+    }
+
+    private static QueueSla sla(ResultSet rs) throws SQLException {
+        String status = rs.getString("sla_status");
+        return status == null
+                ? null
+                : new QueueSla(
+                        QueueSla.Metric.valueOf(rs.getString("sla_metric")),
+                        QueueSla.Status.valueOf(status),
+                        instant(rs, "sla_due_at"));
     }
 
     private static Instant instant(ResultSet rs, String column) throws SQLException {

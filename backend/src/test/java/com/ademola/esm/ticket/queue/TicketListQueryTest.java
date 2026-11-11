@@ -47,7 +47,8 @@ class TicketListQueryTest {
 
     @Test
     void adminQueryHasNoVisibilityRestriction() {
-        assertThat(sql(admin, Set.of(), NONE)).doesNotContain("WHERE");
+        // The outer query's WHERE starts a line; the SLA subquery's own WHERE is indented.
+        assertThat(sql(admin, Set.of(), NONE)).doesNotContain("\nWHERE");
     }
 
     @Test

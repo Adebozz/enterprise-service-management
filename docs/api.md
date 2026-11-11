@@ -126,13 +126,19 @@ in the generated client.
 | GET | `/api/tickets/{id}/comments` | `listComments` | anyone who can see it (internal notes: support/admin) |
 | POST | `/api/tickets/{id}/comments` | `addComment` | anyone who can see it → 201 |
 | GET | `/api/tickets/{id}/history` | `getTicketHistory` | support, admin |
+| GET | `/api/tickets/{id}/sla` | `getTicketSla` | support, admin |
 | GET | `/api/categories?type=` | `listCategories` | signed in |
 
 `listTickets` filters: `view=ALL|REQUESTED|MINE|TEAM|UNASSIGNED`, `type`, `status`, `priority`
 (repeat or comma-separate), `teamId`, `assigneeId`, `categoryId` (includes subcategories),
 `createdFrom` / `createdTo` (inclusive days), `open=true`, `q` (reference such as `inc-42`, full-text
 such as `printer -office`, or requester/category name). Sortable: `createdAt, updatedAt, priority,
-reference, status, title`.
+reference, status, title, slaDueAt` (the next SLA deadline; paused and finished targets last).
+For staff, each row's `sla` is the open target (response until support responds, then resolution)
+with status `ON_TRACK | AT_RISK | BREACHED | PAUSED`; it is always `null` for requesters.
+
+`getTicketSla` returns both clocks with status `ON_TRACK | AT_RISK | BREACHED | PAUSED | MET |
+MISSED | CANCELLED`, target, elapsed and remaining seconds, and due, breach and completion times.
 
 ### Teams
 
@@ -153,6 +159,8 @@ reference, status, title`.
 | PUT / DELETE | `/api/admin/teams/{id}/members/{userId}` | `addTeamMember` / `removeTeamMember` (idempotent, 204) |
 | GET / POST | `/api/admin/categories` | `listAllCategories` / `createCategory` (201) |
 | PATCH | `/api/admin/categories/{id}` | `updateCategory` |
+| GET | `/api/admin/sla-policies` | `listSlaPolicies` |
+| PUT | `/api/admin/sla-policies/{id}` | `updateSlaPolicy` (needs `version`; applies to tickets raised afterwards) |
 
 ## Walkthrough: an incident from report to closure
 

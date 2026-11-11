@@ -31,6 +31,7 @@ export function staffContext(user: AuthenticatedUser, teamIds: string[] = ['team
       ]),
     ),
     http.get('/api/tickets/:id/history', () => HttpResponse.json([])),
+    http.get('/api/tickets/:id/sla', () => HttpResponse.json({ clocks: [] })),
   )
 }
 
@@ -85,6 +86,7 @@ export function aSummary(overrides: Partial<TicketSummary> = {}): TicketSummary 
     updatedAt: '2026-10-04T08:00:00Z',
     firstRespondedAt: null,
     resolvedAt: null,
+    sla: null,
     ...overrides,
   }
 }

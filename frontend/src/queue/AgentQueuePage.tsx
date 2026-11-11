@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { PriorityBadge, StatusBadge } from '@/tickets/badges'
+import { PriorityBadge, SlaBadge, StatusBadge } from '@/tickets/badges'
 import { PRIORITY_LABEL, TYPE_LABEL, formatAge, formatDateTime } from '@/tickets/labels'
 
 const VIEWS = {
@@ -26,6 +26,7 @@ type ViewKey = keyof typeof VIEWS
 
 const SORTS = {
   priority: { label: 'Priority, then oldest', sort: ['priority,asc', 'createdAt,asc'] },
+  due: { label: 'SLA due soonest', sort: ['slaDueAt,asc', 'priority,asc'] },
   newest: { label: 'Newest first', sort: ['createdAt,desc'] },
   oldest: { label: 'Oldest first', sort: ['createdAt,asc'] },
   updated: { label: 'Recently updated', sort: ['updatedAt,desc'] },
@@ -165,6 +166,7 @@ export function AgentQueuePage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>SLA</TableHead>
                   <TableHead>Assignee</TableHead>
                   <TableHead className="hidden lg:table-cell">Team</TableHead>
                   <TableHead className="hidden md:table-cell">Age</TableHead>
@@ -191,6 +193,20 @@ export function AgentQueuePage() {
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={t.status} />
+                    </TableCell>
+                    <TableCell>
+                      {t.sla ? (
+                        <div className="grid gap-0.5">
+                          <SlaBadge status={t.sla.status} />
+                          {t.sla.dueAt && (
+                            <time dateTime={t.sla.dueAt} title={formatDateTime(t.sla.dueAt)} className="text-xs text-muted-foreground">
+                              {t.sla.metric === 'RESPONSE' ? 'Response' : 'Resolution'} due {formatAge(t.sla.dueAt)}
+                            </time>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">{t.assignee?.name ?? <span className="text-muted-foreground">Unassigned</span>}</TableCell>
                     <TableCell className="hidden text-sm lg:table-cell">{t.assignedTeam.name}</TableCell>

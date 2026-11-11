@@ -38,7 +38,7 @@ Base package: `com.ademola.esm`
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
 | `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
-| `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check. Depends on `ticket`, never the reverse | In progress (M15–M16) |
+| `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check; ticket SLA and admin target APIs. Depends on `ticket`, never the reverse | Implemented (M15–M17) |
 | `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
 
@@ -57,7 +57,7 @@ Base package: `com.ademola.esm`
   When `user` needs `team` to react (a user demoted to REQUESTER must leave all teams), it publishes
   `UserRoleChangedEvent` and `team` listens. Listeners are synchronous and run in the same
   transaction, so the change is atomic. `ticket` → `sla` works the same way through
-  `TicketChangedEvent` (see [Service levels](#service-levels-m15m16)).
+  `TicketChangedEvent` (see [Service levels](#service-levels-m15m17)).
 - **Boundaries are tested.** `ArchitectureTest` (ArchUnit) fails the build on a dependency cycle
   between modules or between `ticket`'s sub-packages, on `common` depending on a feature, and on a
   controller using a repository.
@@ -408,7 +408,7 @@ the SQL from constant fragments, and every request value is a bind parameter.
 - Comments are **immutable**. The audit trail records `COMMENT_ADDED` with id and visibility,
   never the content.
 
-## Service levels (M15–M16)
+## Service levels (M15–M17)
 
 Each ticket gets two clocks when it's created: **response** (until support first responds) and
 **resolution** (until resolved or fulfilled). Targets come from `sla_policies` by type and priority.
@@ -441,6 +441,13 @@ flowchart LR
   agent's action revealed it.
 - **Tickets from before the SLA engine** have no clocks and stay that way, rather than getting a
   clock that pretends to know their history.
+- **Reading service levels (M17):** `GET /api/tickets/{id}/sla` derives each clock's status in Java
+  (`SlaClock.status`). The queue derives the badge of the open target in SQL, through a `LATERAL`
+  join to `sla_clocks`, so a page stays one query and can sort by `slaDueAt`. Both use
+  `esm.sla.at-risk-threshold` (default 0.8, validated by `SlaProperties`), and `SlaApiIT` checks that
+  they agree. Staff only: requesters get `sla: null` in lists and 403 on the endpoint.
+- **Targets are snapshotted:** a clock keeps the target it started with, so an admin's change to
+  `sla_policies` applies to tickets raised afterwards and never rewrites existing results.
 
 ## Audit trail (M3)
 

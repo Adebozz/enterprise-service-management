@@ -14,6 +14,8 @@ export const queryKeys = {
   comments: (id: string) => ['tickets', 'detail', id, 'comments'] as const,
   transitions: (id: string) => ['tickets', 'detail', id, 'transitions'] as const,
   history: (id: string) => ['tickets', 'detail', id, 'history'] as const,
+  sla: (id: string) => ['tickets', 'detail', id, 'sla'] as const,
+  slaPolicies: ['sla-policies'] as const,
   categories: (type: TicketType) => ['categories', type] as const,
   teams: ['teams'] as const,
   teamMembers: (teamId: string) => ['teams', teamId, 'members'] as const,
@@ -54,6 +56,17 @@ export const historyQuery = (id: string) => ({
   queryKey: queryKeys.history(id),
   queryFn: async () => unwrap(await api.GET('/api/tickets/{id}/history', { params: { path: { id } } })),
 })
+
+export const slaQuery = (id: string) => ({
+  queryKey: queryKeys.sla(id),
+  queryFn: async () => unwrap(await api.GET('/api/tickets/{id}/sla', { params: { path: { id } } })),
+  refetchInterval: 60_000, // time-based: keep "due in ..." honest while the page stays open
+})
+
+export const slaPoliciesQuery = {
+  queryKey: queryKeys.slaPolicies,
+  queryFn: async () => unwrap(await api.GET('/api/admin/sla-policies')),
+}
 
 export const teamsQuery = {
   queryKey: queryKeys.teams,

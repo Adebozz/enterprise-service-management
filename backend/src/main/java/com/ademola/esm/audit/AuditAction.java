@@ -19,5 +19,6 @@ public enum AuditAction {
     TICKET_ASSIGNMENT_CHANGED,
     COMMENT_ADDED,
     // service levels
-    SLA_BREACHED
+    SLA_BREACHED,
+    SLA_POLICY_UPDATED
 }

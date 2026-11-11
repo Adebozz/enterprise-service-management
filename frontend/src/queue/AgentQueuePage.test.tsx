@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { renderApp } from '@/test/renderApp'
@@ -68,6 +68,33 @@ describe('agent queue', () => {
     await screen.findByRole('link', { name: 'Wi-Fi keeps dropping' })
     expect(requests.at(-1)?.get('priority')).toBe('P1')
     expect(requests.at(-1)?.get('type')).toBe('SERVICE_REQUEST')
+  })
+
+  it('shows each ticket’s open SLA target and can sort by the next deadline', async () => {
+    signedInAs(agent)
+    const requests: URLSearchParams[] = []
+    const dueAt = new Date(Date.now() + 20 * 60_000).toISOString()
+    server.use(
+      http.get('/api/tickets', ({ request }) => {
+        requests.push(new URL(request.url).searchParams)
+        return HttpResponse.json({
+          content: [aSummary({ sla: { metric: 'RESPONSE', status: 'AT_RISK', dueAt } })],
+          page: 0,
+          size: 25,
+          totalElements: 1,
+          totalPages: 1,
+        })
+      }),
+    )
+    const { user } = renderApp('/queue?view=team')
+
+    const table = await screen.findByRole('table')
+    expect(await within(table).findByText('At risk')).toBeVisible()
+    expect(within(table).getByText(/Response due in 20 minutes/)).toBeVisible()
+
+    await user.selectOptions(screen.getByLabelText('Sort'), 'SLA due soonest')
+
+    await waitFor(() => expect(requests.at(-1)?.getAll('sort')).toEqual(['slaDueAt,asc', 'priority,asc']))
   })
 
   it('is not offered to requesters', async () => {

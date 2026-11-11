@@ -39,6 +39,40 @@ export interface paths {
         patch: operations["updateCategory"];
         trace?: never;
     };
+    "/api/admin/sla-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** SLA targets for every ticket type and priority */
+        get: operations["listSlaPolicies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/sla-policies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change the SLA targets of one type and priority (applies to tickets raised afterwards) */
+        put: operations["updateSlaPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/teams": {
         parameters: {
             query?: never;
@@ -367,6 +401,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/{id}/sla": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Response and resolution clocks of the ticket (support staff handling it, and admins) */
+        get: operations["getTicketSla"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets/{id}/transitions": {
         parameters: {
             query?: never;
@@ -574,7 +625,7 @@ export interface components {
         };
         HistoryEntryResponse: {
             /** @enum {string} */
-            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED";
+            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED";
             actor: components["schemas"]["NamedRef"] | null;
             /** @description Free-form JSON object */
             metadata: {
@@ -641,10 +692,50 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
+        QueueSla: {
+            /** Format: date-time */
+            dueAt: string | null;
+            /** @enum {string} */
+            metric: "RESPONSE" | "RESOLUTION";
+            /** @enum {string} */
+            status: "ON_TRACK" | "AT_RISK" | "BREACHED" | "PAUSED";
+        };
         ServiceRequestDetails: {
             /** Format: uuid */
             catalogueItemId: string | null;
             fulfilmentNotes: string | null;
+        };
+        SlaClockView: {
+            /** Format: date-time */
+            breachedAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            dueAt: string | null;
+            /** Format: int64 */
+            elapsedSeconds: number;
+            /** @enum {string} */
+            metric: "RESPONSE" | "RESOLUTION";
+            /** Format: int64 */
+            remainingSeconds: number;
+            /** @enum {string} */
+            status: "ON_TRACK" | "AT_RISK" | "BREACHED" | "PAUSED" | "MET" | "MISSED" | "CANCELLED";
+            /** Format: int32 */
+            targetMinutes: number;
+        };
+        SlaPolicyResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            priority: "P1" | "P2" | "P3" | "P4";
+            /** Format: int32 */
+            resolutionMinutes: number;
+            /** Format: int32 */
+            responseMinutes: number;
+            /** @enum {string} */
+            ticketType: "INCIDENT" | "SERVICE_REQUEST";
+            /** Format: int64 */
+            version: number;
         };
         TeamMemberResponse: {
             active: boolean;
@@ -720,6 +811,9 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
+        TicketSlaResponse: {
+            clocks: components["schemas"]["SlaClockView"][];
+        };
         TicketSummary: {
             assignedTeam: components["schemas"]["NamedRef"];
             assignee: components["schemas"]["NamedRef"] | null;
@@ -736,6 +830,7 @@ export interface components {
             requester: components["schemas"]["NamedRef"];
             /** Format: date-time */
             resolvedAt: string | null;
+            sla: components["schemas"]["QueueSla"] | null;
             status: string;
             title: string;
             /** @enum {string} */
@@ -764,6 +859,14 @@ export interface components {
             /** Format: uuid */
             defaultTeamId?: string;
             name?: string;
+            /** Format: int64 */
+            version: number;
+        };
+        UpdateSlaPolicyRequest: {
+            /** Format: int32 */
+            resolutionMinutes: number;
+            /** Format: int32 */
+            responseMinutes: number;
             /** Format: int64 */
             version: number;
         };
@@ -908,6 +1011,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    listSlaPolicies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlaPolicyResponse"][];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    updateSlaPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSlaPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlaPolicyResponse"];
                 };
             };
             /** @description Missing, invalid or expired access token */
@@ -1879,6 +2064,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HistoryEntryResponse"][];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getTicketSla: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketSlaResponse"];
                 };
             };
             /** @description Missing, invalid or expired access token */

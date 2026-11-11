@@ -9,8 +9,9 @@ trail.
 
 **Java 21 · Spring Boot 4.1 · PostgreSQL 17 · React 19 + TypeScript · Docker · GitHub Actions**
 
-> **Status: Phase 1 (MVP) complete.** Everything described here is built and tested. Planned work
-> is listed separately under [Roadmap](#roadmap) and labelled as planned.
+> **Status: Phase 1 (MVP) complete; Phase 2 under way, with the SLA engine done.** Everything
+> described here is built and tested. Planned work is listed separately under [Roadmap](#roadmap)
+> and labelled as planned.
 
 ![Agent view of a ticket: internal note, conversation, assignment panel and history](docs/screenshots/06-agent-ticket.png)
 
@@ -33,7 +34,7 @@ the `ESM_DEMO_PASSWORD` value in `.env` (local demos only).
 | `hugo@demo.local` | Agent (Hardware) | Another team's queue |
 | `iris@demo.local` | Agent (Identity & Access) | Service requests |
 | `lead@demo.local` | Team lead (Network) | Assign work to team members |
-| `admin@demo.local` | Administrator | Every ticket |
+| `admin@demo.local` | Administrator | Every ticket, SLA targets |
 
 The demo data is created through the real application services on first start: 7 people,
 3 teams, 12 categories and 8 tickets across their lifecycles, each with a genuine audit history.
@@ -54,6 +55,13 @@ The demo data is created through the real application services on first start: 7
   code and notes to resolve, delivery notes to fulfil.
 - Internal notes that requesters never see. The filtering happens in SQL, not in the browser.
 - A readable history of every change, built from the audit trail.
+- Service levels: every ticket has a response and a resolution target by type and priority.
+  Queues show each ticket as on track, at risk, breached or paused and can sort by the next
+  deadline; the ticket page shows both clocks. Waiting for the requester pauses the clock, and
+  their reply resumes the ticket automatically.
+
+**For administrators**
+- Set the SLA targets for each ticket type and priority; changes apply to tickets raised afterwards.
 
 | Requester | Agent |
 |---|---|
@@ -96,6 +104,11 @@ More: [sign-in](docs/screenshots/01-sign-in.png) · [reporting a problem](docs/s
   so CI fails if either side drifts.
 - **One error shape** everywhere: RFC 9457 problem details with a stable `code` and a
   `correlationId` that matches the logs.
+- **SLA clocks that survive pauses, reopening and retargeting.** Each clock stores the time used in
+  finished stretches plus the current one, and records breaches permanently. Ticket changes reach
+  the `sla` module as events in the same transaction, so `ticket` never depends on it. A scheduled
+  job claims overdue clocks with `FOR UPDATE SKIP LOCKED`, so several instances never record a
+  breach twice ([ADR-010](docs/adr/010-sla-clocks.md)).
 
 ## Architecture
 
@@ -203,17 +216,21 @@ enterprise-service-management/
 
 ## Roadmap
 
-**Phase 1 (done):** everything above. The milestone list is in
+**Phase 1 (done):** everything above except service levels. The milestone list is in
 [docs/architecture.md](docs/architecture.md#phase-1-milestones).
+
+**Phase 2, done so far:** the SLA engine (M15–M17): targets per type and priority, response and
+resolution clocks that pause and reopen, breach recording, auto-resume on the requester's reply,
+queue badges and sorting, and an admin screen for targets.
 
 **Not built yet:**
 - **Phase 2 (planned):**
-  - SLA engine (response/resolution targets, breach tracking);
+  - business-hours SLA calendars (clocks run 24/7 today);
   - service catalogue and approvals;
   - problem and change management;
   - attachments (S3);
-  - notifications;
-  - an admin UI (users, teams and categories are managed through the API today).
+  - notifications (breaches are recorded and shown, but nobody is alerted yet);
+  - admin screens for users, teams and categories (managed through the API today).
 - **Phase 3 (planned):**
   - reporting dashboards;
   - load testing;

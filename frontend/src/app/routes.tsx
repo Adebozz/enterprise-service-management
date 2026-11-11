@@ -31,6 +31,12 @@ export const routes: RouteObject[] = [
             element: <RequireAuth role="AGENT" />,
             children: [{ path: 'queue', lazy: async () => ({ Component: (await import('@/queue/AgentQueuePage')).AgentQueuePage }) }],
           },
+          {
+            element: <RequireAuth role="ADMIN" />,
+            children: [
+              { path: 'admin/sla', lazy: async () => ({ Component: (await import('@/admin/SlaPoliciesPage')).SlaPoliciesPage }) },
+            ],
+          },
         ],
       },
     ],

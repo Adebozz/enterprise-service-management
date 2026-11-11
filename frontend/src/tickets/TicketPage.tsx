@@ -13,6 +13,7 @@ import { PriorityBadge, StatusBadge } from './badges'
 import { AssignmentPanel } from './AssignmentPanel'
 import { Conversation } from './Conversation'
 import { History } from './History'
+import { SlaPanel } from './SlaPanel'
 import { TicketActions } from './TicketActions'
 import { LEVEL_LABEL, TYPE_LABEL, formatDateTime, isClosed } from './labels'
 
@@ -75,6 +76,7 @@ export function TicketPage() {
           {isStaff && <History ticketId={t.id} />}
         </div>
         <div className="grid content-start gap-4">
+          {isStaff && <SlaPanel ticketId={t.id} />}
           {isStaff && <AssignmentPanel ticket={t} />}
           <TicketFacts ticket={t} />
         </div>

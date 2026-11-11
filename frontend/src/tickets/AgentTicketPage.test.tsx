@@ -1,7 +1,8 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AvailableTransition, Ticket } from '@/api/types'
+import { problem } from '@/test/fixtures'
 import { renderApp } from '@/test/renderApp'
 import { server } from '@/test/server'
 import { aComment, aTicket, agent, signedInAs, staffContext } from '@/test/tickets'
@@ -157,5 +158,59 @@ describe('ticket page for support staff', () => {
 
     const history = await screen.findByRole('region', { name: 'History' })
     expect(await within(history).findByText(/assigned it to Alex Agent/)).toBeVisible()
+  })
+
+  it('shows the service levels of the ticket', async () => {
+    signedInAs(agent)
+    staffContext(agent)
+    backend(aTicket())
+    server.use(
+      http.get('/api/tickets/:id/sla', () =>
+        HttpResponse.json({
+          clocks: [
+            {
+              metric: 'RESPONSE',
+              status: 'MET',
+              targetMinutes: 60,
+              elapsedSeconds: 1200,
+              remainingSeconds: 2400,
+              dueAt: null,
+              breachedAt: null,
+              completedAt: '2026-10-04T08:20:00Z',
+            },
+            {
+              metric: 'RESOLUTION',
+              status: 'PAUSED',
+              targetMinutes: 480,
+              elapsedSeconds: 3600,
+              remainingSeconds: 25200,
+              dueAt: null,
+              breachedAt: null,
+              completedAt: null,
+            },
+          ],
+        }),
+      ),
+    )
+
+    renderApp('/tickets/ticket-1')
+
+    const panel = await screen.findByRole('region', { name: 'Service levels' })
+    expect(await within(panel).findByText('First response')).toBeVisible()
+    expect(within(panel).getByText('Met')).toBeVisible()
+    expect(within(panel).getByText('Paused')).toBeVisible()
+    expect(within(panel).getByText(/Target 8 h\. Paused while waiting, with 7 h left\./)).toBeVisible()
+  })
+
+  it('hides service levels the API keeps from this agent', async () => {
+    signedInAs(agent)
+    staffContext(agent)
+    backend(aTicket())
+    server.use(http.get('/api/tickets/:id/sla', () => problem(403, 'ACCESS_DENIED')))
+
+    renderApp('/tickets/ticket-1')
+
+    await screen.findByRole('heading', { name: 'Wi-Fi keeps dropping' })
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Service levels' })).not.toBeInTheDocument())
   })
 })
