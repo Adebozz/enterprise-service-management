@@ -13,6 +13,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Optional;
 
 /** An unplanned interruption or degradation of a service ("payroll is down"). */
 @Entity
@@ -89,6 +90,13 @@ public class Incident extends WorkItem {
             // ASSIGNED -> NEW (unassign), IN_PROGRESS/WAITING_FOR_USER -> NEW (return to queue)
             transition(IncidentStatus.NEW.name(), TransitionInput.NONE, now);
         }
+    }
+
+    @Override
+    public Optional<String> statusAfterRequesterReply() {
+        return getStatus() == IncidentStatus.WAITING_FOR_USER
+                ? Optional.of(IncidentStatus.IN_PROGRESS.name())
+                : Optional.empty();
     }
 
     /** The previous resolution didn't hold: forget it (the audit trail keeps the history). */

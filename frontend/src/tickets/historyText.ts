@@ -22,8 +22,11 @@ export function describe(entry: HistoryEntry): string {
       let sentence = `changed the status from ${statusLabel(from ?? '?').toLowerCase()} to ${statusLabel(to ?? '?').toLowerCase()}`
       const code = text(entry.metadata, 'resolutionCode')
       if (code && code in RESOLUTION_LABEL) sentence += ` (${RESOLUTION_LABEL[code as keyof typeof RESOLUTION_LABEL]})`
+      if (text(entry.metadata, 'trigger') === 'REQUESTER_REPLY') sentence += ' by replying'
       return sentence
     }
+    case 'SLA_BREACHED':
+      return `flagged the ${text(entry.metadata, 'metric') === 'RESPONSE' ? 'response' : 'resolution'} time target as breached`
     case 'TICKET_ASSIGNMENT_CHANGED': {
       const parts: string[] = []
       const oldTeam = text(entry.oldValue, 'teamId')

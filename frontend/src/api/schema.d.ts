@@ -574,7 +574,7 @@ export interface components {
         };
         HistoryEntryResponse: {
             /** @enum {string} */
-            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED";
+            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED";
             actor: components["schemas"]["NamedRef"] | null;
             /** @description Free-form JSON object */
             metadata: {

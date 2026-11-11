@@ -24,7 +24,9 @@ import org.springframework.context.annotation.Import;
             "esm.security.allowed-origins=http://localhost:5173",
             // Integration tests must not depend on a developer's local .env bootstrap admin.
             "esm.bootstrap.admin.email=",
-            "esm.bootstrap.admin.password="
+            "esm.bootstrap.admin.password=",
+            // Tests drive the breach check themselves, with a controlled clock.
+            "esm.sla.breach-check.enabled=false"
         })
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, TestClockConfiguration.class})

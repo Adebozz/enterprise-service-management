@@ -12,6 +12,7 @@ import com.ademola.esm.common.error.StaleVersionException;
 import com.ademola.esm.team.TeamService;
 import com.ademola.esm.team.TeamSummary;
 import com.ademola.esm.ticket.AssignmentChange;
+import com.ademola.esm.ticket.TicketChangedEvent;
 import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemRepository;
 import com.ademola.esm.ticket.access.TicketAccessPolicy;
@@ -19,6 +20,7 @@ import com.ademola.esm.ticket.query.NamedRef;
 import com.ademola.esm.user.User;
 import com.ademola.esm.user.UserService;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -26,6 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,7 @@ public class TicketAssignmentService {
     private final TeamService teams;
     private final UserService users;
     private final AuditService audit;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public TicketAssignmentService(
@@ -54,12 +58,14 @@ public class TicketAssignmentService {
             TeamService teams,
             UserService users,
             AuditService audit,
+            ApplicationEventPublisher events,
             Clock clock) {
         this.workItems = workItems;
         this.accessPolicy = accessPolicy;
         this.teams = teams;
         this.users = users;
         this.audit = audit;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -85,13 +91,18 @@ public class TicketAssignmentService {
             requireEligibleAssignee(request.assigneeId(), request.teamId());
         }
 
-        AssignmentChange change = item.assign(request.teamId(), request.assigneeId(), clock.instant());
+        Instant now = clock.instant();
+        AssignmentChange change = item.assign(request.teamId(), request.assigneeId(), now);
         audit.record(AuditRecord.changed(
                 AuditAction.TICKET_ASSIGNMENT_CHANGED,
                 AuditEntityType.WORK_ITEM,
                 item.getId(),
                 snapshot(change.before()),
                 snapshot(change.after())));
+        if (!change.before().status().equals(change.after().status())) {
+            // e.g. returning a ticket that waited for the user to the queue: its SLA clock resumes
+            events.publishEvent(TicketChangedEvent.changed(item, now));
+        }
         log.info(
                 "Ticket {} assignment team {} -> {}, assignee {} -> {} by {}",
                 item.getReference(),

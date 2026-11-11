@@ -3,6 +3,7 @@ package com.ademola.esm.audit;
 import com.ademola.esm.common.web.CorrelationIdFilter;
 import java.time.Clock;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -34,9 +35,22 @@ public class AuditService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void record(AuditRecord record) {
+        save(record, actorProvider.currentActorId().orElse(null));
+    }
+
+    /**
+     * Records something the system did on its own (e.g. an SLA breach), with no actor even when it
+     * was noticed during a user's request: the user didn't cause it.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordAsSystem(AuditRecord record) {
+        save(record, null);
+    }
+
+    private void save(AuditRecord record, UUID actorId) {
         events.save(new AuditEvent(
                 clock.instant(),
-                actorProvider.currentActorId().orElse(null),
+                actorId,
                 record.action(),
                 record.entityType(),
                 record.entityId(),

@@ -9,6 +9,7 @@ import com.ademola.esm.common.error.BusinessRuleException;
 import com.ademola.esm.common.error.ErrorCode;
 import com.ademola.esm.common.error.ResourceNotFoundException;
 import com.ademola.esm.common.error.StaleVersionException;
+import com.ademola.esm.ticket.TicketChangedEvent;
 import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemRepository;
 import com.ademola.esm.ticket.access.TicketAccessPolicy;
@@ -20,6 +21,7 @@ import com.ademola.esm.ticket.workflow.Requirement;
 import com.ademola.esm.ticket.workflow.Transition;
 import com.ademola.esm.ticket.workflow.TransitionInput;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +56,7 @@ public class TicketTransitionService {
     private final TicketQueryService queries;
     private final AuditService audit;
     private final CommentService comments;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public TicketTransitionService(
@@ -61,12 +65,14 @@ public class TicketTransitionService {
             TicketQueryService queries,
             AuditService audit,
             CommentService comments,
+            ApplicationEventPublisher events,
             Clock clock) {
         this.workItems = workItems;
         this.accessPolicy = accessPolicy;
         this.queries = queries;
         this.audit = audit;
         this.comments = comments;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -93,7 +99,8 @@ public class TicketTransitionService {
                         ? null
                         : request.resolutionCode().name(),
                 request.notes());
-        item.transition(request.targetStatus(), input, clock.instant());
+        Instant now = clock.instant();
+        item.transition(request.targetStatus(), input, now);
 
         audit.record(new AuditRecord(
                 AuditAction.TICKET_STATUS_CHANGED,
@@ -102,6 +109,7 @@ public class TicketTransitionService {
                 Map.of("status", from),
                 Map.of("status", item.getStatusName()),
                 metadata(transition, input)));
+        events.publishEvent(TicketChangedEvent.changed(item, now)); // after the audit entry it explains
         if (input.reason() != null && !input.reason().isBlank()) {
             // Make the reason part of the visible conversation ("Which floor are you on?").
             comments.recordStatusNote(item, user.id(), input.reason(), item.getStatusName());

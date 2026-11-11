@@ -38,7 +38,7 @@ Base package: `com.ademola.esm`
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
 | `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
-| `sla` | SLA policies per ticket type and priority, and response/resolution clocks with pause, reopen and breach recording. Depends on `ticket`; wiring to ticket events comes in M16 | In progress (M15) |
+| `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check. Depends on `ticket`, never the reverse | In progress (M15–M16) |
 | `catalogue`, `approval`, `attachment`, `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
 
@@ -56,7 +56,8 @@ Base package: `com.ademola.esm`
 - **Dependencies point one way, and events carry the reverse direction.** `team` depends on `user`.
   When `user` needs `team` to react (a user demoted to REQUESTER must leave all teams), it publishes
   `UserRoleChangedEvent` and `team` listens. Listeners are synchronous and run in the same
-  transaction, so the change is atomic. Phase 2 uses the same pattern for ticket → SLA.
+  transaction, so the change is atomic. `ticket` → `sla` works the same way through
+  `TicketChangedEvent` (see [Service levels](#service-levels-m15m16)).
 - **Boundaries are tested.** `ArchitectureTest` (ArchUnit) fails the build on a dependency cycle
   between modules or between `ticket`'s sub-packages, on `common` depending on a feature, and on a
   controller using a repository.
@@ -406,6 +407,40 @@ the SQL from constant fragments, and every request value is a bind parameter.
   with `relatedStatus`, in the transition's transaction, so requesters see what support needs.
 - Comments are **immutable**. The audit trail records `COMMENT_ADDED` with id and visibility,
   never the content.
+
+## Service levels (M15–M16)
+
+Each ticket gets two clocks when it's created: **response** (until support first responds) and
+**resolution** (until resolved or fulfilled). Targets come from `sla_policies` by type and priority.
+The clock arithmetic and its trade-offs are in [ADR-010](adr/010-sla-clocks.md).
+
+```mermaid
+flowchart LR
+    intake["TicketIntake (created)"] --> event((TicketChangedEvent))
+    transitions[TicketTransitionService] --> event
+    assignment["TicketAssignmentService (status changed)"] --> event
+    comments["CommentService (first response, auto-resume)"] --> event
+    event --> clocks[SlaClockService.reconcile]
+    job["SlaBreachJob (every minute)"] --> breach[SlaBreachService]
+    clocks & breach --> audit[("audit: SLA_BREACHED (system)")]
+```
+
+- **Reconcile, don't script.** Every event brings the clocks in line with the ticket's current state:
+  its `SlaPhase` (ACTIVE, WAITING, DONE, CANCELLED; an exhaustive switch per type) and whether
+  support has responded. So the same status reached by any route (API, assignment, auto-resume)
+  gives the same result, and repeating it is harmless.
+- **Phases:** waiting for the user (and, for requests, waiting for approval) pauses the clocks;
+  resolved/fulfilled/closed stops resolution; reopening continues it from the time already used;
+  cancelled/rejected cancels open clocks but keeps a response that was already met.
+- **Auto-resume:** a requester's public reply moves a ticket from Waiting for user to In progress,
+  audited with `trigger: REQUESTER_REPLY`. Support replies and internal notes don't.
+- **Breach check:** `SlaBreachJob` runs every `esm.sla.breach-check.interval` (1 minute) and claims
+  overdue clocks in batches of 100 with `FOR UPDATE SKIP LOCKED`, so several app instances never
+  record the same breach twice. Clocks that stop or pause late record their breach themselves.
+  Every breach is audited once, **as the system** (`AuditService.recordAsSystem`), even when an
+  agent's action revealed it.
+- **Tickets from before the SLA engine** have no clocks and stay that way, rather than getting a
+  clock that pretends to know their history.
 
 ## Audit trail (M3)
 

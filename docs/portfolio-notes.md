@@ -674,3 +674,39 @@ resume, breach recording, met and missed, reopen, retargeting, invalid calls) an
 tests (seeded targets for all 8 combinations, missing-policy error, policy and clock constraints,
 clock round trip, cascade delete). Total: 307 unit + 200 integration. The `sla` package is at
 96.5% line and 100% branch coverage.
+
+---
+
+## M16: Clocks connected to tickets, auto-resume and breach check (2026-11-11)
+
+**What was built**
+- `TicketChangedEvent`, published by ticket intake, transitions, assignment (when it changes the
+  status) and comments (first response, auto-resume). The `sla` module listens in the same
+  transaction, so `ticket` still doesn't depend on `sla` (ArchUnit still passes).
+- `SlaClockService` reconciles both clocks with the ticket's state rather than scripting one
+  operation per transition; `SlaPhase` maps every status of both ticket types with exhaustive
+  switches.
+- **Auto-resume:** a requester's public reply moves a ticket from Waiting for user to In progress,
+  audited with `trigger: REQUESTER_REPLY` and shown in the history as "... by replying". This
+  closes the gap noted after Phase 1.
+- `SlaBreachJob`: every minute, claims overdue clocks in batches with `FOR UPDATE SKIP LOCKED` and
+  records each breach once. Breaches are audited as the system (`AuditService.recordAsSystem`).
+- The history timeline names breaches ("System flagged the response time target as breached").
+
+**What I learned (good interview material)**
+- **Reconcile beats per-transition rules.** One function from (phase, responded) to clock state
+  handles every route to a status, and running it twice is harmless.
+- **A new behaviour changed existing data.** The demo seeder put a ticket into Waiting for user and
+  then posted the requester's answer, which now resumes it, so `DemoDataSeederIT` failed with no
+  ticket waiting. The seed now leaves the question unanswered.
+- **Who caused it matters in an audit trail.** A breach noticed while an agent starts work late
+  would have been recorded under that agent's name. It's now always the system's.
+- **Moving the test clock also expires tokens.** Jumping hours ahead made the 15-minute access
+  tokens invalid; the SLA tests log in again after each jump.
+
+**Tests:** 9 new unit tests (reconcile rules, every status's phase) and 10 new integration tests
+(clock targets at creation, full lifecycle through the API, auto-resume and its audit, support
+replies not resuming, first response by comment, return to queue, cancel, breach job once and as
+the system, breach during an agent's change, tickets without clocks). 2 new frontend tests for the
+history wording. Total: 316 unit + 210 integration backend tests, 48 frontend tests. The `sla`
+package is at 95.4% line and 94.8% branch coverage.

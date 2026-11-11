@@ -8,15 +8,18 @@ import com.ademola.esm.auth.CurrentUser;
 import com.ademola.esm.common.error.BusinessRuleException;
 import com.ademola.esm.common.error.ErrorCode;
 import com.ademola.esm.common.error.ResourceNotFoundException;
+import com.ademola.esm.ticket.TicketChangedEvent;
 import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemRepository;
 import com.ademola.esm.ticket.access.TicketAccessPolicy;
+import com.ademola.esm.ticket.workflow.TransitionInput;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -30,6 +33,7 @@ public class CommentService {
     private final WorkItemRepository workItems;
     private final TicketAccessPolicy accessPolicy;
     private final AuditService audit;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public CommentService(
@@ -37,11 +41,13 @@ public class CommentService {
             WorkItemRepository workItems,
             TicketAccessPolicy accessPolicy,
             AuditService audit,
+            ApplicationEventPublisher events,
             Clock clock) {
         this.comments = comments;
         this.workItems = workItems;
         this.accessPolicy = accessPolicy;
         this.audit = audit;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -69,8 +75,12 @@ public class CommentService {
         }
         Instant now = clock.instant();
         Comment comment = save(item, user.id(), request.visibility(), request.body(), null, now);
-        if (CommentPolicy.countsAsFirstResponse(user, item, teams, request.visibility())) {
-            workItems.recordFirstResponseIfAbsent(item.getId(), now);
+        if (CommentPolicy.countsAsFirstResponse(user, item, teams, request.visibility())
+                && workItems.recordFirstResponseIfAbsent(item.getId(), now) == 1) {
+            events.publishEvent(TicketChangedEvent.firstResponse(item, now));
+        }
+        if (request.visibility() == CommentVisibility.PUBLIC && user.id().equals(item.getRequesterId())) {
+            resumeOnRequesterReply(item, now);
         }
         return new CommentResponse(
                 comment.getId(),
@@ -91,6 +101,29 @@ public class CommentService {
     @Transactional(propagation = Propagation.MANDATORY)
     public void recordStatusNote(WorkItem item, UUID authorId, String reason, String newStatus) {
         save(item, authorId, CommentVisibility.PUBLIC, reason, newStatus, clock.instant());
+    }
+
+    /**
+     * The requester answered while support was waiting for them, so the ticket goes back to work
+     * (and its SLA clock resumes). Requesters never count as first responders, so the direct
+     * first-response update can't be overwritten by this entity change.
+     */
+    private void resumeOnRequesterReply(WorkItem item, Instant now) {
+        item.statusAfterRequesterReply()
+                .map(target -> item.workflow().require(item.getStatusName(), target))
+                .filter(transition -> transition.isSatisfiableBy(item.getAssigneeId() != null))
+                .ifPresent(transition -> {
+                    String from = item.getStatusName();
+                    item.transition(transition.to().name(), TransitionInput.NONE, now);
+                    audit.record(new AuditRecord(
+                            AuditAction.TICKET_STATUS_CHANGED,
+                            AuditEntityType.WORK_ITEM,
+                            item.getId(),
+                            Map.of("status", from),
+                            Map.of("status", item.getStatusName()),
+                            Map.of("transition", transition.label(), "trigger", "REQUESTER_REPLY")));
+                    events.publishEvent(TicketChangedEvent.changed(item, now));
+                });
     }
 
     private Comment save(

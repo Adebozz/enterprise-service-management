@@ -19,6 +19,7 @@ import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -152,6 +153,14 @@ public abstract class WorkItem extends BaseEntity {
 
     /** Whether ownership may change in the current status (not once resolved or closed). */
     protected abstract boolean isAssignable();
+
+    /**
+     * The status a requester's public reply moves the ticket to, if any. A ticket waiting for the
+     * requester resumes when they answer, without a separate "Resume" click.
+     */
+    public Optional<String> statusAfterRequesterReply() {
+        return Optional.empty();
+    }
 
     /** Status consequences of gaining or losing an owner. */
     protected abstract void onAssignmentChanged(boolean hadAssignee, boolean hasAssignee, Instant now);

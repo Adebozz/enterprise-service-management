@@ -199,7 +199,7 @@ class DemoDataSeeder implements ApplicationRunner {
                 "Which desk number are you at, and does it happen on a cable too?",
                 null,
                 null);
-        comment(rita, wifiTicket, "Desk 3.14. On a cable it's fine.", CommentVisibility.PUBLIC);
+        // No reply from Rita yet: her answer would resume the ticket (and its SLA clock) automatically.
 
         // 2. P1 incident waiting in the unassigned queue.
         incident(

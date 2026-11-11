@@ -7,6 +7,7 @@ import com.ademola.esm.audit.AuditService;
 import com.ademola.esm.auth.CurrentUser;
 import com.ademola.esm.team.TeamService;
 import com.ademola.esm.ticket.ReferenceNumberGenerator;
+import com.ademola.esm.ticket.TicketChangedEvent;
 import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemDraft;
 import com.ademola.esm.ticket.WorkItemType;
@@ -15,9 +16,11 @@ import com.ademola.esm.ticket.category.CategoryService;
 import com.ademola.esm.ticket.priority.Impact;
 import com.ademola.esm.ticket.priority.PriorityPolicy;
 import com.ademola.esm.ticket.priority.Urgency;
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,18 +40,24 @@ public class TicketIntake {
     private final PriorityPolicy priorityPolicy;
     private final ReferenceNumberGenerator references;
     private final AuditService audit;
+    private final ApplicationEventPublisher events;
+    private final Clock clock;
 
     public TicketIntake(
             CategoryService categories,
             TeamService teams,
             PriorityPolicy priorityPolicy,
             ReferenceNumberGenerator references,
-            AuditService audit) {
+            AuditService audit,
+            ApplicationEventPublisher events,
+            Clock clock) {
         this.categories = categories;
         this.teams = teams;
         this.priorityPolicy = priorityPolicy;
         this.references = references;
         this.audit = audit;
+        this.events = events;
+        this.clock = clock;
     }
 
     public record NewTicket(
@@ -91,5 +100,6 @@ public class TicketIntake {
         created.put("subcategoryId", item.getSubcategoryId());
         created.put("assignedTeamId", item.getAssignedTeamId());
         audit.record(AuditRecord.created(AuditAction.TICKET_CREATED, AuditEntityType.WORK_ITEM, item.getId(), created));
+        events.publishEvent(TicketChangedEvent.created(item, clock.instant()));
     }
 }
