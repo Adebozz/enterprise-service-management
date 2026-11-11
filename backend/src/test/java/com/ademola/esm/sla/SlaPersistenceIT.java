@@ -13,6 +13,7 @@ import com.ademola.esm.user.Role;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +61,7 @@ class SlaPersistenceIT {
     }
 
     @Test
-    void everyTicketTypeAndPriorityHasItsSeededTargets() {
+    void everyTicketTypeWithServiceLevelsHasItsSeededTargets() {
         Map<WorkItemType, Map<Priority, SlaTargets>> expected = Map.of(
                 WorkItemType.INCIDENT,
                         Map.of(
@@ -75,7 +76,8 @@ class SlaPersistenceIT {
                                 Priority.P3, targets(480, 7200),
                                 Priority.P4, targets(1440, 14400)));
 
-        for (WorkItemType type : WorkItemType.values()) {
+        // Problems have no SLA (M20), so they have no policies either.
+        for (WorkItemType type : List.of(WorkItemType.INCIDENT, WorkItemType.SERVICE_REQUEST)) {
             for (Priority priority : Priority.values()) {
                 assertThat(policyService.targetsFor(type, priority))
                         .as("%s %s", type, priority)

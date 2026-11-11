@@ -9,7 +9,7 @@ trail.
 
 **Java 21 · Spring Boot 4.1 · PostgreSQL 17 · React 19 + TypeScript · Docker · GitHub Actions**
 
-> **Status: Phase 1 (MVP) complete; Phase 2 under way, with the SLA engine, service catalogue and approvals done.** Everything
+> **Status: Phase 1 (MVP) complete; Phase 2 under way, with the SLA engine, service catalogue, approvals and problem management done.** Everything
 > described here is built and tested. Planned work is listed separately under [Roadmap](#roadmap)
 > and labelled as planned.
 
@@ -30,15 +30,15 @@ the `ESM_DEMO_PASSWORD` value in `.env` (local demos only).
 |---|---|---|
 | `rita@demo.local` | Requester | My tickets, answer the agent's question, confirm a resolved incident |
 | `sam@demo.local` | Requester | Report a problem or request something |
-| `nina@demo.local` | Agent (Network) | Queue, take/resolve, internal notes, history |
+| `nina@demo.local` | Agent (Network) | Queue, take/resolve, internal notes, history, the VPN known error under *Problems* |
 | `hugo@demo.local` | Agent (Hardware) | Another team's queue |
 | `iris@demo.local` | Agent (Identity & Access) | Service requests |
 | `lead@demo.local` | Team lead (Network, Identity & Access) | Assign work to team members, approve a shared drive request |
 | `admin@demo.local` | Administrator | Every ticket, service catalogue, SLA targets |
 
 The demo data is created through the real application services on first start: 7 people,
-3 teams, 12 categories, 3 catalogue items and 10 tickets across their lifecycles (one waiting for
-approval), each with a genuine audit history. Demo data is created only once, so a database from before an update keeps
+3 teams, 12 categories, 3 catalogue items and 11 tickets across their lifecycles (one waiting for
+approval, and a known-error problem explaining two incidents), each with a genuine audit history. Demo data is created only once, so a database from before an update keeps
 its old data; `docker compose down -v` then `up` starts again with the current demo.
 
 ## What it does
@@ -62,6 +62,9 @@ its old data; `docker compose down -v` then `up` starts again with the current d
 - A readable history of every change, built from the audit trail.
 - Team leads approve or reject requests for their teams, from an *Approvals* inbox or the ticket
   itself; nobody approves their own request, and a rejection must say why.
+- Problem management: raise a problem from a recurring incident, record its root cause and
+  workaround (a *known error*), and link incidents to it. Agents handling a linked incident see
+  the workaround on it, and fixing the problem leaves a note on every incident still open.
 - Service levels: every ticket has a response and a resolution target by type and priority.
   Queues show each ticket as on track, at risk, breached or paused and can sort by the next
   deadline; the ticket page shows both clocks. Waiting for the requester pauses the clock, and
@@ -125,6 +128,10 @@ More: [sign-in](docs/screenshots/01-sign-in.png) · [reporting a problem](docs/s
   questions worded as they were asked, so editing a form never rewrites old requests. Ordering
   raises an ordinary service request, so routing, workflow and SLAs need no special cases
   ([ADR-011](docs/adr/011-catalogue-forms-as-data.md)).
+- **A new ticket type in one migration.** Problems reuse the shared ticket model, so queues,
+  assignment, comments, history and search needed no changes. The compiler flagged every place
+  that had to decide what a problem means (SLA phases, labels), and a pre-transition hook keeps a
+  refused move from leaving the ticket half-changed ([ADR-012](docs/adr/012-problems-as-a-ticket-type.md)).
 
 ## Architecture
 
@@ -241,13 +248,15 @@ enterprise-service-management/
   sorting, and an admin screen for targets;
 - the service catalogue (M18): items with their own forms, ordering, and an admin editor;
 - approvals (M19): requests for items that need sign-off wait, with their SLA clocks paused, until
-  a team lead of the receiving team or an admin approves or rejects them.
+  a team lead of the receiving team or an admin approves or rejects them;
+- problem management (M20): problems as a third ticket type, root cause and workaround as a known
+  error, incidents linked to the problem behind them, and a note on each when it is fixed.
 
 **Not built yet:**
 - **Phase 2 (planned):**
   - business-hours SLA calendars (clocks run 24/7 today);
   - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
-  - problem and change management;
+  - change management;
   - attachments (S3);
   - notifications (breaches are recorded and shown, but nobody is alerted yet);
   - admin screens for users, teams and categories (managed through the API today).

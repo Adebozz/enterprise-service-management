@@ -367,6 +367,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/incidents/{id}/problem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Link an incident to the open problem behind it (requires the incident's current version) */
+        put: operations["linkIncidentToProblem"];
+        post?: never;
+        /** Remove an incident's problem link (requires the incident's current version) */
+        delete: operations["unlinkIncidentFromProblem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/problems": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Raise a problem (support staff), optionally linking the incident that prompted it */
+        post: operations["createProblem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/problems/{id}/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Record the root cause and workaround (owning team; requires current version) */
+        put: operations["updateProblemAnalysis"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/service-requests": {
         parameters: {
             query?: never;
@@ -622,7 +674,7 @@ export interface components {
              * @description Stable machine-readable code: branch on this, never on detail
              * @enum {string}
              */
-            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "PROBLEM_NOT_OPEN" | "PROBLEM_ANALYSIS_INCOMPLETE" | "PROBLEM_UPDATE_NOT_PERMITTED" | "INCIDENT_LINK_NOT_PERMITTED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
             /** @description Matches the X-Request-Id response header and server log lines */
             correlationId: string | null;
             /** @description Human-readable explanation; never contains internal details */
@@ -699,7 +751,7 @@ export interface components {
         };
         AvailableTransition: {
             label: string;
-            requirements: ("REASON" | "RESOLUTION" | "FULFILMENT_NOTES" | "ASSIGNEE")[];
+            requirements: ("REASON" | "RESOLUTION" | "FULFILMENT_NOTES" | "FIX_NOTES" | "ASSIGNEE")[];
             targetStatus: string;
         };
         CatalogueItemResponse: {
@@ -781,6 +833,20 @@ export interface components {
             /** @enum {string} */
             urgency: "LOW" | "MEDIUM" | "HIGH";
         };
+        CreateProblemRequest: {
+            /** Format: uuid */
+            categoryId: string;
+            description: string;
+            /** @enum {string} */
+            impact: "LOW" | "MEDIUM" | "HIGH";
+            /** Format: uuid */
+            incidentId?: string | null;
+            /** Format: uuid */
+            subcategoryId?: string | null;
+            title: string;
+            /** @enum {string} */
+            urgency: "LOW" | "MEDIUM" | "HIGH";
+        };
         CreateServiceRequestRequest: {
             /** Format: uuid */
             categoryId: string;
@@ -818,7 +884,7 @@ export interface components {
         };
         HistoryEntryResponse: {
             /** @enum {string} */
-            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED" | "APPROVAL_REQUESTED" | "APPROVAL_DECIDED" | "APPROVAL_WITHDRAWN";
+            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED" | "APPROVAL_REQUESTED" | "APPROVAL_DECIDED" | "APPROVAL_WITHDRAWN" | "PROBLEM_ANALYSIS_UPDATED" | "INCIDENT_PROBLEM_LINKED" | "INCIDENT_PROBLEM_UNLINKED";
             actor: components["schemas"]["NamedRef"] | null;
             /** @description Free-form JSON object */
             metadata: {
@@ -840,10 +906,32 @@ export interface components {
         };
         IncidentDetails: {
             affectedService: string | null;
+            problem: components["schemas"]["IncidentProblem"] | null;
             /** Format: int32 */
             reopenCount: number;
             resolutionCode: string | null;
             resolutionNotes: string | null;
+        };
+        IncidentProblem: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: string;
+            title: string;
+            workaround: string | null;
+        };
+        LinkProblemRequest: {
+            /** Format: uuid */
+            problemId: string;
+            /** Format: int64 */
+            version: number;
+        };
+        LinkedTicket: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: string;
+            title: string;
         };
         LoginRequest: {
             email: string;
@@ -902,6 +990,16 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
+        ProblemDetails: {
+            fixNotes: string | null;
+            incidents: components["schemas"]["LinkedTicket"][];
+            /** Format: date-time */
+            knownErrorAt: string | null;
+            /** Format: int32 */
+            reopenCount: number;
+            rootCause: string | null;
+            workaround: string | null;
+        };
         QueueSla: {
             /** Format: date-time */
             dueAt: string | null;
@@ -949,7 +1047,7 @@ export interface components {
             /** Format: int32 */
             responseMinutes: number;
             /** @enum {string} */
-            ticketType: "INCIDENT" | "SERVICE_REQUEST";
+            ticketType: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
             /** Format: int64 */
             version: number;
         };
@@ -998,7 +1096,7 @@ export interface components {
             reference: string;
             status: string;
             /** @enum {string} */
-            type: "INCIDENT" | "SERVICE_REQUEST";
+            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
         };
         TicketResponse: {
             assignedTeam: components["schemas"]["NamedRef"];
@@ -1018,6 +1116,7 @@ export interface components {
             incident: components["schemas"]["IncidentDetails"] | null;
             /** @enum {string} */
             priority: "P1" | "P2" | "P3" | "P4";
+            problem: components["schemas"]["ProblemDetails"] | null;
             reference: string;
             requester: components["schemas"]["NamedRef"];
             /** Format: date-time */
@@ -1027,7 +1126,7 @@ export interface components {
             subcategory: components["schemas"]["NamedRef"] | null;
             title: string;
             /** @enum {string} */
-            type: "INCIDENT" | "SERVICE_REQUEST";
+            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
             /** Format: date-time */
             updatedAt: string;
             /** @enum {string} */
@@ -1058,7 +1157,7 @@ export interface components {
             status: string;
             title: string;
             /** @enum {string} */
-            type: "INCIDENT" | "SERVICE_REQUEST";
+            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1099,6 +1198,12 @@ export interface components {
             name?: string;
             /** Format: int64 */
             version: number;
+        };
+        UpdateProblemAnalysisRequest: {
+            rootCause?: string | null;
+            /** Format: int64 */
+            version: number;
+            workaround?: string | null;
         };
         UpdateSlaPolicyRequest: {
             /** Format: int32 */
@@ -2149,7 +2254,7 @@ export interface operations {
     listCategories: {
         parameters: {
             query: {
-                type: "INCIDENT" | "SERVICE_REQUEST";
+                type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
             };
             header?: never;
             path?: never;
@@ -2207,6 +2312,172 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TicketCreatedResponse"];
                 };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    linkIncidentToProblem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkProblemRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    unlinkIncidentFromProblem: {
+        parameters: {
+            query: {
+                version: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    createProblem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProblemRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketCreatedResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    updateProblemAnalysis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProblemAnalysisRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Missing, invalid or expired access token */
             401: {
@@ -2392,7 +2663,7 @@ export interface operations {
         parameters: {
             query?: {
                 view?: "ALL" | "REQUESTED" | "MINE" | "TEAM" | "UNASSIGNED";
-                type?: ("INCIDENT" | "SERVICE_REQUEST")[];
+                type?: ("INCIDENT" | "SERVICE_REQUEST" | "PROBLEM")[];
                 status?: string[];
                 priority?: ("P1" | "P2" | "P3" | "P4")[];
                 teamId?: string;

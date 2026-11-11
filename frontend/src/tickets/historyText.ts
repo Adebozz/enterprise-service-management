@@ -39,6 +39,17 @@ export function describe(entry: HistoryEntry): string {
       if (oldAssignee !== newAssignee) parts.push(newAssignee ? `assigned it to ${name(newAssignee)}` : 'unassigned it')
       return parts.join(' and ') || 'updated the assignment'
     }
+    case 'PROBLEM_ANALYSIS_UPDATED': {
+      const changed = [
+        entry.newValue && 'rootCause' in entry.newValue ? 'root cause' : null,
+        entry.newValue && 'workaround' in entry.newValue ? 'workaround' : null,
+      ].filter(Boolean)
+      return `updated the ${changed.join(' and ') || 'analysis'}`
+    }
+    case 'INCIDENT_PROBLEM_LINKED':
+      return `linked it to problem ${text(entry.newValue, 'problemReference') ?? ''}`.trim()
+    case 'INCIDENT_PROBLEM_UNLINKED':
+      return `removed the link to problem ${text(entry.oldValue, 'problemReference') ?? ''}`.trim()
     case 'COMMENT_ADDED':
       return text(entry.metadata, 'visibility') === 'INTERNAL' ? 'added an internal note' : 'added a message'
     default:

@@ -104,6 +104,15 @@ public class CommentService {
     }
 
     /**
+     * Posts a staff-only note written on the system's behalf by {@code authorId} (a fixed problem
+     * telling its incidents, for example). The caller has decided it is allowed.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    void recordInternalNote(WorkItem item, UUID authorId, String body) {
+        save(item, authorId, CommentVisibility.INTERNAL, body, null, clock.instant());
+    }
+
+    /**
      * The requester answered while support was waiting for them, so the ticket goes back to work
      * (and its SLA clock resumes). Requesters never count as first responders, so the direct
      * first-response update can't be overwritten by this entity change.

@@ -41,6 +41,9 @@ public record Transition<S extends Enum<S>>(
         if (requirements.contains(Requirement.FULFILMENT_NOTES) && !input.hasNotes()) {
             throw missing("fulfilment notes");
         }
+        if (requirements.contains(Requirement.FIX_NOTES) && !input.hasNotes()) {
+            throw missing("notes describing the fix");
+        }
     }
 
     private BusinessRuleException missing(String what) {

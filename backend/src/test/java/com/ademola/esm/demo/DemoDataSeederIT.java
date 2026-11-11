@@ -73,6 +73,14 @@ class DemoDataSeederIT {
                                 + " where a.status = 'PENDING'",
                         String.class))
                 .isEqualTo("APPROVAL_PENDING");
+        // A known error with its analysis, explaining two incidents.
+        assertThat(jdbc.queryForObject(
+                        "select w.status from problems p join work_items w on w.id = p.work_item_id"
+                                + " where p.root_cause is not null and p.workaround is not null",
+                        String.class))
+                .isEqualTo("KNOWN_ERROR");
+        assertThat(jdbc.queryForObject("select count(*) from incidents where problem_id is not null", Integer.class))
+                .isEqualTo(2);
     }
 
     /** Otherwise a requester with, say, a login problem has nowhere sensible to report it. */

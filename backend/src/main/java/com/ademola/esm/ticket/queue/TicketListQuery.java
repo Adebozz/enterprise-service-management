@@ -49,7 +49,7 @@ final class TicketListQuery {
             // Paused targets and tickets without one have no deadline: NULLs sort last ascending.
             "slaDueAt", "s.due_at");
 
-    private static final Pattern REFERENCE = Pattern.compile("^(INC|REQ)-0*(\\d{1,10})$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern REFERENCE = Pattern.compile("^(INC|REQ|PRB)-0*(\\d{1,10})$", Pattern.CASE_INSENSITIVE);
 
     private static final String SELECT = """
             SELECT w.id, w.reference, w.type, w.title, w.status, w.priority,
@@ -156,9 +156,10 @@ final class TicketListQuery {
         if (!user.role().isStaff()) {
             where.add("w.requester_id = :me");
         } else if (hasTeams) {
-            where.add("(w.requester_id = :me OR w.assignee_id = :me OR w.assigned_team_id IN (:myTeams))");
+            where.add("(w.requester_id = :me OR w.assignee_id = :me OR w.assigned_team_id IN (:myTeams)"
+                    + " OR w.type = 'PROBLEM')");
         } else {
-            where.add("(w.requester_id = :me OR w.assignee_id = :me)");
+            where.add("(w.requester_id = :me OR w.assignee_id = :me OR w.type = 'PROBLEM')");
         }
     }
 

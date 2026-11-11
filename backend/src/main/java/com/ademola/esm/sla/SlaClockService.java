@@ -5,6 +5,7 @@ import com.ademola.esm.audit.AuditEntityType;
 import com.ademola.esm.audit.AuditRecord;
 import com.ademola.esm.audit.AuditService;
 import com.ademola.esm.ticket.TicketChangedEvent;
+import com.ademola.esm.ticket.WorkItemType;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +44,10 @@ class SlaClockService {
     @EventListener
     @Transactional(propagation = Propagation.MANDATORY)
     void on(TicketChangedEvent event) {
+        if (event.type() == WorkItemType.PROBLEM) {
+            // Problems have no service-level targets: they are judged by the incidents they prevent.
+            return;
+        }
         if (event.created()) {
             SlaTargets targets = policies.targetsFor(event.type(), event.priority());
             for (SlaMetric metric : SlaMetric.values()) {

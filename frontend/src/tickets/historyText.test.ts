@@ -93,4 +93,17 @@ suite('history sentences', () => {
     expect(describe(entry({ action: 'COMMENT_ADDED', metadata: { visibility: 'INTERNAL' } }))).toBe('added an internal note')
     expect(describe(entry({ action: 'COMMENT_ADDED', metadata: { visibility: 'PUBLIC' } }))).toBe('added a message')
   })
+
+  it('describes problem analysis and incident links', () => {
+    expect(describe(entry({ action: 'PROBLEM_ANALYSIS_UPDATED', newValue: { rootCause: 'Licence', workaround: 'vpn2' } }))).toBe(
+      'updated the root cause and workaround',
+    )
+    expect(describe(entry({ action: 'PROBLEM_ANALYSIS_UPDATED', newValue: { workaround: null } }))).toBe('updated the workaround')
+    expect(describe(entry({ action: 'INCIDENT_PROBLEM_LINKED', newValue: { problemReference: 'PRB-000007' } }))).toBe(
+      'linked it to problem PRB-000007',
+    )
+    expect(describe(entry({ action: 'INCIDENT_PROBLEM_UNLINKED', oldValue: { problemReference: 'PRB-000007' } }))).toBe(
+      'removed the link to problem PRB-000007',
+    )
+  })
 })

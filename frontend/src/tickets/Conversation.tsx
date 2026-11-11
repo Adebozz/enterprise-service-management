@@ -23,8 +23,19 @@ const replySchema = z.object({
 /**
  * The ticket's messages. Support staff can also write internal notes; requesters never receive them
  * (the API filters them out in SQL), so `canWriteInternal` only decides whether to offer the choice.
+ * `staffOnly` tickets (problems) have no requester to reply to, so every message is an internal note.
  */
-export function Conversation({ ticketId, closed, canWriteInternal = false }: { ticketId: string; closed: boolean; canWriteInternal?: boolean }) {
+export function Conversation({
+  ticketId,
+  closed,
+  canWriteInternal = false,
+  staffOnly = false,
+}: {
+  ticketId: string
+  closed: boolean
+  canWriteInternal?: boolean
+  staffOnly?: boolean
+}) {
   const comments = useQuery(commentsQuery(ticketId))
 
   return (
@@ -64,16 +75,16 @@ export function Conversation({ ticketId, closed, canWriteInternal = false }: { t
       {closed ? (
         <p className="text-sm text-muted-foreground">This ticket is closed, so it no longer accepts messages.</p>
       ) : (
-        <ReplyForm ticketId={ticketId} canWriteInternal={canWriteInternal} />
+        <ReplyForm ticketId={ticketId} canWriteInternal={canWriteInternal} staffOnly={staffOnly} />
       )}
     </section>
   )
 }
 
-function ReplyForm({ ticketId, canWriteInternal }: { ticketId: string; canWriteInternal: boolean }) {
+function ReplyForm({ ticketId, canWriteInternal, staffOnly }: { ticketId: string; canWriteInternal: boolean; staffOnly: boolean }) {
   const queryClient = useQueryClient()
   const [failure, setFailure] = useState<string | null>(null)
-  const [visibility, setVisibility] = useState<CommentVisibility>('PUBLIC')
+  const [visibility, setVisibility] = useState<CommentVisibility>(staffOnly ? 'INTERNAL' : 'PUBLIC')
   const { register, handleSubmit, reset, formState } = useForm<z.infer<typeof replySchema>>({
     resolver: zodResolver(replySchema),
     defaultValues: { body: '' },
@@ -113,7 +124,7 @@ function ReplyForm({ ticketId, canWriteInternal }: { ticketId: string; canWriteI
           <AlertDescription>{failure}</AlertDescription>
         </Alert>
       )}
-      {canWriteInternal && (
+      {canWriteInternal && !staffOnly && (
         <fieldset className="flex gap-4 text-sm">
           <legend className="sr-only">Who can see this message</legend>
           {(

@@ -17,6 +17,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V8__sla.sql` | `sla_policies` (seeded with default targets), `sla_clocks` + breach index (M15) |
 | `V9__service_catalogue.sql` | `catalogue_items`; foreign key and `catalogue_answers` on `service_requests` (M18) |
 | `V10__approvals.sql` | `catalogue_items.approval_required`, `approvals` + pending index (M19) |
+| `V11__problems.sql` | `problems`, `problem_ref_seq`, the `PROBLEM` type and its statuses on `work_items`, `incidents.problem_id` + partial index (M20) |
 
 ### users
 
@@ -67,16 +68,16 @@ set, overrides its parent's.
 
 ### work_items, incidents, service_requests (JPA `JOINED` inheritance)
 
-`work_items` holds every shared column: `reference` (unique, `^(INC|REQ)-[0-9]{6,}$`), `type`
+`work_items` holds every shared column: `reference` (unique, `^(INC|REQ|PRB)-[0-9]{6,}$`), `type`
 (discriminator), `title`, `description`, `status`, `impact`, `urgency`, `priority`, `category_id`,
 `subcategory_id`, `requester_id`, `assigned_team_id` (**NOT NULL**), `assignee_id`, lifecycle
-timestamps and `version`. `incidents` and `service_requests` share its primary key
+timestamps and `version`. `incidents`, `service_requests` and `problems` share its primary key
 (`work_item_id`, `ON DELETE CASCADE`) and add type-specific columns.
 
 | Guarantee | Mechanism |
 |---|---|
 | Status belongs to the type | `work_items_status_check`: `(type, status)` pairs |
-| Unique, race-free references | `incident_ref_seq` / `service_request_ref_seq` + `UNIQUE (reference)` |
+| Unique, race-free references | `incident_ref_seq` / `service_request_ref_seq` / `problem_ref_seq` + `UNIQUE (reference)` |
 | Assignee is in the assigned team **when assigned** | trigger `work_items_assignee_membership` (BEFORE INSERT/UPDATE OF assignee/team) |
 | A member can't leave a team while owning **open** tickets there | trigger `team_members_no_open_assignments` (BEFORE DELETE) |
 | Valid impact/urgency/priority | `CHECK ... IN (...)` |
@@ -152,6 +153,15 @@ approvals and rejections have a `decided_by`; a rejection has a non-blank commen
 isn't stored: it follows the request's assigned team at decision time. The partial index
 `(created_at) WHERE status = 'PENDING'` serves the inbox. `catalogue_items.approval_required`
 (default false) marks items whose requests need it.
+
+### problems (Phase 2, M20)
+
+One row per problem ticket (`work_item_id` → work_items, `ON DELETE CASCADE`): `root_cause`,
+`workaround`, `known_error_at` (first time it became a known error), `fix_notes` and
+`reopen_count`. Which fields a status needs (a known error has a root cause and workaround) is
+checked by the application, since the status lives in `work_items`. `incidents.problem_id`
+(→ problems) links an incident to the problem behind it; the partial index
+`incidents_problem_idx (problem_id) WHERE problem_id IS NOT NULL` lists a problem's incidents.
 
 ## Conventions
 

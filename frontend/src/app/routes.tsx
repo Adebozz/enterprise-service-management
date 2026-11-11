@@ -31,7 +31,11 @@ export const routes: RouteObject[] = [
           { path: 'tickets/:id', lazy: async () => ({ Component: (await import('@/tickets/TicketPage')).TicketPage }) },
           {
             element: <RequireAuth role="AGENT" />,
-            children: [{ path: 'queue', lazy: async () => ({ Component: (await import('@/queue/AgentQueuePage')).AgentQueuePage }) }],
+            children: [
+              { path: 'queue', lazy: async () => ({ Component: (await import('@/queue/AgentQueuePage')).AgentQueuePage }) },
+              { path: 'problems', lazy: async () => ({ Component: (await import('@/problems/ProblemsPage')).ProblemsPage }) },
+              { path: 'problems/new', lazy: async () => ({ Component: (await import('@/problems/NewProblemPage')).NewProblemPage }) },
+            ],
           },
           {
             element: <RequireAuth role="TEAM_LEAD" />,

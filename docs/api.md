@@ -72,6 +72,8 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `TRANSITION_NOT_PERMITTED` | 403 | Valid status change, but not for you (e.g. a requester resolving) |
 | `ASSIGNMENT_NOT_PERMITTED` | 403 | You can't make this ownership change |
 | `COMMENT_NOT_PERMITTED` | 403 | Internal notes are for support on this ticket |
+| `PROBLEM_UPDATE_NOT_PERMITTED` | 403 | Only the team working on a problem (or an admin) records its analysis |
+| `INCIDENT_LINK_NOT_PERMITTED` | 403 | Only staff handling the incident or the problem can link them |
 | `APPROVAL_NOT_PERMITTED` | 403 | Only team leads of the request's team, and admins, decide approvals; never the requester |
 | `RESOURCE_NOT_FOUND` | 404 | Doesn't exist, or you may not see it |
 | `METHOD_NOT_ALLOWED` | 405 | Wrong HTTP method for this path |
@@ -80,6 +82,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `INVALID_STATUS_TRANSITION` | 409 | Not a move in this ticket type's lifecycle |
 | `TICKET_NOT_ASSIGNABLE` | 409 | Resolved/closed tickets can't change owner |
 | `TICKET_CLOSED` | 409 | Closed tickets accept no comments |
+| `PROBLEM_NOT_OPEN` | 409 | The problem is resolved, closed or cancelled: its analysis is final and it takes no more incidents |
 | `APPROVAL_ALREADY_DECIDED` | 409 | The approval was already approved, rejected or withdrawn |
 | `EMAIL_ALREADY_EXISTS` | 409 | Another user has this email (case-insensitive) |
 | `TEAM_NAME_ALREADY_EXISTS` | 409 | Another team has this name (case-insensitive) |
@@ -96,6 +99,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `INVALID_CATALOGUE_FORM` | 422 | The item's questions don't fit together (duplicate keys, a choice with fewer than two options...); see `fieldErrors` (`fields[i].…`) |
 | `APPROVAL_REASON_REQUIRED` | 422 | Rejecting a request needs a comment saying why |
 | `CATALOGUE_ANSWERS_INVALID` | 422 | Answers don't match the item's form; see `fieldErrors` (`answers.<key>`) |
+| `PROBLEM_ANALYSIS_INCOMPLETE` | 422 | A known error needs a root cause and workaround (and keeps them); resolving needs the root cause |
 | `TRANSITION_REQUIREMENT_MISSING` | 422 | E.g. resolving without resolution code + notes |
 | `TICKET_NOT_ASSIGNED` | 422 | Work can't start before someone owns the ticket |
 | `INTERNAL_ERROR` | 500 | Unexpected; quote `correlationId` when reporting |
@@ -177,6 +181,32 @@ required), with the approval's `version`. It moves the request to `APPROVED`, wh
 start work, or to `REJECTED`, which ends it. The comment is posted to the conversation. A request
 cancelled while waiting has its approval `WITHDRAWN`. `canDecide` in the response tells the caller
 whether they may decide now.
+
+### Problems
+
+| Method | Path | operationId | Who |
+|---|---|---|---|
+| POST | `/api/problems` | `createProblem` | agents and above → 201 |
+| PUT | `/api/problems/{id}/analysis` | `updateProblemAnalysis` | the problem's team, admins → 204 |
+| PUT | `/api/incidents/{id}/problem` | `linkIncidentToProblem` | staff handling the incident or the problem → 204 |
+| DELETE | `/api/incidents/{id}/problem?version=` | `unlinkIncidentFromProblem` | as for linking → 204 |
+
+A problem is a ticket of type `PROBLEM` (`PRB-000001`): the cause behind one or more incidents.
+Support staff raise it, optionally from the incident that prompted it (`incidentId`), which is
+then linked. It uses incident categories and is routed the same way, and it has no SLA clocks.
+Every agent can see every problem, and requesters see none; only its team changes it.
+
+Lifecycle: `NEW → ASSIGNED → INVESTIGATING → KNOWN_ERROR → RESOLVED → CLOSED`, through the usual
+transition endpoint. `KNOWN_ERROR` needs the analysis's root cause and workaround saved first;
+`RESOLVED` needs the root cause and the move's `notes` (the permanent fix, requirement
+`FIX_NOTES`). `Reopen` goes back to `INVESTIGATING` and keeps the analysis. Resolving posts an
+internal note on each linked incident that is still open.
+
+The analysis is replaced whole (`rootCause`, `workaround`, both optional, plus the problem's
+`version`). Linking takes the problem's id and the *incident's* `version`; only an open problem
+takes incidents, but any incident may be linked. Neither call returns a body: reload the ticket.
+On a problem, `problem` in the ticket holds the analysis and the linked incidents; on an incident
+seen by staff, `incident.problem` names its problem with the workaround.
 
 ### Teams
 

@@ -34,7 +34,7 @@ function schemaFor(requirements: Requirement[]) {
       : optional,
     resolutionCode: needs('RESOLUTION') ? z.enum(RESOLUTION_CODES, { error: 'Choose how it was resolved' }) : optional,
     notes:
-      needs('RESOLUTION') || needs('FULFILMENT_NOTES')
+      needs('RESOLUTION') || needs('FULFILMENT_NOTES') || needs('FIX_NOTES')
         ? z.string().trim().min(1, { error: 'Describe what was done' }).max(10_000, { error: 'Keep it under 10,000 characters' })
         : optional,
   })
@@ -104,17 +104,19 @@ export function TicketActions({ ticket, transitions }: { ticket: Ticket; transit
           </Button>
         ))}
       </div>
-      {pending && <ActionDialog transition={pending} onCancel={() => setPending(null)} onConfirm={(input) => run(pending, input)} />}
+      {pending && <ActionDialog transition={pending} forProblem={ticket.type === 'PROBLEM'} onCancel={() => setPending(null)} onConfirm={(input) => run(pending, input)} />}
     </div>
   )
 }
 
 function ActionDialog({
   transition,
+  forProblem,
   onCancel,
   onConfirm,
 }: {
   transition: AvailableTransition
+  forProblem: boolean
   onCancel: () => void
   onConfirm: (input: ActionForm) => Promise<void>
 }) {
@@ -134,7 +136,9 @@ function ActionDialog({
             <DialogDescription>
               {needs('REASON')
                 ? 'Your reason is added to the conversation, so everyone involved sees it.'
-                : 'This is shown to the requester on the ticket.'}
+                : forProblem
+                  ? 'Recorded on the problem, and sent as a note to the open incidents it explains.'
+                  : 'This is shown to the requester on the ticket.'}
             </DialogDescription>
           </DialogHeader>
           {needs('REASON') && (
@@ -163,9 +167,11 @@ function ActionDialog({
               <FieldError id="resolutionCode-error" message={errors.resolutionCode?.message} />
             </div>
           )}
-          {(needs('RESOLUTION') || needs('FULFILMENT_NOTES')) && (
+          {(needs('RESOLUTION') || needs('FULFILMENT_NOTES') || needs('FIX_NOTES')) && (
             <div className="grid gap-2">
-              <Label htmlFor="notes">{needs('RESOLUTION') ? 'Resolution notes' : 'What was delivered?'}</Label>
+              <Label htmlFor="notes">
+                {needs('RESOLUTION') ? 'Resolution notes' : needs('FIX_NOTES') ? 'What permanently fixed it?' : 'What was delivered?'}
+              </Label>
               <Textarea id="notes" rows={4} aria-invalid={errors.notes ? true : undefined} aria-describedby={errors.notes ? 'notes-error' : undefined} {...register('notes')} />
               <FieldError id="notes-error" message={errors.notes?.message} />
             </div>

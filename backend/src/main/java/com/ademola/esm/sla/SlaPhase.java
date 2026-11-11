@@ -34,6 +34,7 @@ enum SlaPhase {
                     case FULFILLED, CLOSED -> DONE;
                     case CANCELLED, REJECTED -> CANCELLED;
                 };
+            case PROBLEM -> throw new IllegalArgumentException("Problems have no SLA clocks");
         };
     }
 }

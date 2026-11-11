@@ -6,4 +6,6 @@ public record IncidentDetails(
         @Nullable String affectedService,
         @Nullable String resolutionCode,
         @Nullable String resolutionNotes,
-        int reopenCount) {}
+        int reopenCount,
+        // Staff only: requesters see their incident, not the investigation behind it.
+        @Nullable IncidentProblem problem) {}

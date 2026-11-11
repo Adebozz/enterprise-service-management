@@ -64,8 +64,9 @@ export function aTicket(overrides: Partial<Ticket> = {}): Ticket {
     resolvedAt: null,
     closedAt: null,
     version: 0,
-    incident: { affectedService: 'Office Wi-Fi', resolutionCode: null, resolutionNotes: null, reopenCount: 0 },
+    incident: { affectedService: 'Office Wi-Fi', resolutionCode: null, resolutionNotes: null, reopenCount: 0, problem: null },
     serviceRequest: null,
+    problem: null,
     ...overrides,
   }
 }

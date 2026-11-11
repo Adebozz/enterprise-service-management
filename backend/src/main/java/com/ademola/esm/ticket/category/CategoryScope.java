@@ -8,8 +8,13 @@ public enum CategoryScope {
     SERVICE_REQUEST,
     ANY;
 
+    /**
+     * Problems are filed under incident categories: a problem explains incidents, so it belongs where
+     * they do, and is routed to the team that handles them.
+     */
     public boolean includes(WorkItemType type) {
-        return this == ANY || name().equals(type.name());
+        WorkItemType filedAs = type == WorkItemType.PROBLEM ? WorkItemType.INCIDENT : type;
+        return this == ANY || name().equals(filedAs.name());
     }
 
     /** A subcategory may not be broader than its parent. */

@@ -8,6 +8,8 @@ public enum Requirement {
     RESOLUTION,
     /** Notes describing what was delivered (fulfilling a request). */
     FULFILMENT_NOTES,
+    /** Notes describing the permanent fix (resolving a problem). */
+    FIX_NOTES,
     /** Someone must own the ticket before work can start. */
     ASSIGNEE
 }

@@ -10,6 +10,8 @@ import type { Ticket } from '@/api/types'
 import { QueryError } from '@/components/QueryError'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { IncidentProblemPanel } from '@/problems/IncidentProblemPanel'
+import { LinkedIncidents, ProblemAnalysis } from '@/problems/ProblemAnalysis'
 import { PriorityBadge, StatusBadge } from './badges'
 import { AssignmentPanel } from './AssignmentPanel'
 import { Conversation } from './Conversation'
@@ -51,11 +53,12 @@ export function TicketPage() {
 
   const t = ticket.data
   const fromCatalogue = Boolean(t.serviceRequest?.catalogueItemId)
+  const back = t.problem ? { to: '/problems', label: 'Problems' } : isStaff ? { to: '/queue', label: 'Queue' } : { to: '/tickets', label: 'My tickets' }
   return (
     <article className="grid gap-8">
       <header className="grid gap-3">
-        <Link to={isStaff ? '/queue' : '/tickets'} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-          {isStaff ? '← Queue' : '← My tickets'}
+        <Link to={back.to} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+          ← {back.label}
         </Link>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-mono text-muted-foreground">{t.reference}</span>
@@ -74,12 +77,16 @@ export function TicketPage() {
             </h2>
             <p className="mt-2 whitespace-pre-wrap">{t.description}</p>
           </section>
-          <Conversation ticketId={t.id} closed={isClosed(t.status)} canWriteInternal={isStaff} />
+          {t.problem && <ProblemAnalysis ticket={t} problem={t.problem} />}
+          {t.problem && <LinkedIncidents problem={t.problem} />}
+          <Conversation ticketId={t.id} closed={isClosed(t.status)} canWriteInternal={isStaff} staffOnly={t.type === 'PROBLEM'} />
           {isStaff && <History ticketId={t.id} />}
         </div>
         <div className="grid content-start gap-4">
           {fromCatalogue && <ApprovalPanel ticketId={t.id} />}
-          {isStaff && <SlaPanel ticketId={t.id} />}
+          {isStaff && t.incident && <IncidentProblemPanel ticket={t} />}
+          {/* Problems have no service levels: they are judged by the incidents they prevent. */}
+          {isStaff && !t.problem && <SlaPanel ticketId={t.id} />}
           {isStaff && <AssignmentPanel ticket={t} />}
           <TicketFacts ticket={t} />
         </div>
@@ -99,7 +106,7 @@ function TicketFacts({ ticket: t }: { ticket: Ticket }) {
     ['Created', formatDateTime(t.createdAt)],
     ['Last updated', formatDateTime(t.updatedAt)],
   ]
-  if (t.resolvedAt) facts.push([t.type === 'INCIDENT' ? 'Resolved' : 'Fulfilled', formatDateTime(t.resolvedAt)])
+  if (t.resolvedAt) facts.push([t.type === 'SERVICE_REQUEST' ? 'Fulfilled' : 'Resolved', formatDateTime(t.resolvedAt)])
   if (t.closedAt) facts.push(['Closed', formatDateTime(t.closedAt)])
   if (t.incident?.affectedService) facts.push(['Affected service', t.incident.affectedService])
   if (t.incident?.resolutionNotes) facts.push(['Resolution', t.incident.resolutionNotes])

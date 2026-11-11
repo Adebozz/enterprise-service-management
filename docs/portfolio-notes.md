@@ -829,3 +829,52 @@ lost to someone else, navigation by role, the ticket panel for requester and tea
 when none is needed, history text). Total: 338 unit + 241 integration backend tests, 75 frontend
 tests. The `approval` package is at 100% line and branch coverage; the backend overall at 95.9% and
 87.3%.
+
+---
+
+## M20: Problem management (2026-11-11)
+
+**What was built**
+- Problems as a third ticket type (`PRB-000001`) with their own lifecycle: new, assigned,
+  investigating, known error, resolved, closed, and reopen and cancel. Support raises them,
+  optionally from the incident that prompted it. They use incident categories, so they reach the
+  team that handles those incidents, and they have no SLA clocks.
+- Root cause and workaround, edited by the owning team during the investigation. A problem can only
+  become a known error with both, and only be resolved with the root cause and a description of the
+  permanent fix.
+- Incidents link to the problem behind them (audited, only to open problems). Staff on a linked
+  incident see the problem's status and workaround there. Resolving the problem posts an internal
+  note on each linked incident still open.
+- Every agent can read every problem, so a known error helps whoever meets the same incident.
+  Requesters see neither problems nor the link on their own incident.
+- Web app: a *Problems* page, a form to raise a problem (from scratch or from an incident), an
+  analysis section and linked incidents on the problem, a problem panel on incidents (link,
+  workaround, remove link, raise a new problem), and a fix prompt when resolving.
+- Demo: Nina's "VPN refuses connections at busy times" is a known error explaining two incidents.
+
+**What I learned (good interview material)**
+- **Reuse through the shared model.** Making a problem a `WorkItem` subtype meant queues,
+  assignment, comments, history, search and the transition API needed no changes. The exhaustive
+  `switch` statements over ticket types (SLA phases, UI labels typed as `Record<TicketType, …>`)
+  failed to compile until each one decided what a problem means.
+- **Validate before mutating.** The first version checked the analysis inside the transition's side
+  effects, after the status had already changed. Inside a transaction a rollback hid that, but a
+  unit test caught the entity left half-changed. A `checkCanEnter` hook now runs before anything
+  changes.
+- **Architecture tests catch real cycles.** `problem` posting comments, `comment` using a type from
+  `query`, and `query` reading problems made a cycle that ArchUnit rejected. Moving the "problem
+  fixed" notes into `comment`, the package that owns the conversation, removed it.
+- **A deliberate exception to visibility.** Team scoping is the rule everywhere else; problems are
+  readable by all staff on purpose, and the same exception is expressed once in the access policy
+  and once in the queue's SQL, each with its own test.
+
+**Tests:** 14 new unit tests (`ProblemLifecycleTest`: what each step needs, reopening, known-error
+dates, closed problems; problems have no SLA phase; the queue SQL shows problems to staff and never
+to requesters). 9 new integration tests (`ProblemApiIT`: routing and no clocks, visibility per role
+and search by reference, raising from an incident, who records the analysis, known errors showing
+their workaround on incidents, the fix note on open incidents only, unlinking and auditing, who may
+link, and raising an incident versus handling it), plus demo seeder checks. 7 new frontend tests
+(problems list, analysis editing, no editing for another team, the fix prompt, linking and
+unlinking from an incident, raising from an incident, history text). Total: 352 unit + 250
+integration backend tests, 82 frontend tests. The `problem` package is at 100% line and 89.5%
+branch coverage; the backend overall at 96.3% and 88.0%.

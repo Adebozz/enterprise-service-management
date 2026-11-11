@@ -26,6 +26,10 @@ import com.ademola.esm.ticket.incident.IncidentService;
 import com.ademola.esm.ticket.incident.ResolutionCode;
 import com.ademola.esm.ticket.priority.Impact;
 import com.ademola.esm.ticket.priority.Urgency;
+import com.ademola.esm.ticket.problem.CreateProblemRequest;
+import com.ademola.esm.ticket.problem.LinkProblemRequest;
+import com.ademola.esm.ticket.problem.ProblemService;
+import com.ademola.esm.ticket.problem.UpdateProblemAnalysisRequest;
 import com.ademola.esm.ticket.request.CreateServiceRequestRequest;
 import com.ademola.esm.ticket.request.ServiceRequestService;
 import com.ademola.esm.ticket.transition.TicketTransitionService;
@@ -86,6 +90,7 @@ class DemoDataSeeder implements ApplicationRunner {
     private final CommentService comments;
     private final CatalogueService catalogue;
     private final CatalogueRequestService catalogueRequests;
+    private final ProblemService problems;
 
     DemoDataSeeder(
             DemoProperties properties,
@@ -102,7 +107,8 @@ class DemoDataSeeder implements ApplicationRunner {
             TicketTransitionService transitions,
             CommentService comments,
             CatalogueService catalogue,
-            CatalogueRequestService catalogueRequests) {
+            CatalogueRequestService catalogueRequests,
+            ProblemService problems) {
         this.properties = properties;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -118,6 +124,7 @@ class DemoDataSeeder implements ApplicationRunner {
         this.comments = comments;
         this.catalogue = catalogue;
         this.catalogueRequests = catalogueRequests;
+        this.problems = problems;
     }
 
     @Override
@@ -214,8 +221,8 @@ class DemoDataSeeder implements ApplicationRunner {
                 null);
         // No reply from Rita yet: her answer would resume the ticket (and its SLA clock) automatically.
 
-        // 2. P1 incident waiting in the unassigned queue.
-        incident(
+        // 2. P1 incident waiting in the unassigned queue (and linked to problem 11 below).
+        UUID vpnTicket = incident(
                 sam,
                 "VPN won't connect from home",
                 "Error 809 since this morning; the whole sales team is affected.",
@@ -303,7 +310,7 @@ class DemoDataSeeder implements ApplicationRunner {
                 null,
                 Impact.MEDIUM,
                 Urgency.MEDIUM);
-        assign(lead, teamsCalls, network, nina.id(), 0);
+        long teamsCallsVersion = assign(lead, teamsCalls, network, nina.id(), 0);
 
         // 8. Cancelled by the requester.
         UUID signature = incident(
@@ -413,6 +420,38 @@ class DemoDataSeeder implements ApplicationRunner {
                                         "reason", "I'm taking over the quarterly forecast from Priya."),
                                 null,
                                 Urgency.MEDIUM)));
+
+        // 11. A known error: Nina raised a problem from the VPN incident, found the cause, recorded a
+        // workaround, and linked the choppy Teams calls to it too. The permanent fix is still to come.
+        UUID vpnProblem = as(
+                nina,
+                () -> problems.create(
+                                nina,
+                                new CreateProblemRequest(
+                                        "VPN refuses connections at busy times",
+                                        "Several reports of error 809 and poor calls when most people are working from home.",
+                                        netCat,
+                                        vpn,
+                                        Impact.HIGH,
+                                        Urgency.MEDIUM,
+                                        vpnTicket))
+                        .id());
+        v = assign(nina, vpnProblem, network, nina.id(), 0);
+        long investigating = move(nina, vpnProblem, v, "INVESTIGATING", null, null, null);
+        as(nina, () -> {
+            problems.updateAnalysis(
+                    nina,
+                    vpnProblem,
+                    new UpdateProblemAnalysisRequest(
+                            "The VPN gateway's licence allows 250 sessions. On busy days it is full by mid-morning,"
+                                    + " so new connections are refused and calls through it are starved of bandwidth.",
+                            "Connect to the backup gateway (vpn2) from the VPN client's server list. It has spare"
+                                    + " sessions; sign in exactly as usual.",
+                            investigating));
+            problems.linkIncident(nina, teamsCalls, new LinkProblemRequest(vpnProblem, teamsCallsVersion));
+            return null;
+        });
+        move(nina, vpnProblem, investigating + 1, "KNOWN_ERROR", null, null, null);
     }
 
     // ----- helpers ------------------------------------------------------------------------------

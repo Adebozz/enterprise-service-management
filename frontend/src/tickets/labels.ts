@@ -13,7 +13,7 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
   P4: 'P4 · Low',
 }
 
-export const TYPE_LABEL: Record<TicketType, string> = { INCIDENT: 'Incident', SERVICE_REQUEST: 'Service request' }
+export const TYPE_LABEL: Record<TicketType, string> = { INCIDENT: 'Incident', SERVICE_REQUEST: 'Service request', PROBLEM: 'Problem' }
 
 export const LEVEL_LABEL: Record<Impact & Urgency, string> = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' }
 

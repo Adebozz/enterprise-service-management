@@ -1,6 +1,7 @@
 package com.ademola.esm.sla;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ademola.esm.ticket.WorkItemType;
 import com.ademola.esm.ticket.incident.IncidentStatus;
@@ -137,6 +138,11 @@ class SlaReconcileTest {
                         "FULFILLED", SlaPhase.DONE,
                         "CLOSED", SlaPhase.DONE,
                         "CANCELLED", SlaPhase.CANCELLED));
+    }
+
+    @Test
+    void problemsHaveNoPhase() {
+        assertThatThrownBy(() -> SlaPhase.of(WorkItemType.PROBLEM, "NEW")).isInstanceOf(IllegalArgumentException.class);
     }
 
     private static <S> Map<String, SlaPhase> phasesOf(WorkItemType type, S[] statuses, Function<S, String> name) {

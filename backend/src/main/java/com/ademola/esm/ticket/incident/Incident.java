@@ -14,6 +14,7 @@ import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 /** An unplanned interruption or degradation of a service ("payroll is down"). */
 @Entity
@@ -33,6 +34,10 @@ public class Incident extends WorkItem {
 
     @Column(name = "reopen_count", nullable = false)
     private int reopenCount;
+
+    /** The problem that explains this incident (M20), by id like every other cross-aggregate link. */
+    @Column(name = "problem_id")
+    private UUID problemId;
 
     protected Incident() {}
 
@@ -116,6 +121,19 @@ public class Incident extends WorkItem {
                     "Unknown resolution code '%s'. Allowed: %s"
                             .formatted(code, java.util.Arrays.toString(ResolutionCode.values())));
         }
+    }
+
+    /**
+     * Links or unlinks the problem behind this incident. Whether the problem can take incidents is
+     * the problem's rule, checked by the caller; any incident may be linked, even a closed one, so
+     * past incidents can be counted against the problem that caused them.
+     */
+    public void linkProblem(UUID newProblemId) {
+        this.problemId = newProblemId;
+    }
+
+    public UUID getProblemId() {
+        return problemId;
     }
 
     public IncidentStatus getStatus() {

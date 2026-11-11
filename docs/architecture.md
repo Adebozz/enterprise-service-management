@@ -36,7 +36,7 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `problem` (M20), `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7, M20) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check; ticket SLA and admin target APIs. Depends on `ticket`, never the reverse | Implemented (M15–M17) |
 | `catalogue` | Service catalogue: items with their own short forms, admin maintenance, ordering. Validates answers, then raises an ordinary service request through `ServiceRequestService`. Depends on `ticket`, never the reverse | Implemented (M18) |
@@ -511,6 +511,43 @@ stateDiagram-v2
   leaves every inbox.
 - **The inbox** (`GET /api/approvals`) loads pending approvals and keeps those the caller may
   decide. Fine at today's volumes; a large organisation would filter by team in SQL instead.
+
+## Problem management (M20)
+
+A problem is the cause behind one or more incidents. It is a third ticket type, so it is queued,
+assigned, discussed and audited exactly like the others ([ADR-012](adr/012-problems-as-a-ticket-type.md)).
+
+```mermaid
+stateDiagram-v2
+    [*] --> NEW: raised by support
+    NEW --> ASSIGNED: someone takes it (system)
+    ASSIGNED --> INVESTIGATING: start investigation
+    INVESTIGATING --> KNOWN_ERROR: root cause and workaround recorded
+    INVESTIGATING --> RESOLVED: permanent fix (root cause recorded)
+    KNOWN_ERROR --> RESOLVED: permanent fix
+    RESOLVED --> INVESTIGATING: reopen (reason)
+    RESOLVED --> CLOSED: close
+```
+
+- **Raised by staff only,** optionally from the incident that prompted it, which is linked in the
+  same transaction. Problems use incident categories, so they reach the team that handles those
+  incidents.
+- **Seen by every agent, changed by its team.** A known error helps whoever meets the same incident
+  next, so `TicketAccessPolicy` and the queue's `WHERE` clause let all staff read problems
+  (including their internal notes). Requesters never see them, nor the link on their incident.
+- **Analysis gates the lifecycle.** Root cause and workaround are saved through their own endpoint
+  and can be edited throughout the investigation. `Problem.checkCanEnter` refuses `KNOWN_ERROR`
+  without both and `RESOLVED` without the root cause, *before* anything changes; a known error must
+  keep both.
+- **Incidents link to one problem** (`incidents.problem_id`). Linking needs someone handling the
+  incident or the problem, is audited on the incident (`INCIDENT_PROBLEM_LINKED`/`_UNLINKED`, with
+  the problem's reference), and only an open problem takes incidents. An incident's page shows its
+  problem's workaround to staff.
+- **Fixing tells the incidents.** `ProblemFixedNotes` listens to `TicketChangedEvent` and, when a
+  problem is resolved, posts an internal note on each linked incident still open, in the same
+  transaction. Resolving the incident stays a decision for whoever handles it.
+- **No SLA clocks.** Problems are measured by the incidents they prevent; `SlaClockService` ignores
+  them.
 
 ## Audit trail (M3)
 

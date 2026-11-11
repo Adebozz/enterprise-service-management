@@ -123,6 +123,7 @@ public abstract class WorkItem extends BaseEntity {
     public final Transition<?> transition(String targetStatus, TransitionInput input, Instant now) {
         Transition<?> transition = workflow().require(status, targetStatus);
         transition.checkRequirements(input, assigneeId != null);
+        checkCanEnter(transition.to().name());
         String previous = status;
         this.status = transition.to().name();
         onTransition(previous, this.status, input, now);
@@ -164,6 +165,13 @@ public abstract class WorkItem extends BaseEntity {
 
     /** Status consequences of gaining or losing an owner. */
     protected abstract void onAssignmentChanged(boolean hadAssignee, boolean hasAssignee, Instant now);
+
+    /**
+     * Type-specific preconditions that depend on the ticket's own data rather than on the request
+     * (a problem's analysis, say). Runs before anything changes, so a refused move leaves the ticket
+     * exactly as it was.
+     */
+    protected void checkCanEnter(String targetStatus) {}
 
     /** Type-specific side effects of a status change (timestamps, resolution data...). */
     protected abstract void onTransition(String from, String to, TransitionInput input, Instant now);

@@ -8,6 +8,9 @@ import com.ademola.esm.ticket.WorkItemRepository;
 import com.ademola.esm.ticket.access.TicketAccessPolicy;
 import com.ademola.esm.ticket.category.CategoryService;
 import com.ademola.esm.ticket.incident.Incident;
+import com.ademola.esm.ticket.incident.IncidentRepository;
+import com.ademola.esm.ticket.problem.Problem;
+import com.ademola.esm.ticket.problem.ProblemRepository;
 import com.ademola.esm.ticket.request.ServiceRequest;
 import com.ademola.esm.user.User;
 import com.ademola.esm.user.UserService;
@@ -25,14 +28,20 @@ public class TicketQueryService {
     private final CategoryService categories;
     private final UserService users;
     private final TeamService teams;
+    private final IncidentRepository incidents;
+    private final ProblemRepository problems;
 
     public TicketQueryService(
             WorkItemRepository workItems,
             TicketAccessPolicy accessPolicy,
             CategoryService categories,
             UserService users,
-            TeamService teams) {
+            TeamService teams,
+            IncidentRepository incidents,
+            ProblemRepository problems) {
         this.workItems = workItems;
+        this.incidents = incidents;
+        this.problems = problems;
         this.accessPolicy = accessPolicy;
         this.categories = categories;
         this.users = users;
@@ -49,13 +58,32 @@ public class TicketQueryService {
                 .findById(id)
                 .filter(found -> accessPolicy.canView(user, found))
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", id));
-        return toResponse(item);
+        return toResponse(item, user.role().isStaff());
     }
 
-    private TicketResponse toResponse(WorkItem item) {
+    private TicketResponse toResponse(WorkItem item, boolean staff) {
         IncidentDetails incident = item instanceof Incident i
                 ? new IncidentDetails(
-                        i.getAffectedService(), i.getResolutionCode(), i.getResolutionNotes(), i.getReopenCount())
+                        i.getAffectedService(),
+                        i.getResolutionCode(),
+                        i.getResolutionNotes(),
+                        i.getReopenCount(),
+                        staff && i.getProblemId() != null ? problemOf(i.getProblemId()) : null)
+                : null;
+        ProblemDetails problem = item instanceof Problem p
+                ? new ProblemDetails(
+                        p.getRootCause(),
+                        p.getWorkaround(),
+                        p.getKnownErrorAt(),
+                        p.getFixNotes(),
+                        p.getReopenCount(),
+                        incidents.findByProblemIdOrderByCreatedAtAsc(p.getId()).stream()
+                                .map(linked -> new LinkedTicket(
+                                        linked.getId(),
+                                        linked.getReference(),
+                                        linked.getTitle(),
+                                        linked.getStatusName()))
+                                .toList())
                 : null;
         ServiceRequestDetails serviceRequest = item instanceof ServiceRequest r
                 ? new ServiceRequestDetails(r.getCatalogueItemId(), r.getCatalogueAnswers(), r.getFulfilmentNotes())
@@ -86,7 +114,13 @@ public class TicketQueryService {
                 item.getClosedAt(),
                 item.getVersion(),
                 incident,
-                serviceRequest);
+                serviceRequest,
+                problem);
+    }
+
+    private IncidentProblem problemOf(UUID problemId) {
+        Problem p = problems.getReferenceById(problemId);
+        return new IncidentProblem(p.getId(), p.getReference(), p.getTitle(), p.getStatusName(), p.getWorkaround());
     }
 
     private NamedRef person(UUID userId) {
