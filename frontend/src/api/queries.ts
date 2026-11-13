@@ -18,6 +18,8 @@ export const queryKeys = {
   approval: (id: string) => ['tickets', 'detail', id, 'approval'] as const,
   /** Under ['tickets'], so any ticket change also refreshes the inbox. */
   approvals: ['tickets', 'approvals'] as const,
+  /** Under ['tickets'] too: planning, approving or cancelling a change moves it on the schedule. */
+  changeSchedule: ['tickets', 'change-schedule'] as const,
   slaPolicies: ['sla-policies'] as const,
   catalogue: ['catalogue'] as const,
   catalogueItem: (id: string) => ['catalogue', 'item', id] as const,
@@ -117,4 +119,9 @@ export const ticketApprovalQuery = (id: string) => ({
 export const pendingApprovalsQuery = {
   queryKey: queryKeys.approvals,
   queryFn: async () => unwrap(await api.GET('/api/approvals')),
+}
+
+export const changeScheduleQuery = {
+  queryKey: queryKeys.changeSchedule,
+  queryFn: async () => unwrap(await api.GET('/api/changes/schedule')),
 }

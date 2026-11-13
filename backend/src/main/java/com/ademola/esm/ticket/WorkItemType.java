@@ -4,7 +4,8 @@ package com.ademola.esm.ticket;
 public enum WorkItemType {
     INCIDENT("INC", "incident_ref_seq"),
     SERVICE_REQUEST("REQ", "service_request_ref_seq"),
-    PROBLEM("PRB", "problem_ref_seq");
+    PROBLEM("PRB", "problem_ref_seq"),
+    CHANGE("CHG", "change_ref_seq");
 
     private final String referencePrefix;
     private final String sequenceName;

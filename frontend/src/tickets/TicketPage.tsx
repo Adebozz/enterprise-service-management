@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApprovalPanel } from '@/approvals/ApprovalPanel'
+import { ChangePlan, ChangeReview, ProblemChanges } from '@/changes/ChangePanels'
 import { useCurrentUser } from '@/auth/AuthContext'
 import { hasRole } from '@/auth/roles'
 import { isApiError } from '@/api/errors'
@@ -53,7 +54,15 @@ export function TicketPage() {
 
   const t = ticket.data
   const fromCatalogue = Boolean(t.serviceRequest?.catalogueItemId)
-  const back = t.problem ? { to: '/problems', label: 'Problems' } : isStaff ? { to: '/queue', label: 'Queue' } : { to: '/tickets', label: 'My tickets' }
+  // Problems and changes are staff work with no requester side: no SLA, no replies to a requester.
+  const staffWork = t.type === 'PROBLEM' || t.type === 'CHANGE'
+  const back = t.problem
+    ? { to: '/problems', label: 'Problems' }
+    : t.change
+      ? { to: '/changes', label: 'Changes' }
+      : isStaff
+        ? { to: '/queue', label: 'Queue' }
+        : { to: '/tickets', label: 'My tickets' }
   return (
     <article className="grid gap-8">
       <header className="grid gap-3">
@@ -79,14 +88,16 @@ export function TicketPage() {
           </section>
           {t.problem && <ProblemAnalysis ticket={t} problem={t.problem} />}
           {t.problem && <LinkedIncidents problem={t.problem} />}
-          <Conversation ticketId={t.id} closed={isClosed(t.status)} canWriteInternal={isStaff} staffOnly={t.type === 'PROBLEM'} />
+          {t.problem && <ProblemChanges ticket={t} />}
+          {t.change && <ChangePlan ticket={t} change={t.change} />}
+          {t.change && <ChangeReview ticket={t} change={t.change} />}
+          <Conversation ticketId={t.id} closed={isClosed(t.status)} canWriteInternal={isStaff} staffOnly={staffWork} />
           {isStaff && <History ticketId={t.id} />}
         </div>
         <div className="grid content-start gap-4">
-          {fromCatalogue && <ApprovalPanel ticketId={t.id} />}
+          {(fromCatalogue || t.change) && <ApprovalPanel ticketId={t.id} subject={t.change ? 'change' : 'request'} />}
           {isStaff && t.incident && <IncidentProblemPanel ticket={t} />}
-          {/* Problems have no service levels: they are judged by the incidents they prevent. */}
-          {isStaff && !t.problem && <SlaPanel ticketId={t.id} />}
+          {isStaff && !staffWork && <SlaPanel ticketId={t.id} />}
           {isStaff && <AssignmentPanel ticket={t} />}
           <TicketFacts ticket={t} />
         </div>

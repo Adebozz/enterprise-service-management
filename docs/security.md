@@ -85,11 +85,14 @@ Verified by `AuthApiIT`, `JwtSecurityIT` (expired, tampered, wrong key, `alg: no
 |---|---|
 | ADMIN | every ticket |
 | anyone | tickets they raised |
-| AGENT / TEAM_LEAD | tickets assigned to them or to any of their teams, and every problem (M20) |
+| AGENT / TEAM_LEAD | tickets assigned to them or to any of their teams, and every problem (M20) and change (M21) |
 
-Problems are the one exception to team scoping: a known error and its workaround help any agent,
-so all staff can read them (internal notes included). Only the owning team or an admin changes
-one, and requesters never see problems or which problem their incident is linked to.
+Problems and changes are the exceptions to team scoping: a known error and its workaround help any
+agent, and the change schedule is how teams avoid working on the same thing at once, so all staff
+can read them (internal notes included). Only the owning team or an admin changes one, and
+requesters never see problems, changes, or which problem their incident is linked to. A change's
+approval follows the same rules as a request's: team leads of its team or admins, never whoever
+raised it, and never through the ordinary transitions endpoint.
 
 Tickets outside the caller's scope return **404 `RESOURCE_NOT_FOUND`**, identical to a
 non-existent id, so outsiders can't enumerate ids. Team membership counts only for staff roles.

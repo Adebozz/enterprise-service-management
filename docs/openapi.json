@@ -1242,7 +1242,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM" ]
+            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM", "CHANGE" ]
           }
         } ],
         "responses" : {
@@ -1282,6 +1282,199 @@
         },
         "summary" : "Active categories (with subcategories) usable for a ticket type",
         "tags" : [ "Categories" ]
+      }
+    },
+    "/api/changes" : {
+      "post" : {
+        "operationId" : "createChange",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateChangeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TicketCreatedResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Raise a change (support staff), optionally naming the problem it fixes",
+        "tags" : [ "Changes" ]
+      }
+    },
+    "/api/changes/schedule" : {
+      "get" : {
+        "operationId" : "getChangeSchedule",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ScheduledChange"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Changes awaiting approval, approved or under way whose window hasn't ended, soonest first (support staff)",
+        "tags" : [ "Changes" ]
+      }
+    },
+    "/api/changes/{id}/outcome" : {
+      "put" : {
+        "operationId" : "recordChangeOutcome",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RecordChangeOutcomeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Record how the change went (owning team, once implementation has started)",
+        "tags" : [ "Changes" ]
+      }
+    },
+    "/api/changes/{id}/plan" : {
+      "put" : {
+        "operationId" : "updateChangePlan",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateChangePlanRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Write the plan, until the change is submitted (owning team; requires current version)",
+        "tags" : [ "Changes" ]
       }
     },
     "/api/incidents" : {
@@ -1740,7 +1933,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM" ]
+              "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM", "CHANGE" ]
             }
           }
         }, {
@@ -2461,7 +2654,7 @@
           "code" : {
             "type" : "string",
             "description" : "Stable machine-readable code: branch on this, never on detail",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "APPROVAL_NOT_PERMITTED", "APPROVAL_ALREADY_DECIDED", "APPROVAL_REASON_REQUIRED", "PROBLEM_NOT_OPEN", "PROBLEM_ANALYSIS_INCOMPLETE", "PROBLEM_UPDATE_NOT_PERMITTED", "INCIDENT_LINK_NOT_PERMITTED", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "APPROVAL_NOT_PERMITTED", "APPROVAL_ALREADY_DECIDED", "APPROVAL_REASON_REQUIRED", "PROBLEM_NOT_OPEN", "PROBLEM_ANALYSIS_INCOMPLETE", "PROBLEM_UPDATE_NOT_PERMITTED", "INCIDENT_LINK_NOT_PERMITTED", "CHANGE_NOT_EDITABLE", "CHANGE_PLAN_INCOMPLETE", "CHANGE_PLAN_INVALID", "CHANGE_REVIEW_INCOMPLETE", "CHANGE_UPDATE_NOT_PERMITTED", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
           },
           "correlationId" : {
             "type" : [ "string", "null" ],
@@ -2736,6 +2929,58 @@
         },
         "required" : [ "active", "appliesTo", "code", "defaultTeamId", "id", "name", "parentId", "subcategories", "version" ]
       },
+      "ChangeDetails" : {
+        "type" : "object",
+        "properties" : {
+          "backoutPlan" : {
+            "type" : [ "string", "null" ]
+          },
+          "changeType" : {
+            "type" : "string",
+            "enum" : [ "STANDARD", "NORMAL", "EMERGENCY" ]
+          },
+          "clashes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LinkedTicket"
+            }
+          },
+          "implementationPlan" : {
+            "type" : [ "string", "null" ]
+          },
+          "implementedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "outcome" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "SUCCESSFUL", "SUCCESSFUL_WITH_ISSUES", "FAILED", "BACKED_OUT" ]
+          },
+          "plannedEnd" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "plannedStart" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "problem" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/LinkedTicket"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "reviewNotes" : {
+            "type" : [ "string", "null" ]
+          },
+          "risk" : {
+            "type" : "string",
+            "enum" : [ "LOW", "MEDIUM", "HIGH" ]
+          }
+        },
+        "required" : [ "backoutPlan", "changeType", "clashes", "implementationPlan", "implementedAt", "outcome", "plannedEnd", "plannedStart", "problem", "reviewNotes", "risk" ]
+      },
       "ChangePasswordRequest" : {
         "type" : "object",
         "properties" : {
@@ -2846,6 +3091,68 @@
           }
         },
         "required" : [ "appliesTo", "code", "name" ]
+      },
+      "CreateChangeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "backoutPlan" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 10000,
+            "minLength" : 0
+          },
+          "categoryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "changeType" : {
+            "type" : "string",
+            "enum" : [ "STANDARD", "NORMAL", "EMERGENCY" ]
+          },
+          "description" : {
+            "type" : "string",
+            "maxLength" : 10000,
+            "minLength" : 0
+          },
+          "impact" : {
+            "type" : "string",
+            "enum" : [ "LOW", "MEDIUM", "HIGH" ]
+          },
+          "implementationPlan" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 10000,
+            "minLength" : 0
+          },
+          "plannedEnd" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "plannedStart" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "problemId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "risk" : {
+            "type" : "string",
+            "enum" : [ "LOW", "MEDIUM", "HIGH" ]
+          },
+          "subcategoryId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "urgency" : {
+            "type" : "string",
+            "enum" : [ "LOW", "MEDIUM", "HIGH" ]
+          }
+        },
+        "required" : [ "categoryId", "changeType", "description", "impact", "risk", "title", "urgency" ]
       },
       "CreateIncidentRequest" : {
         "type" : "object",
@@ -3045,7 +3352,7 @@
         "properties" : {
           "action" : {
             "type" : "string",
-            "enum" : [ "USER_CREATED", "USER_UPDATED", "PASSWORD_CHANGED", "TEAM_CREATED", "TEAM_UPDATED", "TEAM_MEMBER_ADDED", "TEAM_MEMBER_REMOVED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "TICKET_CREATED", "TICKET_STATUS_CHANGED", "TICKET_ASSIGNMENT_CHANGED", "COMMENT_ADDED", "SLA_BREACHED", "SLA_POLICY_UPDATED", "CATALOGUE_ITEM_CREATED", "CATALOGUE_ITEM_UPDATED", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "APPROVAL_WITHDRAWN", "PROBLEM_ANALYSIS_UPDATED", "INCIDENT_PROBLEM_LINKED", "INCIDENT_PROBLEM_UNLINKED" ]
+            "enum" : [ "USER_CREATED", "USER_UPDATED", "PASSWORD_CHANGED", "TEAM_CREATED", "TEAM_UPDATED", "TEAM_MEMBER_ADDED", "TEAM_MEMBER_REMOVED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "TICKET_CREATED", "TICKET_STATUS_CHANGED", "TICKET_ASSIGNMENT_CHANGED", "COMMENT_ADDED", "SLA_BREACHED", "SLA_POLICY_UPDATED", "CATALOGUE_ITEM_CREATED", "CATALOGUE_ITEM_UPDATED", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "APPROVAL_WITHDRAWN", "PROBLEM_ANALYSIS_UPDATED", "INCIDENT_PROBLEM_LINKED", "INCIDENT_PROBLEM_UNLINKED", "CHANGE_PLAN_UPDATED", "CHANGE_OUTCOME_RECORDED" ]
           },
           "actor" : {
             "oneOf" : [ {
@@ -3308,16 +3615,26 @@
           "title" : {
             "type" : "string"
           },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM", "CHANGE" ]
+          },
           "version" : {
             "type" : "integer",
             "format" : "int64"
           }
         },
-        "required" : [ "description", "id", "priority", "reference", "requestedAt", "requester", "team", "ticketId", "title", "version" ]
+        "required" : [ "description", "id", "priority", "reference", "requestedAt", "requester", "team", "ticketId", "title", "type", "version" ]
       },
       "ProblemDetails" : {
         "type" : "object",
         "properties" : {
+          "changes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LinkedTicket"
+            }
+          },
           "fixNotes" : {
             "type" : [ "string", "null" ]
           },
@@ -3342,7 +3659,7 @@
             "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "fixNotes", "incidents", "knownErrorAt", "reopenCount", "rootCause", "workaround" ]
+        "required" : [ "changes", "fixNotes", "incidents", "knownErrorAt", "reopenCount", "rootCause", "workaround" ]
       },
       "QueueSla" : {
         "type" : "object",
@@ -3362,6 +3679,25 @@
         },
         "required" : [ "dueAt", "metric", "status" ]
       },
+      "RecordChangeOutcomeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "notes" : {
+            "type" : "string",
+            "maxLength" : 10000,
+            "minLength" : 0
+          },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "SUCCESSFUL", "SUCCESSFUL_WITH_ISSUES", "FAILED", "BACKED_OUT" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "notes", "outcome", "version" ]
+      },
       "RequestAnswer" : {
         "type" : "object",
         "properties" : {
@@ -3376,6 +3712,51 @@
           }
         },
         "required" : [ "key", "label", "value" ]
+      },
+      "ScheduledChange" : {
+        "type" : "object",
+        "properties" : {
+          "assignee" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/NamedRef"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "changeType" : {
+            "type" : "string",
+            "enum" : [ "STANDARD", "NORMAL", "EMERGENCY" ]
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "plannedEnd" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "plannedStart" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "reference" : {
+            "type" : "string"
+          },
+          "risk" : {
+            "type" : "string",
+            "enum" : [ "LOW", "MEDIUM", "HIGH" ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "team" : {
+            "$ref" : "#/components/schemas/NamedRef"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "assignee", "changeType", "id", "plannedEnd", "plannedStart", "reference", "risk", "status", "team", "title" ]
       },
       "ServiceRequestDetails" : {
         "type" : "object",
@@ -3455,7 +3836,7 @@
           },
           "ticketType" : {
             "type" : "string",
-            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM" ]
+            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM", "CHANGE" ]
           },
           "version" : {
             "type" : "integer",
@@ -3574,7 +3955,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM" ]
+            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM", "CHANGE" ]
           }
         },
         "required" : [ "id", "priority", "reference", "status", "type" ]
@@ -3594,6 +3975,13 @@
           },
           "category" : {
             "$ref" : "#/components/schemas/NamedRef"
+          },
+          "change" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ChangeDetails"
+            }, {
+              "type" : "null"
+            } ]
           },
           "closedAt" : {
             "type" : [ "string", "null" ],
@@ -3668,7 +4056,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM" ]
+            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM", "CHANGE" ]
           },
           "updatedAt" : {
             "type" : "string",
@@ -3683,7 +4071,7 @@
             "format" : "int64"
           }
         },
-        "required" : [ "assignedTeam", "assignee", "category", "closedAt", "createdAt", "description", "firstRespondedAt", "id", "impact", "incident", "priority", "problem", "reference", "requester", "resolvedAt", "serviceRequest", "status", "subcategory", "title", "type", "updatedAt", "urgency", "version" ]
+        "required" : [ "assignedTeam", "assignee", "category", "change", "closedAt", "createdAt", "description", "firstRespondedAt", "id", "impact", "incident", "priority", "problem", "reference", "requester", "resolvedAt", "serviceRequest", "status", "subcategory", "title", "type", "updatedAt", "urgency", "version" ]
       },
       "TicketSlaResponse" : {
         "type" : "object",
@@ -3754,7 +4142,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM" ]
+            "enum" : [ "INCIDENT", "SERVICE_REQUEST", "PROBLEM", "CHANGE" ]
           },
           "updatedAt" : {
             "type" : "string",
@@ -3879,6 +4267,42 @@
           }
         },
         "required" : [ "version" ]
+      },
+      "UpdateChangePlanRequest" : {
+        "type" : "object",
+        "properties" : {
+          "backoutPlan" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 10000,
+            "minLength" : 0
+          },
+          "changeType" : {
+            "type" : "string",
+            "enum" : [ "STANDARD", "NORMAL", "EMERGENCY" ]
+          },
+          "implementationPlan" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 10000,
+            "minLength" : 0
+          },
+          "plannedEnd" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "plannedStart" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "risk" : {
+            "type" : "string",
+            "enum" : [ "LOW", "MEDIUM", "HIGH" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "changeType", "risk", "version" ]
       },
       "UpdateProblemAnalysisRequest" : {
         "type" : "object",

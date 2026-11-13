@@ -39,17 +39,17 @@ class TicketListQueryTest {
     }
 
     @Test
-    void staffSeeOwnAssignedAndTeamTicketsAndEveryProblem() {
+    void staffSeeOwnAssignedAndTeamTicketsAndEveryProblemAndChange() {
         assertThat(sql(agent, Set.of(team), NONE))
                 .contains("(w.requester_id = :me OR w.assignee_id = :me OR w.assigned_team_id IN (:myTeams)"
-                        + " OR w.type = 'PROBLEM')");
+                        + " OR w.type IN ('PROBLEM', 'CHANGE'))");
         assertThat(sql(agent, Set.of(), NONE))
-                .contains("(w.requester_id = :me OR w.assignee_id = :me OR w.type = 'PROBLEM')");
+                .contains("(w.requester_id = :me OR w.assignee_id = :me OR w.type IN ('PROBLEM', 'CHANGE'))");
     }
 
     @Test
-    void requestersNeverSeeProblems() {
-        assertThat(sql(requester, Set.of(), NONE)).doesNotContain("PROBLEM");
+    void requestersNeverSeeProblemsOrChanges() {
+        assertThat(sql(requester, Set.of(), NONE)).doesNotContain("PROBLEM").doesNotContain("CHANGE");
     }
 
     @Test

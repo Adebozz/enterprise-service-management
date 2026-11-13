@@ -1,5 +1,7 @@
 package com.ademola.esm.demo;
 
+import com.ademola.esm.approval.ApprovalDecisionRequest;
+import com.ademola.esm.approval.ApprovalService;
 import com.ademola.esm.audit.AuditAction;
 import com.ademola.esm.audit.AuditEntityType;
 import com.ademola.esm.audit.AuditRecord;
@@ -18,6 +20,12 @@ import com.ademola.esm.ticket.assignment.TicketAssignmentService;
 import com.ademola.esm.ticket.category.CategoryScope;
 import com.ademola.esm.ticket.category.CategoryService;
 import com.ademola.esm.ticket.category.CreateCategoryRequest;
+import com.ademola.esm.ticket.change.ChangeOutcome;
+import com.ademola.esm.ticket.change.ChangeRisk;
+import com.ademola.esm.ticket.change.ChangeService;
+import com.ademola.esm.ticket.change.ChangeType;
+import com.ademola.esm.ticket.change.CreateChangeRequest;
+import com.ademola.esm.ticket.change.RecordChangeOutcomeRequest;
 import com.ademola.esm.ticket.comment.AddCommentRequest;
 import com.ademola.esm.ticket.comment.CommentService;
 import com.ademola.esm.ticket.comment.CommentVisibility;
@@ -30,6 +38,7 @@ import com.ademola.esm.ticket.problem.CreateProblemRequest;
 import com.ademola.esm.ticket.problem.LinkProblemRequest;
 import com.ademola.esm.ticket.problem.ProblemService;
 import com.ademola.esm.ticket.problem.UpdateProblemAnalysisRequest;
+import com.ademola.esm.ticket.query.TicketQueryService;
 import com.ademola.esm.ticket.request.CreateServiceRequestRequest;
 import com.ademola.esm.ticket.request.ServiceRequestService;
 import com.ademola.esm.ticket.transition.TicketTransitionService;
@@ -39,6 +48,10 @@ import com.ademola.esm.user.Role;
 import com.ademola.esm.user.User;
 import com.ademola.esm.user.UserRepository;
 import com.ademola.esm.user.UserService;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -91,6 +104,10 @@ class DemoDataSeeder implements ApplicationRunner {
     private final CatalogueService catalogue;
     private final CatalogueRequestService catalogueRequests;
     private final ProblemService problems;
+    private final ChangeService changes;
+    private final ApprovalService approvals;
+    private final TicketQueryService queries;
+    private final Clock clock;
 
     DemoDataSeeder(
             DemoProperties properties,
@@ -108,7 +125,11 @@ class DemoDataSeeder implements ApplicationRunner {
             CommentService comments,
             CatalogueService catalogue,
             CatalogueRequestService catalogueRequests,
-            ProblemService problems) {
+            ProblemService problems,
+            ChangeService changes,
+            ApprovalService approvals,
+            TicketQueryService queries,
+            Clock clock) {
         this.properties = properties;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -125,6 +146,10 @@ class DemoDataSeeder implements ApplicationRunner {
         this.catalogue = catalogue;
         this.catalogueRequests = catalogueRequests;
         this.problems = problems;
+        this.changes = changes;
+        this.approvals = approvals;
+        this.queries = queries;
+        this.clock = clock;
     }
 
     @Override
@@ -452,6 +477,95 @@ class DemoDataSeeder implements ApplicationRunner {
             return null;
         });
         move(nina, vpnProblem, investigating + 1, "KNOWN_ERROR", null, null, null);
+
+        // Changes are planned relative to the moment of seeding, so the schedule always shows something coming up.
+        Instant today = clock.instant().truncatedTo(ChronoUnit.HOURS);
+        Instant inThreeDays = today.plus(Duration.ofDays(3)).plus(Duration.ofHours(1));
+
+        // 12. The permanent fix for the known error: a normal change, waiting for Leo's approval.
+        UUID licenceChange = change(
+                nina,
+                new CreateChangeRequest(
+                        "Raise the VPN gateway licence to 500 sessions",
+                        "Apply the larger licence the supplier has issued, so busy days no longer fill the gateway.",
+                        netCat,
+                        vpn,
+                        Impact.HIGH,
+                        Urgency.MEDIUM,
+                        ChangeType.NORMAL,
+                        ChangeRisk.MEDIUM,
+                        "1. Upload the new licence file to vpn1.\n2. Restart the VPN service (about 2 minutes).\n"
+                                + "3. Check the session limit reads 500 and a test connection succeeds.",
+                        "Restore the previous licence file from the backup taken in step 1 and restart again.",
+                        inThreeDays,
+                        inThreeDays.plus(Duration.ofHours(2)),
+                        vpnProblem));
+        v = assign(nina, licenceChange, network, nina.id(), 0);
+        move(nina, licenceChange, v, "APPROVAL_PENDING", null, null, null);
+
+        // 13. A standard change by the hardware team in an overlapping window: the schedule shows the clash.
+        UUID printerChange = change(
+                hugo,
+                new CreateChangeRequest(
+                        "Monthly printer firmware update",
+                        "Routine firmware update for the office printers, as every month.",
+                        hwCat,
+                        printer,
+                        Impact.LOW,
+                        Urgency.LOW,
+                        ChangeType.STANDARD,
+                        ChangeRisk.LOW,
+                        "Push the approved firmware from the print server to each printer in turn.",
+                        "Roll each printer back to the previous firmware from the print server.",
+                        inThreeDays.plus(Duration.ofHours(1)),
+                        inThreeDays.plus(Duration.ofHours(3)),
+                        null));
+        v = assign(hugo, printerChange, hardware, hugo.id(), 0);
+        move(hugo, printerChange, v, "APPROVED", null, null, null);
+
+        // 14. Yesterday's emergency change: approved, carried out, reviewed and closed.
+        Instant yesterday = today.minus(Duration.ofDays(1));
+        UUID firewallChange = change(
+                nina,
+                new CreateChangeRequest(
+                        "Block traffic from a compromised partner address",
+                        "The partner reported a compromised server; block its address at the firewall now.",
+                        netCat,
+                        null,
+                        Impact.HIGH,
+                        Urgency.HIGH,
+                        ChangeType.EMERGENCY,
+                        ChangeRisk.HIGH,
+                        "Add a deny rule for the partner's address at the top of the perimeter firewall policy.",
+                        "Remove the deny rule.",
+                        yesterday,
+                        yesterday.plus(Duration.ofMinutes(30)),
+                        null));
+        v = assign(nina, firewallChange, network, nina.id(), 0);
+        move(nina, firewallChange, v, "APPROVAL_PENDING", null, null, null);
+        as(lead, () -> {
+            var approval = approvals.forTicket(lead, firewallChange);
+            return approvals.decide(
+                    lead,
+                    approval.id(),
+                    new ApprovalDecisionRequest(
+                            ApprovalDecisionRequest.Decision.APPROVE, "Approved as an emergency.", approval.version()));
+        });
+        // The decision moved the change on and posted the approver's comment; carry on from there.
+        long approved = as(nina, () -> queries.get(nina, firewallChange).version());
+        long implementing = move(nina, firewallChange, approved, "IMPLEMENTING", null, null, null);
+        as(nina, () -> {
+            changes.recordOutcome(
+                    nina,
+                    firewallChange,
+                    new RecordChangeOutcomeRequest(
+                            ChangeOutcome.SUCCESSFUL,
+                            "Rule in place within ten minutes; the partner confirmed their server was rebuilt.",
+                            implementing));
+            return null;
+        });
+        long review = move(nina, firewallChange, implementing + 1, "REVIEW", null, null, null);
+        move(nina, firewallChange, review, "CLOSED", null, null, null);
     }
 
     // ----- helpers ------------------------------------------------------------------------------
@@ -524,6 +638,10 @@ class DemoDataSeeder implements ApplicationRunner {
                 () -> serviceRequests
                         .create(who, new CreateServiceRequestRequest(title, description, category, sub, urgency))
                         .id());
+    }
+
+    private UUID change(CurrentUser who, CreateChangeRequest request) {
+        return as(who, () -> changes.create(who, request).id());
     }
 
     private long assign(CurrentUser who, UUID ticket, UUID team, UUID assignee, long version) {

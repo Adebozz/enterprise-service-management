@@ -35,6 +35,8 @@ export const routes: RouteObject[] = [
               { path: 'queue', lazy: async () => ({ Component: (await import('@/queue/AgentQueuePage')).AgentQueuePage }) },
               { path: 'problems', lazy: async () => ({ Component: (await import('@/problems/ProblemsPage')).ProblemsPage }) },
               { path: 'problems/new', lazy: async () => ({ Component: (await import('@/problems/NewProblemPage')).NewProblemPage }) },
+              { path: 'changes', lazy: async () => ({ Component: (await import('@/changes/ChangesPage')).ChangesPage }) },
+              { path: 'changes/new', lazy: async () => ({ Component: (await import('@/changes/NewChangePage')).NewChangePage }) },
             ],
           },
           {

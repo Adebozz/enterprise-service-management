@@ -123,7 +123,7 @@ public abstract class WorkItem extends BaseEntity {
     public final Transition<?> transition(String targetStatus, TransitionInput input, Instant now) {
         Transition<?> transition = workflow().require(status, targetStatus);
         transition.checkRequirements(input, assigneeId != null);
-        checkCanEnter(transition.to().name());
+        checkCanEnter(transition.to().name(), now);
         String previous = status;
         this.status = transition.to().name();
         onTransition(previous, this.status, input, now);
@@ -171,7 +171,16 @@ public abstract class WorkItem extends BaseEntity {
      * (a problem's analysis, say). Runs before anything changes, so a refused move leaves the ticket
      * exactly as it was.
      */
-    protected void checkCanEnter(String targetStatus) {}
+    protected void checkCanEnter(String targetStatus, Instant now) {}
+
+    /**
+     * Whether to offer a move this ticket's own data rules out in every case (a standard change is
+     * never submitted for approval, say), so the UI shows no button that can only fail. Moves that
+     * merely need more information first are still offered, and explain what is missing.
+     */
+    public boolean offersMoveTo(String targetStatus) {
+        return true;
+    }
 
     /** Type-specific side effects of a status change (timestamps, resolution data...). */
     protected abstract void onTransition(String from, String to, TransitionInput input, Instant now);

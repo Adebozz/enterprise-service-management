@@ -44,8 +44,9 @@ class SlaClockService {
     @EventListener
     @Transactional(propagation = Propagation.MANDATORY)
     void on(TicketChangedEvent event) {
-        if (event.type() == WorkItemType.PROBLEM) {
-            // Problems have no service-level targets: they are judged by the incidents they prevent.
+        if (event.type() == WorkItemType.PROBLEM || event.type() == WorkItemType.CHANGE) {
+            // No service-level targets: a problem is judged by the incidents it prevents, a change by
+            // keeping to its approved window.
             return;
         }
         if (event.created()) {

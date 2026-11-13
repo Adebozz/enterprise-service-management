@@ -15,6 +15,7 @@ const waiting: PendingApproval = {
   version: 0,
   requestedAt: '2026-11-11T09:00:00Z',
   ticketId: 'ticket-7',
+  type: 'SERVICE_REQUEST',
   reference: 'REQ-000007',
   title: 'Shared drive access',
   description: 'Which drive? SALES-Forecasts\nAccess level: Read and edit',
@@ -89,7 +90,7 @@ describe('approvals', () => {
     expect(screen.getByText('Say why, so the requester knows what to do instead')).toBeVisible()
     expect(sent).toBeUndefined()
 
-    await user.type(screen.getByLabelText('Comment for the requester'), 'Read access is enough')
+    await user.type(screen.getByLabelText('Comment (added to the ticket’s conversation)'), 'Read access is enough')
     await user.click(screen.getByRole('button', { name: 'Reject' }))
     await screen.findByRole('heading', { name: 'Approvals' })
     expect(sent).toEqual({ decision: 'REJECT', comment: 'Read access is enough', version: 0 })

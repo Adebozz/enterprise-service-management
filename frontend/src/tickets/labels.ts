@@ -1,4 +1,4 @@
-import type { Impact, Priority, ResolutionCode, TicketType, Urgency } from '@/api/types'
+import type { ChangeOutcome, ChangeRisk, ChangeType, Impact, Priority, ResolutionCode, TicketType, Urgency } from '@/api/types'
 
 /** Human-readable labels for codes from the API. Unknown values fall back to a readable form. */
 export function statusLabel(status: string): string {
@@ -13,7 +13,30 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
   P4: 'P4 · Low',
 }
 
-export const TYPE_LABEL: Record<TicketType, string> = { INCIDENT: 'Incident', SERVICE_REQUEST: 'Service request', PROBLEM: 'Problem' }
+export const TYPE_LABEL: Record<TicketType, string> = {
+  INCIDENT: 'Incident',
+  SERVICE_REQUEST: 'Service request',
+  PROBLEM: 'Problem',
+  CHANGE: 'Change',
+}
+
+export const CHANGE_TYPE_LABEL: Record<ChangeType, string> = { STANDARD: 'Standard', NORMAL: 'Normal', EMERGENCY: 'Emergency' }
+
+/** What each change type means for whoever chooses it. */
+export const CHANGE_TYPE_HINT: Record<ChangeType, string> = {
+  STANDARD: 'Routine and low risk: pre-approved, so it is simply scheduled.',
+  NORMAL: 'Approved by a team lead before its window, which must be in the future.',
+  EMERGENCY: 'Approved by a team lead, but may be carried out straight away.',
+}
+
+export const RISK_LABEL: Record<ChangeRisk, string> = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' }
+
+export const OUTCOME_LABEL: Record<ChangeOutcome, string> = {
+  SUCCESSFUL: 'Successful',
+  SUCCESSFUL_WITH_ISSUES: 'Successful, with issues',
+  FAILED: 'Failed',
+  BACKED_OUT: 'Backed out',
+}
 
 export const LEVEL_LABEL: Record<Impact & Urgency, string> = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' }
 

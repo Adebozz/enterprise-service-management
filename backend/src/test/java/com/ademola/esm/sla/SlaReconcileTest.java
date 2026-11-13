@@ -141,8 +141,9 @@ class SlaReconcileTest {
     }
 
     @Test
-    void problemsHaveNoPhase() {
+    void problemsAndChangesHaveNoPhase() {
         assertThatThrownBy(() -> SlaPhase.of(WorkItemType.PROBLEM, "NEW")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> SlaPhase.of(WorkItemType.CHANGE, "NEW")).isInstanceOf(IllegalArgumentException.class);
     }
 
     private static <S> Map<String, SlaPhase> phasesOf(WorkItemType type, S[] statuses, Function<S, String> name) {

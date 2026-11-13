@@ -9,7 +9,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Full ticket view. Exactly one of {@code incident} / {@code serviceRequest} / {@code problem} is set, matching
+ * Full ticket view. Exactly one of {@code incident} / {@code serviceRequest} / {@code problem} /
+ * {@code change} is set, matching
  * {@code type}; the common fields are the same for every type.
  */
 public record TicketResponse(
@@ -35,4 +36,5 @@ public record TicketResponse(
         long version,
         @Nullable IncidentDetails incident,
         @Nullable ServiceRequestDetails serviceRequest,
-        @Nullable ProblemDetails problem) {}
+        @Nullable ProblemDetails problem,
+        @Nullable ChangeDetails change) {}

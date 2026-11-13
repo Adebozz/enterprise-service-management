@@ -23,6 +23,7 @@ const aProblem = (overrides: Partial<Ticket> = {}): Ticket =>
       fixNotes: null,
       reopenCount: 0,
       incidents: [{ id: 'ticket-1', reference: 'INC-000042', title: 'VPN error 809', status: 'IN_PROGRESS' }],
+      changes: [],
     },
     ...overrides,
   })

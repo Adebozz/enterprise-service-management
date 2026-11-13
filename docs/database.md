@@ -18,6 +18,7 @@ PostgreSQL 17 ([ADR-002](adr/002-postgresql.md)). Every schema change is a Flywa
 | `V9__service_catalogue.sql` | `catalogue_items`; foreign key and `catalogue_answers` on `service_requests` (M18) |
 | `V10__approvals.sql` | `catalogue_items.approval_required`, `approvals` + pending index (M19) |
 | `V11__problems.sql` | `problems`, `problem_ref_seq`, the `PROBLEM` type and its statuses on `work_items`, `incidents.problem_id` + partial index (M20) |
+| `V12__changes.sql` | `changes`, `change_ref_seq`, the `CHANGE` type and its statuses on `work_items`, window and problem indexes (M21) |
 
 ### users
 
@@ -68,16 +69,16 @@ set, overrides its parent's.
 
 ### work_items, incidents, service_requests (JPA `JOINED` inheritance)
 
-`work_items` holds every shared column: `reference` (unique, `^(INC|REQ|PRB)-[0-9]{6,}$`), `type`
+`work_items` holds every shared column: `reference` (unique, `^(INC|REQ|PRB|CHG)-[0-9]{6,}$`), `type`
 (discriminator), `title`, `description`, `status`, `impact`, `urgency`, `priority`, `category_id`,
 `subcategory_id`, `requester_id`, `assigned_team_id` (**NOT NULL**), `assignee_id`, lifecycle
-timestamps and `version`. `incidents`, `service_requests` and `problems` share its primary key
+timestamps and `version`. `incidents`, `service_requests`, `problems` and `changes` share its primary key
 (`work_item_id`, `ON DELETE CASCADE`) and add type-specific columns.
 
 | Guarantee | Mechanism |
 |---|---|
 | Status belongs to the type | `work_items_status_check`: `(type, status)` pairs |
-| Unique, race-free references | `incident_ref_seq` / `service_request_ref_seq` / `problem_ref_seq` + `UNIQUE (reference)` |
+| Unique, race-free references | `incident_ref_seq` / `service_request_ref_seq` / `problem_ref_seq` / `change_ref_seq` + `UNIQUE (reference)` |
 | Assignee is in the assigned team **when assigned** | trigger `work_items_assignee_membership` (BEFORE INSERT/UPDATE OF assignee/team) |
 | A member can't leave a team while owning **open** tickets there | trigger `team_members_no_open_assignments` (BEFORE DELETE) |
 | Valid impact/urgency/priority | `CHECK ... IN (...)` |
@@ -163,6 +164,18 @@ checked by the application, since the status lives in `work_items`. `incidents.p
 (→ problems) links an incident to the problem behind it; the partial index
 `incidents_problem_idx (problem_id) WHERE problem_id IS NOT NULL` lists a problem's incidents.
 
+### changes (Phase 2, M21)
+
+One row per change ticket (`work_item_id` → work_items, `ON DELETE CASCADE`): `change_type`
+(`STANDARD | NORMAL | EMERGENCY`), `risk` (`LOW | MEDIUM | HIGH`), `implementation_plan`,
+`backout_plan`, `planned_start`, `planned_end`, `problem_id` (→ problems, the problem it fixes),
+`implemented_at`, `outcome` (`SUCCESSFUL | SUCCESSFUL_WITH_ISSUES | FAILED | BACKED_OUT`) and
+`review_notes`. CHECKs: a standard change is low risk; the window ends after it starts; an outcome
+and its notes come together. That the plan is complete before submission is checked by the
+application, since it depends on status. The partial index `changes_window_idx (planned_start,
+planned_end)` serves the schedule and clash lookups, and `changes_problem_idx` lists a problem's
+changes. Approvals reuse the `approvals` table.
+
 ## Conventions
 
 - Migrations are **immutable once merged**. A fix is a new migration.
@@ -192,6 +205,5 @@ erDiagram
     users ||--o{ comments : writes
 ```
 
-Added in Phase 2 so far: `sla_policies`, `sla_clocks`, `catalogue_items`, `approvals` (described
-above). Tables still to come in Phase 2: (
-`problems`, `changes`, `attachments`, `notifications`).
+Added in Phase 2 so far: `sla_policies`, `sla_clocks`, `catalogue_items`, `approvals`, `problems`,
+`changes` (described above). Tables still to come in Phase 2: `attachments`, `notifications`.

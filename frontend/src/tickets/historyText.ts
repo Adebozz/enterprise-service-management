@@ -1,5 +1,5 @@
-import type { HistoryEntry } from '@/api/types'
-import { RESOLUTION_LABEL, statusLabel } from './labels'
+import type { ChangeOutcome, HistoryEntry } from '@/api/types'
+import { OUTCOME_LABEL, RESOLUTION_LABEL, statusLabel } from './labels'
 
 type Values = Record<string, unknown> | null
 
@@ -50,6 +50,22 @@ export function describe(entry: HistoryEntry): string {
       return `linked it to problem ${text(entry.newValue, 'problemReference') ?? ''}`.trim()
     case 'INCIDENT_PROBLEM_UNLINKED':
       return `removed the link to problem ${text(entry.oldValue, 'problemReference') ?? ''}`.trim()
+    case 'CHANGE_PLAN_UPDATED': {
+      const fields: Record<string, string> = {
+        changeType: 'type',
+        risk: 'risk',
+        implementationPlan: 'implementation plan',
+        backoutPlan: 'backout plan',
+        plannedStart: 'window',
+        plannedEnd: 'window',
+      }
+      const changed = [...new Set(Object.keys(entry.newValue ?? {}).map((key) => fields[key]).filter(Boolean))]
+      return `updated the change's ${changed.join(', ') || 'plan'}`
+    }
+    case 'CHANGE_OUTCOME_RECORDED': {
+      const outcome = text(entry.newValue, 'outcome')
+      return `recorded the outcome${outcome ? `: ${(OUTCOME_LABEL[outcome as ChangeOutcome] ?? statusLabel(outcome)).toLowerCase()}` : ''}`
+    }
     case 'COMMENT_ADDED':
       return text(entry.metadata, 'visibility') === 'INTERNAL' ? 'added an internal note' : 'added a message'
     default:

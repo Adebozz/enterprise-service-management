@@ -106,4 +106,11 @@ suite('history sentences', () => {
       'removed the link to problem PRB-000007',
     )
   })
+
+  it('describes changes to a change’s plan and its outcome', () => {
+    expect(
+      describe(entry({ action: 'CHANGE_PLAN_UPDATED', newValue: { risk: 'LOW', plannedStart: '2026-11-16T07:00:00Z', plannedEnd: '2026-11-16T09:00:00Z' } })),
+    ).toBe("updated the change's risk, window")
+    expect(describe(entry({ action: 'CHANGE_OUTCOME_RECORDED', newValue: { outcome: 'BACKED_OUT' } }))).toBe('recorded the outcome: backed out')
+  })
 })

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  *   <li>ADMIN: every ticket.
  *   <li>Anyone: tickets they raised.
  *   <li>Support staff (AGENT, TEAM_LEAD): tickets assigned to them, or to any team they belong to,
- *       and every problem: a known error and its workaround help whoever meets the same incident.
+ *       and every problem and change (see {@link #isSharedWithStaff}).
  * </ul>
  *
  * A requester never sees another requester's ticket, and an agent never sees another team's queue
@@ -49,18 +49,27 @@ public class TicketAccessPolicy {
         if (!user.role().isStaff()) {
             return false;
         }
-        return isSupporting(user, item, userTeamIds) || item.getType() == WorkItemType.PROBLEM;
+        return isSupporting(user, item, userTeamIds) || isSharedWithStaff(item);
     }
 
     /**
      * May see staff-only information about this ticket (internal notes, full history): admins,
      * and staff supporting this particular ticket. Being staff in general is not enough, except on
-     * a problem, which has no requester-facing side: all of it is for staff.
+     * a problem or change, which has no requester-facing side: all of it is for staff.
      */
     public static boolean canSeeStaffDetails(CurrentUser user, WorkItem item, Set<UUID> userTeamIds) {
         return user.role() == Role.ADMIN
                 || isSupporting(user, item, userTeamIds)
-                || (user.role().isStaff() && item.getType() == WorkItemType.PROBLEM);
+                || (user.role().isStaff() && isSharedWithStaff(item));
+    }
+
+    /**
+     * Problems and changes have no requester-facing side and concern everyone in support: a known
+     * error helps whoever meets the same incident, and the change schedule is how teams avoid
+     * stepping on each other.
+     */
+    private static boolean isSharedWithStaff(WorkItem item) {
+        return item.getType() == WorkItemType.PROBLEM || item.getType() == WorkItemType.CHANGE;
     }
 
     /** Staff responsible for the ticket: the assignee or a member of the assigned team. */

@@ -171,7 +171,8 @@ public class TicketTransitionService {
         Set<Actor> actors = TicketActors.of(user, item, teamScope);
         boolean hasAssignee = item.getAssigneeId() != null;
         return item.workflow().transitionsFrom(item.getStatusName()).stream()
-                .filter(t -> t.isAllowedFor(actors) && t.isSatisfiableBy(hasAssignee))
+                .filter(t ->
+                        t.isAllowedFor(actors) && t.isSatisfiableBy(hasAssignee) && item.offersMoveTo(t.to().name()))
                 .map(t -> new AvailableTransition(t.to().name(), t.label(), inputRequirements(t)))
                 .toList();
     }

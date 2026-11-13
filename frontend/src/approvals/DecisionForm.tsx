@@ -54,7 +54,7 @@ export function DecisionForm({ approvalId, version, onDecided }: { approvalId: s
         </Alert>
       )}
       <div className="grid gap-2">
-        <Label htmlFor={`${id}-comment`}>Comment for the requester</Label>
+        <Label htmlFor={`${id}-comment`}>Comment (added to the ticket’s conversation)</Label>
         <Textarea
           id={`${id}-comment`}
           rows={2}

@@ -350,6 +350,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Raise a change (support staff), optionally naming the problem it fixes */
+        post: operations["createChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/changes/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Changes awaiting approval, approved or under way whose window hasn't ended, soonest first (support staff) */
+        get: operations["getChangeSchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/changes/{id}/outcome": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Record how the change went (owning team, once implementation has started) */
+        put: operations["recordChangeOutcome"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/changes/{id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Write the plan, until the change is submitted (owning team; requires current version) */
+        put: operations["updateChangePlan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/incidents": {
         parameters: {
             query?: never;
@@ -674,7 +742,7 @@ export interface components {
              * @description Stable machine-readable code: branch on this, never on detail
              * @enum {string}
              */
-            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "PROBLEM_NOT_OPEN" | "PROBLEM_ANALYSIS_INCOMPLETE" | "PROBLEM_UPDATE_NOT_PERMITTED" | "INCIDENT_LINK_NOT_PERMITTED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "PROBLEM_NOT_OPEN" | "PROBLEM_ANALYSIS_INCOMPLETE" | "PROBLEM_UPDATE_NOT_PERMITTED" | "INCIDENT_LINK_NOT_PERMITTED" | "CHANGE_NOT_EDITABLE" | "CHANGE_PLAN_INCOMPLETE" | "CHANGE_PLAN_INVALID" | "CHANGE_REVIEW_INCOMPLETE" | "CHANGE_UPDATE_NOT_PERMITTED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
             /** @description Matches the X-Request-Id response header and server log lines */
             correlationId: string | null;
             /** @description Human-readable explanation; never contains internal details */
@@ -784,6 +852,25 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
+        ChangeDetails: {
+            backoutPlan: string | null;
+            /** @enum {string} */
+            changeType: "STANDARD" | "NORMAL" | "EMERGENCY";
+            clashes: components["schemas"]["LinkedTicket"][];
+            implementationPlan: string | null;
+            /** Format: date-time */
+            implementedAt: string | null;
+            /** @enum {string|null} */
+            outcome: "SUCCESSFUL" | "SUCCESSFUL_WITH_ISSUES" | "FAILED" | "BACKED_OUT" | null;
+            /** Format: date-time */
+            plannedEnd: string | null;
+            /** Format: date-time */
+            plannedStart: string | null;
+            problem: components["schemas"]["LinkedTicket"] | null;
+            reviewNotes: string | null;
+            /** @enum {string} */
+            risk: "LOW" | "MEDIUM" | "HIGH";
+        };
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
@@ -819,6 +906,30 @@ export interface components {
             name: string;
             /** Format: uuid */
             parentId?: string;
+        };
+        CreateChangeRequest: {
+            backoutPlan?: string | null;
+            /** Format: uuid */
+            categoryId: string;
+            /** @enum {string} */
+            changeType: "STANDARD" | "NORMAL" | "EMERGENCY";
+            description: string;
+            /** @enum {string} */
+            impact: "LOW" | "MEDIUM" | "HIGH";
+            implementationPlan?: string | null;
+            /** Format: date-time */
+            plannedEnd?: string | null;
+            /** Format: date-time */
+            plannedStart?: string | null;
+            /** Format: uuid */
+            problemId?: string | null;
+            /** @enum {string} */
+            risk: "LOW" | "MEDIUM" | "HIGH";
+            /** Format: uuid */
+            subcategoryId?: string | null;
+            title: string;
+            /** @enum {string} */
+            urgency: "LOW" | "MEDIUM" | "HIGH";
         };
         CreateIncidentRequest: {
             affectedService?: string;
@@ -884,7 +995,7 @@ export interface components {
         };
         HistoryEntryResponse: {
             /** @enum {string} */
-            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED" | "APPROVAL_REQUESTED" | "APPROVAL_DECIDED" | "APPROVAL_WITHDRAWN" | "PROBLEM_ANALYSIS_UPDATED" | "INCIDENT_PROBLEM_LINKED" | "INCIDENT_PROBLEM_UNLINKED";
+            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED" | "APPROVAL_REQUESTED" | "APPROVAL_DECIDED" | "APPROVAL_WITHDRAWN" | "PROBLEM_ANALYSIS_UPDATED" | "INCIDENT_PROBLEM_LINKED" | "INCIDENT_PROBLEM_UNLINKED" | "CHANGE_PLAN_UPDATED" | "CHANGE_OUTCOME_RECORDED";
             actor: components["schemas"]["NamedRef"] | null;
             /** @description Free-form JSON object */
             metadata: {
@@ -987,10 +1098,13 @@ export interface components {
             /** Format: uuid */
             ticketId: string;
             title: string;
+            /** @enum {string} */
+            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE";
             /** Format: int64 */
             version: number;
         };
         ProblemDetails: {
+            changes: components["schemas"]["LinkedTicket"][];
             fixNotes: string | null;
             incidents: components["schemas"]["LinkedTicket"][];
             /** Format: date-time */
@@ -1008,10 +1122,34 @@ export interface components {
             /** @enum {string} */
             status: "ON_TRACK" | "AT_RISK" | "BREACHED" | "PAUSED";
         };
+        RecordChangeOutcomeRequest: {
+            notes: string;
+            /** @enum {string} */
+            outcome: "SUCCESSFUL" | "SUCCESSFUL_WITH_ISSUES" | "FAILED" | "BACKED_OUT";
+            /** Format: int64 */
+            version: number;
+        };
         RequestAnswer: {
             key: string;
             label: string;
             value: string;
+        };
+        ScheduledChange: {
+            assignee: components["schemas"]["NamedRef"] | null;
+            /** @enum {string} */
+            changeType: "STANDARD" | "NORMAL" | "EMERGENCY";
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            plannedEnd: string;
+            /** Format: date-time */
+            plannedStart: string;
+            reference: string;
+            /** @enum {string} */
+            risk: "LOW" | "MEDIUM" | "HIGH";
+            status: string;
+            team: components["schemas"]["NamedRef"];
+            title: string;
         };
         ServiceRequestDetails: {
             answers: components["schemas"]["RequestAnswer"][];
@@ -1047,7 +1185,7 @@ export interface components {
             /** Format: int32 */
             responseMinutes: number;
             /** @enum {string} */
-            ticketType: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
+            ticketType: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE";
             /** Format: int64 */
             version: number;
         };
@@ -1096,12 +1234,13 @@ export interface components {
             reference: string;
             status: string;
             /** @enum {string} */
-            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
+            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE";
         };
         TicketResponse: {
             assignedTeam: components["schemas"]["NamedRef"];
             assignee: components["schemas"]["NamedRef"] | null;
             category: components["schemas"]["NamedRef"];
+            change: components["schemas"]["ChangeDetails"] | null;
             /** Format: date-time */
             closedAt: string | null;
             /** Format: date-time */
@@ -1126,7 +1265,7 @@ export interface components {
             subcategory: components["schemas"]["NamedRef"] | null;
             title: string;
             /** @enum {string} */
-            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
+            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE";
             /** Format: date-time */
             updatedAt: string;
             /** @enum {string} */
@@ -1157,7 +1296,7 @@ export interface components {
             status: string;
             title: string;
             /** @enum {string} */
-            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
+            type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1196,6 +1335,20 @@ export interface components {
             /** Format: uuid */
             defaultTeamId?: string;
             name?: string;
+            /** Format: int64 */
+            version: number;
+        };
+        UpdateChangePlanRequest: {
+            backoutPlan?: string | null;
+            /** @enum {string} */
+            changeType: "STANDARD" | "NORMAL" | "EMERGENCY";
+            implementationPlan?: string | null;
+            /** Format: date-time */
+            plannedEnd?: string | null;
+            /** Format: date-time */
+            plannedStart?: string | null;
+            /** @enum {string} */
+            risk: "LOW" | "MEDIUM" | "HIGH";
             /** Format: int64 */
             version: number;
         };
@@ -2254,7 +2407,7 @@ export interface operations {
     listCategories: {
         parameters: {
             query: {
-                type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM";
+                type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE";
             };
             header?: never;
             path?: never;
@@ -2270,6 +2423,170 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CategoryResponse"][];
                 };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    createChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketCreatedResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getChangeSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledChange"][];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    recordChangeOutcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordChangeOutcomeRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    updateChangePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Missing, invalid or expired access token */
             401: {
@@ -2663,7 +2980,7 @@ export interface operations {
         parameters: {
             query?: {
                 view?: "ALL" | "REQUESTED" | "MINE" | "TEAM" | "UNASSIGNED";
-                type?: ("INCIDENT" | "SERVICE_REQUEST" | "PROBLEM")[];
+                type?: ("INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE")[];
                 status?: string[];
                 priority?: ("P1" | "P2" | "P3" | "P4")[];
                 teamId?: string;

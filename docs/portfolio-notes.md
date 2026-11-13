@@ -878,3 +878,52 @@ link, and raising an incident versus handling it), plus demo seeder checks. 7 ne
 unlinking from an incident, raising from an incident, history text). Total: 352 unit + 250
 integration backend tests, 82 frontend tests. The `problem` package is at 100% line and 89.5%
 branch coverage; the backend overall at 96.3% and 88.0%.
+
+## M21: Change management (2026-11-13)
+
+**What was built**
+- Changes as a fourth ticket type (`CHG-000001`): new, assigned, awaiting approval, approved,
+  implementing, review, closed, plus rejected and cancelled. Each has a type (standard, normal,
+  emergency), a risk, an implementation plan, a backout plan and a planned window.
+- The plan can be edited until the change is submitted, then it is fixed. Submitting needs the whole
+  plan and a window that hasn't started (only an emergency may start straight away). A standard
+  change must be low risk and is pre-approved, so it is scheduled without an approval.
+- Approval through the existing approvals inbox: team leads of the change's team or admins decide,
+  never whoever raised it. Cancelling a waiting change withdraws its approval.
+- A change schedule (changes awaiting approval, approved or under way whose window hasn't ended),
+  and on each change a warning listing other scheduled changes in an overlapping window.
+- A review: the outcome (successful, successful with issues, failed, backed out) and notes, needed
+  before closing.
+- A change can name the open problem it fixes; the problem lists its changes and offers "Raise a
+  change to fix this".
+- Web app: a *Changes* page with the schedule and the list, a form to raise a change, plan and
+  review sections on the change, the approval panel on changes, and changes in the approvals inbox.
+- Demo: the VPN known error's fix waiting for Leo's approval, a clashing standard printer change,
+  and yesterday's emergency firewall change, reviewed and closed.
+
+**What I learned (good interview material)**
+- **Events instead of a dependency cycle.** Changes should reuse approvals, but the approvals module
+  already depends on the ticket module, so the change code can't call it. Submitting is an ordinary
+  transition, and the approvals module opens the approval when it hears the ticket-changed event,
+  in the same transaction. The architecture test would have rejected the direct call.
+- **Don't offer a button that can only fail.** Which way out of "assigned" applies depends on the
+  change's type. A small `offersMoveTo` hook lets the ticket hide moves its own data rules out,
+  while moves that only need more information stay visible and explain what is missing.
+- **Tests find schema mistakes.** The first integration run failed with a 500: the outcome
+  `SUCCESSFUL_WITH_ISSUES` is 22 characters and the column was `varchar(20)`. It was caught before
+  the migration was ever released, so the migration itself could be corrected.
+- **Shared status names are a contract.** Requests and changes both use `APPROVAL_PENDING`,
+  `APPROVED` and `REJECTED`, which lets one approval service drive both; a unit test fails if
+  either type renames them.
+
+**Tests:** 11 new unit tests (`ChangeLifecycleTest`: assignment, standard changes low risk and
+pre-approved, the window, a complete plan before submitting, emergencies only starting at once,
+the plan fixed after submission, carrying out and reviewing, rejection and cancellation; the shared
+approval status names). 9 new integration tests (`ChangeApiIT`: routing, visibility and no clocks,
+who writes the plan and when, approval in the lead's inbox and never by the raiser or through
+transitions, rejection and withdrawal, standard changes without approval, incomplete or past plans,
+the schedule and clashes, the review, the problem link), plus demo seeder checks. 7 new frontend
+tests (schedule and overlap flag, plan and clashes with editing, the fixed plan, the review, raising
+a change for a problem, a problem's changes, history text). Total: 363 unit + 259 integration
+backend tests, 89 frontend tests. The `change` package is at 100% line and 92.0% branch coverage;
+the backend overall at 96.6% and 88.4%.

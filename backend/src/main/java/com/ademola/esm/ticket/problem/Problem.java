@@ -82,7 +82,7 @@ public class Problem extends WorkItem {
     }
 
     @Override
-    protected void checkCanEnter(String targetStatus) {
+    protected void checkCanEnter(String targetStatus, Instant now) {
         switch (ProblemStatus.valueOf(targetStatus)) {
             case KNOWN_ERROR -> {
                 if (rootCause == null || workaround == null) {

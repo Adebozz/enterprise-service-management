@@ -7,6 +7,9 @@ import com.ademola.esm.ticket.WorkItem;
 import com.ademola.esm.ticket.WorkItemRepository;
 import com.ademola.esm.ticket.access.TicketAccessPolicy;
 import com.ademola.esm.ticket.category.CategoryService;
+import com.ademola.esm.ticket.change.Change;
+import com.ademola.esm.ticket.change.ChangeRepository;
+import com.ademola.esm.ticket.change.ChangeStatus;
 import com.ademola.esm.ticket.incident.Incident;
 import com.ademola.esm.ticket.incident.IncidentRepository;
 import com.ademola.esm.ticket.problem.Problem;
@@ -14,6 +17,7 @@ import com.ademola.esm.ticket.problem.ProblemRepository;
 import com.ademola.esm.ticket.request.ServiceRequest;
 import com.ademola.esm.user.User;
 import com.ademola.esm.user.UserService;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -30,6 +34,7 @@ public class TicketQueryService {
     private final TeamService teams;
     private final IncidentRepository incidents;
     private final ProblemRepository problems;
+    private final ChangeRepository changes;
 
     public TicketQueryService(
             WorkItemRepository workItems,
@@ -38,10 +43,12 @@ public class TicketQueryService {
             UserService users,
             TeamService teams,
             IncidentRepository incidents,
-            ProblemRepository problems) {
+            ProblemRepository problems,
+            ChangeRepository changes) {
         this.workItems = workItems;
         this.incidents = incidents;
         this.problems = problems;
+        this.changes = changes;
         this.accessPolicy = accessPolicy;
         this.categories = categories;
         this.users = users;
@@ -78,13 +85,13 @@ public class TicketQueryService {
                         p.getFixNotes(),
                         p.getReopenCount(),
                         incidents.findByProblemIdOrderByCreatedAtAsc(p.getId()).stream()
-                                .map(linked -> new LinkedTicket(
-                                        linked.getId(),
-                                        linked.getReference(),
-                                        linked.getTitle(),
-                                        linked.getStatusName()))
+                                .map(TicketQueryService::linked)
+                                .toList(),
+                        changes.findByProblemIdOrderByCreatedAtAsc(p.getId()).stream()
+                                .map(TicketQueryService::linked)
                                 .toList())
                 : null;
+        ChangeDetails change = item instanceof Change c ? changeDetails(c) : null;
         ServiceRequestDetails serviceRequest = item instanceof ServiceRequest r
                 ? new ServiceRequestDetails(r.getCatalogueItemId(), r.getCatalogueAnswers(), r.getFulfilmentNotes())
                 : null;
@@ -115,7 +122,42 @@ public class TicketQueryService {
                 item.getVersion(),
                 incident,
                 serviceRequest,
-                problem);
+                problem,
+                change);
+    }
+
+    private ChangeDetails changeDetails(Change c) {
+        return new ChangeDetails(
+                c.getChangeType(),
+                c.getRisk(),
+                c.getImplementationPlan(),
+                c.getBackoutPlan(),
+                c.getPlannedStart(),
+                c.getPlannedEnd(),
+                c.getImplementedAt(),
+                c.getOutcome(),
+                c.getReviewNotes(),
+                c.getProblemId() == null ? null : linked(problems.getReferenceById(c.getProblemId())),
+                clashesOf(c));
+    }
+
+    /** Only a change still being planned or on the schedule can clash with anything. */
+    private List<LinkedTicket> clashesOf(Change c) {
+        if (c.getPlannedStart() == null
+                || c.getPlannedEnd() == null
+                || c.isTerminal()
+                || c.getStatus() == ChangeStatus.REVIEW) {
+            return List.of();
+        }
+        return changes
+                .findOverlapping(c.getId(), c.getPlannedStart(), c.getPlannedEnd(), ChangeRepository.SCHEDULED)
+                .stream()
+                .map(TicketQueryService::linked)
+                .toList();
+    }
+
+    private static LinkedTicket linked(WorkItem item) {
+        return new LinkedTicket(item.getId(), item.getReference(), item.getTitle(), item.getStatusName());
     }
 
     private IncidentProblem problemOf(UUID problemId) {

@@ -5,7 +5,7 @@ import { QueryError } from '@/components/QueryError'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PriorityBadge } from '@/tickets/badges'
-import { formatDateTime } from '@/tickets/labels'
+import { formatDateTime, TYPE_LABEL } from '@/tickets/labels'
 import { DecisionForm } from './DecisionForm'
 
 /** Requests waiting for the signed-in team lead's (or admin's) approval, oldest first. */
@@ -16,7 +16,7 @@ export function ApprovalsPage() {
     <section className="grid gap-5">
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold">Approvals</h1>
-        <p className="text-muted-foreground">Requests for your teams that need your sign-off before support starts work.</p>
+        <p className="text-muted-foreground">Requests and changes for your teams that need your sign-off before work starts.</p>
       </div>
       {pending.isPending && <Skeleton className="h-48 w-full" />}
       {pending.isError && <QueryError error={pending.error} what="Your approvals" />}
@@ -38,7 +38,7 @@ export function ApprovalsPage() {
                       <PriorityBadge priority={approval.priority} />
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      <span className="font-mono">{approval.reference}</span> · {approval.requester.name} · {approval.team.name} · asked{' '}
+                      <span className="font-mono">{approval.reference}</span> · {TYPE_LABEL[approval.type]} · {approval.requester.name} · {approval.team.name} · asked{' '}
                       {formatDateTime(approval.requestedAt)}
                     </p>
                   </CardHeader>

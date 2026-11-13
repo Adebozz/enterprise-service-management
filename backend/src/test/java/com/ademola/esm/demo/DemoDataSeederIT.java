@@ -68,11 +68,11 @@ class DemoDataSeederIT {
                                 + " where catalogue_item_id is not null",
                         Integer.class))
                 .containsExactlyInAnyOrder(3, 3);
-        assertThat(jdbc.queryForObject(
-                        "select w.status from approvals a join work_items w on w.id = a.work_item_id"
-                                + " where a.status = 'PENDING'",
+        assertThat(jdbc.queryForList(
+                        "select w.type from approvals a join work_items w on w.id = a.work_item_id"
+                                + " where a.status = 'PENDING' and w.status = 'APPROVAL_PENDING'",
                         String.class))
-                .isEqualTo("APPROVAL_PENDING");
+                .containsExactlyInAnyOrder("SERVICE_REQUEST", "CHANGE");
         // A known error with its analysis, explaining two incidents.
         assertThat(jdbc.queryForObject(
                         "select w.status from problems p join work_items w on w.id = p.work_item_id"
@@ -81,6 +81,17 @@ class DemoDataSeederIT {
                 .isEqualTo("KNOWN_ERROR");
         assertThat(jdbc.queryForObject("select count(*) from incidents where problem_id is not null", Integer.class))
                 .isEqualTo(2);
+        // Changes: the known error's fix awaiting approval, a clashing standard change already
+        // scheduled, and an emergency change that went through to its review.
+        assertThat(jdbc.queryForList(
+                        "select c.change_type || ':' || w.status from changes c join work_items w on w.id = c.work_item_id",
+                        String.class))
+                .containsExactlyInAnyOrder("NORMAL:APPROVAL_PENDING", "STANDARD:APPROVED", "EMERGENCY:CLOSED");
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from changes where problem_id is not null and outcome is null", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select outcome from changes where outcome is not null", String.class))
+                .isEqualTo("SUCCESSFUL");
     }
 
     /** Otherwise a requester with, say, a login problem has nowhere sensible to report it. */

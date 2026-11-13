@@ -9,11 +9,13 @@ public enum CategoryScope {
     ANY;
 
     /**
-     * Problems are filed under incident categories: a problem explains incidents, so it belongs where
-     * they do, and is routed to the team that handles them.
+     * Problems and changes are filed under incident categories: a problem explains incidents and a
+     * change alters the service they happen in, so both belong where the incidents do, and are routed
+     * to the team that runs that service.
      */
     public boolean includes(WorkItemType type) {
-        WorkItemType filedAs = type == WorkItemType.PROBLEM ? WorkItemType.INCIDENT : type;
+        WorkItemType filedAs =
+                type == WorkItemType.PROBLEM || type == WorkItemType.CHANGE ? WorkItemType.INCIDENT : type;
         return this == ANY || name().equals(filedAs.name());
     }
 

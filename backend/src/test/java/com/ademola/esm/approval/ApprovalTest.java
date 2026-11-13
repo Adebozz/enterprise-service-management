@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ademola.esm.common.error.BusinessRuleException;
 import com.ademola.esm.common.error.ErrorCode;
+import com.ademola.esm.ticket.change.ChangeStatus;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,14 @@ class ApprovalTest {
 
     static final Instant NOW = Instant.parse("2026-11-11T10:00:00Z");
     static final UUID LEAD = UUID.randomUUID();
+
+    @Test
+    void changesUseTheSameApprovalStatusesAsRequests() {
+        for (String status :
+                new String[] {ApprovalService.AWAITING, ApprovalService.APPROVED, ApprovalService.REJECTED}) {
+            assertThat(ChangeStatus.valueOf(status).name()).isEqualTo(status);
+        }
+    }
 
     @Test
     void approvingRecordsWhoWhenAndAnOptionalComment() {

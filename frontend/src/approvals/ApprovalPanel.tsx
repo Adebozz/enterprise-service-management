@@ -14,8 +14,8 @@ const OUTCOME: Record<Approval['status'], { label: string; variant: 'secondary' 
   WITHDRAWN: { label: 'Withdrawn', variant: 'outline' },
 }
 
-/** The request's sign-off: where it stands for everyone, and the decision buttons for whoever may decide. */
-export function ApprovalPanel({ ticketId }: { ticketId: string }) {
+/** The ticket's sign-off: where it stands for everyone, and the decision buttons for whoever may decide. */
+export function ApprovalPanel({ ticketId, subject = 'request' }: { ticketId: string; subject?: 'request' | 'change' }) {
   const approval = useQuery(ticketApprovalQuery(ticketId))
   if (approval.isPending || approval.data === null) return null
 
@@ -32,7 +32,7 @@ export function ApprovalPanel({ ticketId }: { ticketId: string }) {
           <>
             <div className="flex items-center gap-2">
               <Badge variant={OUTCOME[approval.data.status].variant}>{OUTCOME[approval.data.status].label}</Badge>
-              <span className="text-muted-foreground">{summary(approval.data)}</span>
+              <span className="text-muted-foreground">{summary(approval.data, subject)}</span>
             </div>
             {approval.data.comment && <p className="whitespace-pre-wrap">“{approval.data.comment}”</p>}
             {approval.data.canDecide && <DecisionForm approvalId={approval.data.id} version={approval.data.version} />}
@@ -43,14 +43,14 @@ export function ApprovalPanel({ ticketId }: { ticketId: string }) {
   )
 }
 
-function summary(a: Approval): string {
+function summary(a: Approval, subject: 'request' | 'change'): string {
   switch (a.status) {
     case 'PENDING':
-      return 'A team lead must approve this request before work starts.'
+      return `A team lead must approve this ${subject} before work starts.`
     case 'APPROVED':
     case 'REJECTED':
       return `By ${a.decidedBy?.name ?? 'someone'}${a.decidedAt ? `, ${formatDateTime(a.decidedAt)}` : ''}.`
     case 'WITHDRAWN':
-      return 'The request was cancelled before anyone decided.'
+      return `The ${subject} was cancelled before anyone decided.`
   }
 }

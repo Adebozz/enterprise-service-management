@@ -74,6 +74,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `COMMENT_NOT_PERMITTED` | 403 | Internal notes are for support on this ticket |
 | `PROBLEM_UPDATE_NOT_PERMITTED` | 403 | Only the team working on a problem (or an admin) records its analysis |
 | `INCIDENT_LINK_NOT_PERMITTED` | 403 | Only staff handling the incident or the problem can link them |
+| `CHANGE_UPDATE_NOT_PERMITTED` | 403 | Only the team carrying out a change (or an admin) writes its plan or records its outcome |
 | `APPROVAL_NOT_PERMITTED` | 403 | Only team leads of the request's team, and admins, decide approvals; never the requester |
 | `RESOURCE_NOT_FOUND` | 404 | Doesn't exist, or you may not see it |
 | `METHOD_NOT_ALLOWED` | 405 | Wrong HTTP method for this path |
@@ -83,6 +84,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `TICKET_NOT_ASSIGNABLE` | 409 | Resolved/closed tickets can't change owner |
 | `TICKET_CLOSED` | 409 | Closed tickets accept no comments |
 | `PROBLEM_NOT_OPEN` | 409 | The problem is resolved, closed or cancelled: its analysis is final and it takes no more incidents |
+| `CHANGE_NOT_EDITABLE` | 409 | The plan is fixed once submitted; the outcome is recorded only once implementation has started |
 | `APPROVAL_ALREADY_DECIDED` | 409 | The approval was already approved, rejected or withdrawn |
 | `EMAIL_ALREADY_EXISTS` | 409 | Another user has this email (case-insensitive) |
 | `TEAM_NAME_ALREADY_EXISTS` | 409 | Another team has this name (case-insensitive) |
@@ -98,6 +100,9 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `CATEGORY_TEAM_REQUIRED` | 422 | Top-level categories must route to a team |
 | `INVALID_CATALOGUE_FORM` | 422 | The item's questions don't fit together (duplicate keys, a choice with fewer than two options...); see `fieldErrors` (`fields[i].…`) |
 | `APPROVAL_REASON_REQUIRED` | 422 | Rejecting a request needs a comment saying why |
+| `CHANGE_PLAN_INCOMPLETE` | 422 | Submitting needs an implementation plan, a backout plan and a planned window |
+| `CHANGE_PLAN_INVALID` | 422 | The plan breaks a rule: a standard change must be low risk and is scheduled, not submitted; the window must end after it starts, and (except in an emergency) not have started yet |
+| `CHANGE_REVIEW_INCOMPLETE` | 422 | Record how the change went before closing it |
 | `CATALOGUE_ANSWERS_INVALID` | 422 | Answers don't match the item's form; see `fieldErrors` (`answers.<key>`) |
 | `PROBLEM_ANALYSIS_INCOMPLETE` | 422 | A known error needs a root cause and workaround (and keeps them); resolving needs the root cause |
 | `TRANSITION_REQUIREMENT_MISSING` | 422 | E.g. resolving without resolution code + notes |
@@ -171,7 +176,7 @@ it was raised.
 
 | Method | Path | operationId | Who |
 |---|---|---|---|
-| GET | `/api/approvals` | `listMyPendingApprovals` | team leads and admins; only requests they may decide |
+| GET | `/api/approvals` | `listMyPendingApprovals` | team leads and admins; only requests and changes they may decide (`type` says which) |
 | GET | `/api/tickets/{id}/approval` | `getTicketApproval` | anyone who can see the ticket; 404 if it needs none |
 | POST | `/api/approvals/{id}/decision` | `decideApproval` | team leads of the request's team, admins; never the requester |
 
@@ -205,8 +210,41 @@ internal note on each linked incident that is still open.
 The analysis is replaced whole (`rootCause`, `workaround`, both optional, plus the problem's
 `version`). Linking takes the problem's id and the *incident's* `version`; only an open problem
 takes incidents, but any incident may be linked. Neither call returns a body: reload the ticket.
-On a problem, `problem` in the ticket holds the analysis and the linked incidents; on an incident
-seen by staff, `incident.problem` names its problem with the workaround.
+On a problem, `problem` in the ticket holds the analysis, the linked incidents and the changes
+raised to fix it; on an incident seen by staff, `incident.problem` names its problem with the
+workaround.
+
+### Changes
+
+| Method | Path | operationId | Who |
+|---|---|---|---|
+| POST | `/api/changes` | `createChange` | agents and above → 201 |
+| PUT | `/api/changes/{id}/plan` | `updateChangePlan` | the change's team, admins → 204 |
+| PUT | `/api/changes/{id}/outcome` | `recordChangeOutcome` | the change's team, admins → 204 |
+| GET | `/api/changes/schedule` | `getChangeSchedule` | agents and above |
+
+A change is a ticket of type `CHANGE` (`CHG-000001`): a planned change to a live service. Support
+staff raise it with a `changeType` (`STANDARD`, `NORMAL`, `EMERGENCY`), a `risk` (`LOW`, `MEDIUM`,
+`HIGH`) and, now or later, the plan: `implementationPlan`, `backoutPlan`, `plannedStart` and
+`plannedEnd`. `problemId` optionally names the open problem it fixes. Like a problem it uses
+incident categories, has no SLA clocks, is visible to every agent and to no requester, and only its
+team changes it.
+
+Lifecycle, through the usual transition endpoint: `NEW → ASSIGNED`, then either `Submit for
+approval` (`APPROVAL_PENDING`) or, for a standard change only, `Schedule standard change`
+(`APPROVED`); the transitions list offers whichever applies. Both need the whole plan, and the
+window must not have started yet unless it is an emergency. Submitting opens an approval in the
+approvals inbox (see Approvals), decided by a team lead of the change's team or an admin, never by
+whoever raised it: approving moves it to `APPROVED`, rejecting to `REJECTED`, which ends it. Then
+`IMPLEMENTING → REVIEW → CLOSED`; closing needs the outcome. A change cancelled while waiting has its
+approval withdrawn.
+
+The plan is replaced whole (same fields plus the change's `version`) and only while `NEW` or
+`ASSIGNED`. The outcome (`SUCCESSFUL`, `SUCCESSFUL_WITH_ISSUES`, `FAILED`, `BACKED_OUT`, with
+required `notes`) is recorded while `IMPLEMENTING` or in `REVIEW`. Neither call returns a body:
+reload the ticket. On a change, `change` in the ticket holds the plan, the review, the problem it
+fixes and its `clashes`: other changes awaiting approval, approved or under way whose windows overlap
+its own. The schedule lists those same changes whose window hasn't ended, soonest first.
 
 ### Teams
 

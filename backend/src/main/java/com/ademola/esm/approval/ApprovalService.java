@@ -37,16 +37,25 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Sign-off for service requests that need it. The request waits in APPROVAL_PENDING (its SLA
- * clocks paused) until a team lead of its team, or an admin, approves or rejects it. Status moves
- * are SYSTEM transitions, so nobody can approve through the ordinary transitions endpoint.
+ * Sign-off for service requests that need it, and for changes. The ticket waits in
+ * APPROVAL_PENDING (a request's SLA clocks paused) until a team lead of its team, or an admin,
+ * approves or rejects it. Decisions are SYSTEM transitions, so nobody can approve through the
+ * ordinary transitions endpoint.
+ *
+ * <p>A catalogue request is put on hold by {@link #requireApproval}. A change is submitted by its
+ * owner through the ordinary transitions endpoint, and this module opens its approval on hearing
+ * of it: the ticket module never depends on this one.
  */
 @Service
 @Transactional
 public class ApprovalService {
 
     private static final Logger log = LoggerFactory.getLogger(ApprovalService.class);
+    // Both ticket types that are approved use the same status names, checked by ApprovalTest.
     static final String AWAITING = ServiceRequestStatus.APPROVAL_PENDING.name();
+    static final String APPROVED = ServiceRequestStatus.APPROVED.name();
+    static final String REJECTED = ServiceRequestStatus.REJECTED.name();
+    private static final Set<WorkItemType> APPROVED_TYPES = Set.of(WorkItemType.SERVICE_REQUEST, WorkItemType.CHANGE);
 
     private final ApprovalRepository approvals;
     private final WorkItemRepository workItems;
@@ -81,11 +90,15 @@ public class ApprovalService {
     public void requireApproval(UUID requestId) {
         Approval approval = approvals.save(new Approval(requestId));
         transitions.applySystemTransition(requestId, AWAITING, "APPROVAL_REQUIRED", null, null);
+        auditRequested(approval);
+    }
+
+    private void auditRequested(Approval approval) {
         audit.record(AuditRecord.created(
                 AuditAction.APPROVAL_REQUESTED,
                 AuditEntityType.APPROVAL,
                 approval.getId(),
-                Map.of("workItemId", requestId)));
+                Map.of("workItemId", approval.getWorkItemId())));
     }
 
     /** Pending approvals the caller may decide, oldest first. */
@@ -123,6 +136,7 @@ public class ApprovalService {
                             a.getVersion(),
                             a.getCreatedAt(),
                             item.getId(),
+                            item.getType(),
                             item.getReference(),
                             item.getTitle(),
                             item.getDescription(),
@@ -175,10 +189,10 @@ public class ApprovalService {
         String target;
         if (request.decision() == ApprovalDecisionRequest.Decision.APPROVE) {
             approval.approve(user.id(), now, request.comment());
-            target = ServiceRequestStatus.APPROVED.name();
+            target = APPROVED;
         } else {
             approval.reject(user.id(), now, request.comment());
-            target = ServiceRequestStatus.REJECTED.name();
+            target = REJECTED;
         }
         transitions.applySystemTransition(item.getId(), target, "APPROVAL", user.id(), approval.getComment());
         audit.record(new AuditRecord(
@@ -194,13 +208,21 @@ public class ApprovalService {
     }
 
     /**
-     * A request that leaves "awaiting approval" without a decision (the requester cancelled it)
-     * no longer needs one, so it leaves every approver's inbox.
+     * A change submitted for approval gets its approval here, in the same transaction. A ticket that
+     * leaves "awaiting approval" without a decision (it was cancelled) no longer needs one, so it
+     * leaves every approver's inbox.
      */
     @EventListener
     @Transactional(propagation = Propagation.MANDATORY)
     void on(TicketChangedEvent event) {
-        if (event.created() || event.type() != WorkItemType.SERVICE_REQUEST || AWAITING.equals(event.status())) {
+        if (event.created() || !APPROVED_TYPES.contains(event.type())) {
+            return;
+        }
+        if (AWAITING.equals(event.status())) {
+            // A catalogue request's approval already exists: requireApproval made it, then moved it here.
+            if (event.type() == WorkItemType.CHANGE) {
+                auditRequested(approvals.save(new Approval(event.ticketId())));
+            }
             return;
         }
         approvals.findByWorkItemId(event.ticketId()).filter(Approval::isPending).ifPresent(approval -> {

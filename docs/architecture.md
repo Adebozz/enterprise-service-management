@@ -36,7 +36,7 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `problem` (M20), `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7, M20) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `problem` (M20), `change` (M21), `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7, M20) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check; ticket SLA and admin target APIs. Depends on `ticket`, never the reverse | Implemented (M15–M17) |
 | `catalogue` | Service catalogue: items with their own short forms, admin maintenance, ordering. Validates answers, then raises an ordinary service request through `ServiceRequestService`. Depends on `ticket`, never the reverse | Implemented (M18) |
@@ -548,6 +548,43 @@ stateDiagram-v2
   transaction. Resolving the incident stays a decision for whoever handles it.
 - **No SLA clocks.** Problems are measured by the incidents they prevent; `SlaClockService` ignores
   them.
+
+## Change management (M21)
+
+A change is a planned change to a live service. It is a fourth ticket type, approved through the
+same approvals as catalogue requests ([ADR-013](adr/013-changes-and-approval-by-event.md)).
+
+```mermaid
+stateDiagram-v2
+    [*] --> NEW: raised by support
+    NEW --> ASSIGNED: someone takes it (system)
+    ASSIGNED --> APPROVAL_PENDING: submit (normal, emergency)
+    ASSIGNED --> APPROVED: schedule (standard: pre-approved)
+    APPROVAL_PENDING --> APPROVED: approved (system)
+    APPROVAL_PENDING --> REJECTED: rejected (system)
+    APPROVED --> IMPLEMENTING: start implementation
+    IMPLEMENTING --> REVIEW: finish implementation
+    REVIEW --> CLOSED: close (outcome recorded)
+```
+
+- **The plan comes first.** Type, risk, implementation plan, backout plan and planned window are
+  edited through their own endpoint while the change is `NEW` or `ASSIGNED`, then fixed: what was
+  approved is what happens. `Change.checkCanEnter` refuses submission without a complete plan,
+  refuses a window that has already started unless it is an emergency, and refuses closing without
+  an outcome. A standard change must be low risk (also a database CHECK).
+- **Only possible moves are offered.** `WorkItem.offersMoveTo` lets the change hide "Submit for
+  approval" on a standard change and "Schedule standard change" on the others; the transitions
+  endpoint filters on it.
+- **Approval by event.** Submitting is an ordinary transition. `ApprovalService` hears the
+  `TicketChangedEvent` for a change entering `APPROVAL_PENDING` and opens its approval in the same
+  transaction, so `ticket` never depends on `approval`. Decisions, the inbox, the "never your own"
+  rule and withdrawal on cancellation are shared with requests.
+- **Schedule and clashes.** `GET /api/changes/schedule` lists changes awaiting approval, approved or
+  under way whose window hasn't ended. A change's details list the scheduled changes whose window
+  overlaps its own, read with one indexed query; nothing blocks a clash.
+- **Linked to problems.** A change can name the open problem it permanently fixes; the problem lists
+  its changes.
+- **Seen by every agent, changed by its team, no SLA clocks,** as for problems.
 
 ## Audit trail (M3)
 
