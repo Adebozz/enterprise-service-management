@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { AdminBackLink } from './AdminHomePage'
 
 /** Admins see every catalogue item, including withdrawn ones, and open one to edit it. */
 export function CatalogueAdminPage() {
@@ -15,6 +16,7 @@ export function CatalogueAdminPage() {
     <section className="grid gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-1">
+          <AdminBackLink />
           <h1 className="text-2xl font-semibold">Service catalogue</h1>
           <p className="text-muted-foreground">What requesters can order, the questions each asks, and which team receives it.</p>
         </div>

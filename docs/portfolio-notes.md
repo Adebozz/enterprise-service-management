@@ -1007,3 +1007,32 @@ sending with a link, retries then giving up, deactivated people), plus demo seed
 frontend tests (the bell's count, listing and marking all read, opening a notification, the empty
 state). Total: 392 unit + 273 integration backend tests, 99 frontend tests. Checked in a browser and
 in Mailpit with the Compose stack.
+
+## M24: Admin screens for people, teams and categories (2026-11-15)
+
+**What was built**
+- An *Admin* area that replaces separate navigation links: people, teams, categories, the service
+  catalogue and SLA targets, each page linking back to it.
+- People: search by name or email, filter by role and status, add an account with an initial
+  password, and change someone's name, role or whether they can sign in.
+- Teams: create, rename, describe, deactivate and reactivate; add active support staff as members
+  (requesters and current members aren't offered) and remove them.
+- Categories: the tree with what each category is used for and which team it routes to (or "parent's
+  team"), adding categories and subcategories, renaming, rerouting and retiring them.
+- No backend changes were needed: the admin API, its rules and its tests existed since Phase 1.
+
+**What I learned (good interview material)**
+- **Let the server's rules speak.** The interesting cases (removing the last administrator, taking
+  someone out of a team while they own its open tickets) are enforced by the API with human-readable
+  messages. The screens show those messages instead of re-implementing the rules in the browser,
+  where they could drift. The browser check confirmed both against the real backend.
+- **Navigation scales by grouping.** Two more admin links would have made eleven top-level items; one
+  *Admin* entry with a landing page keeps the header readable on small screens.
+- **Optimistic locking reaches the UI.** Every edit sends the version it was based on; a conflict
+  reloads the data and says so, rather than silently overwriting another admin's change.
+
+**Tests:** 9 new frontend tests (`Administration.test.tsx`: the admin area for admins only, people
+listing and role filter, a role change with its version and the last-admin refusal, adding a person
+and a taken email, adding members without offering requesters, a refused removal, creating a team,
+the category tree, adding a subcategory and retiring one). Total: 392 unit + 273 integration backend
+tests, 108 frontend tests. Checked in a browser against the Compose stack.

@@ -85,6 +85,10 @@ its old data; `docker compose down -v` then `up` starts again with the current d
   withdraw items. Requests already
   raised keep the questions as they were asked.
 - Set the SLA targets for each ticket type and priority; changes apply to tickets raised afterwards.
+- Manage people (add accounts, change roles, deactivate), teams (create, rename, retire, choose
+  members) and the category tree that routes tickets, all from an *Admin* area. The server keeps
+  the rules: there is always an active administrator, and nobody leaves a team while they still
+  own its open tickets.
 
 | Requester | Agent |
 |---|---|
@@ -271,14 +275,15 @@ enterprise-service-management/
   or internal), type and content checks on the server, 10 MB per file, stored in PostgreSQL behind
   a small interface that an S3 store can replace;
 - notifications (M23): created from the audit trail in the same transaction as each change, shown
-  under a bell in the app and emailed through an outbox with retries (Mailpit in the demo).
+  under a bell in the app and emailed through an outbox with retries (Mailpit in the demo);
+- admin screens (M24): people, teams and members, and the category tree, alongside the catalogue
+  and SLA targets in one *Admin* area.
 
 **Not built yet:**
 - **Phase 2 (planned):**
   - business-hours SLA calendars (clocks run 24/7 today);
   - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
   - notification preferences (everyone gets every notification that concerns them today);
-  - admin screens for users, teams and categories (managed through the API today).
 - **Phase 3 (planned):**
   - reporting dashboards;
   - load testing;

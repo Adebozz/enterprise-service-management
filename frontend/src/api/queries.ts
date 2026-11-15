@@ -1,6 +1,6 @@
 import { api } from './client'
 import { isApiError, unwrap } from './errors'
-import type { TicketListParams, TicketType } from './types'
+import type { AdminUserSearch, TicketListParams, TicketType } from './types'
 
 /**
  * Query keys are hierarchical, so one invalidation of ['tickets'] after a change refreshes every
@@ -28,8 +28,14 @@ export const queryKeys = {
   catalogueItem: (id: string) => ['catalogue', 'item', id] as const,
   adminCatalogue: ['catalogue', 'admin'] as const,
   categories: (type: TicketType) => ['categories', type] as const,
+  allCategories: ['categories'] as const,
   teams: ['teams'] as const,
   teamMembers: (teamId: string) => ['teams', teamId, 'members'] as const,
+  /** Under ['teams'] and ['categories'], so admin changes refresh every picker that lists them. */
+  adminTeams: ['teams', 'admin'] as const,
+  adminCategories: ['categories', 'admin'] as const,
+  adminUsers: (params: AdminUserSearch) => ['admin-users', params] as const,
+  allAdminUsers: ['admin-users'] as const,
 }
 
 export const myProfileQuery = {
@@ -106,6 +112,21 @@ export const teamMembersQuery = (teamId: string) => ({
   queryKey: queryKeys.teamMembers(teamId),
   queryFn: async () => unwrap(await api.GET('/api/teams/{id}/members', { params: { path: { id: teamId } } })),
   staleTime: 60_000,
+})
+
+export const adminTeamsQuery = {
+  queryKey: queryKeys.adminTeams,
+  queryFn: async () => unwrap(await api.GET('/api/admin/teams')),
+}
+
+export const adminCategoriesQuery = {
+  queryKey: queryKeys.adminCategories,
+  queryFn: async () => unwrap(await api.GET('/api/admin/categories')),
+}
+
+export const adminUsersQuery = (params: AdminUserSearch) => ({
+  queryKey: queryKeys.adminUsers(params),
+  queryFn: async () => unwrap(await api.GET('/api/admin/users', { params: { query: params } })),
 })
 
 export const catalogueQuery = {

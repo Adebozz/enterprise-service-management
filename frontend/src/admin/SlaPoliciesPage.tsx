@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PriorityBadge } from '@/tickets/badges'
 import { TYPE_LABEL } from '@/tickets/labels'
 import { formatMinutes } from '@/tickets/sla'
+import { AdminBackLink } from './AdminHomePage'
 
 /** Admins set the response and resolution targets for each ticket type and priority. */
 export function SlaPoliciesPage() {
@@ -21,6 +22,7 @@ export function SlaPoliciesPage() {
   return (
     <section className="grid gap-5">
       <div className="grid gap-1">
+        <AdminBackLink />
         <h1 className="text-2xl font-semibold">SLA targets</h1>
         <p className="text-muted-foreground">
           How long support has to first respond to, and to resolve, each kind of ticket. Times run around the clock and pause while

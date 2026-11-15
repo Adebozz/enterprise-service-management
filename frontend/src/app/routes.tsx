@@ -47,6 +47,10 @@ export const routes: RouteObject[] = [
           {
             element: <RequireAuth role="ADMIN" />,
             children: [
+              { path: 'admin', lazy: async () => ({ Component: (await import('@/admin/AdminHomePage')).AdminHomePage }) },
+              { path: 'admin/people', lazy: async () => ({ Component: (await import('@/admin/PeoplePage')).PeoplePage }) },
+              { path: 'admin/teams', lazy: async () => ({ Component: (await import('@/admin/TeamsAdminPage')).TeamsAdminPage }) },
+              { path: 'admin/categories', lazy: async () => ({ Component: (await import('@/admin/CategoriesAdminPage')).CategoriesAdminPage }) },
               { path: 'admin/sla', lazy: async () => ({ Component: (await import('@/admin/SlaPoliciesPage')).SlaPoliciesPage }) },
               {
                 path: 'admin/catalogue',

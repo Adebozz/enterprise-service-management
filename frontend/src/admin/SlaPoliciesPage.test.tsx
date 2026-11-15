@@ -75,7 +75,7 @@ describe('SLA targets page', () => {
     staffContext(admin)
     policyBackend()
     renderApp('/admin/sla')
-    expect(await screen.findByRole('link', { name: 'SLA targets' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Admin' })).toBeVisible()
   })
 
   it('is refused to agents', async () => {
@@ -85,6 +85,6 @@ describe('SLA targets page', () => {
     renderApp('/admin/sla')
 
     expect(await screen.findByRole('heading', { name: 'You don’t have access to this page' })).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'SLA targets' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
   })
 })

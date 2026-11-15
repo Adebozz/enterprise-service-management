@@ -40,7 +40,7 @@ describe('catalogue administration', () => {
     expect(within(laptop).getByRole('link', { name: 'New laptop' })).toHaveAttribute('href', '/admin/catalogue/item-laptop')
     expect(within(laptop).getByText('Available')).toBeVisible()
     expect(within(screen.getByRole('row', { name: /Fax machine/ })).getByText('Withdrawn')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Catalogue' })).toBeVisible()
+    expect(screen.getByRole('link', { name: '← Administration' })).toHaveAttribute('href', '/admin')
   })
 
   it('creates an item with questions, making keys from the labels', async () => {
