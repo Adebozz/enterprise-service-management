@@ -30,8 +30,9 @@ class AuthController {
 
     @PostMapping("/login")
     @Operation(operationId = "login", summary = "Sign in. Returns an access token; sets the refresh-token cookie")
-    ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-        return withSession(authService.login(request.email(), request.password()));
+    ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        // Behind the proxy, getRemoteAddr is the client's address (forwarded headers, see application.yml).
+        return withSession(authService.login(request.email(), request.password(), http.getRemoteAddr()));
     }
 
     @PostMapping("/refresh")

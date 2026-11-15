@@ -48,7 +48,9 @@ export function LoginPage() {
       setFormError(
         isApiError(error) && error.code === 'INVALID_CREDENTIALS'
           ? 'Invalid email or password.'
-          : 'We couldn’t sign you in right now. Please try again.',
+          : isApiError(error) && error.code === 'TOO_MANY_LOGIN_ATTEMPTS'
+            ? error.message // says how long to wait
+            : 'We couldn’t sign you in right now. Please try again.',
       )
     }
   })

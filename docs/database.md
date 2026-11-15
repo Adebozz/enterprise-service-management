@@ -201,6 +201,12 @@ separators, 1 byte to 10 MB, a 64-character lowercase hex hash. `attachments_wor
 bytes (`attachment_id` → attachments, `ON DELETE CASCADE`, `content bytea`), apart from the
 metadata so listing never reads them; it is the part an S3 store replaces (ADR-014).
 
+### login_failures (Phase 3, M27)
+
+Failed sign-ins inside the throttling window: `account_hash` (SHA-256 of the normalised email,
+never the email itself), `address`, `failed_at`. Indexed by account and by address (each with
+`failed_at`) for the two limit checks, and by `failed_at` for deleting rows as they age out.
+
 ### notifications (Phase 2, M23)
 
 One row per message to one person: `recipient_id` (→ users), `work_item_id` (→ work_items,

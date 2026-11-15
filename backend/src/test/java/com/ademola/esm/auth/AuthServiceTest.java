@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,14 +43,14 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         when(passwordEncoder.encode(anyString())).thenReturn("{bcrypt}dummy");
-        service = new AuthService(users, passwordEncoder, accessTokens, refreshTokens);
+        service = new AuthService(users, passwordEncoder, accessTokens, refreshTokens, mock(LoginThrottle.class));
     }
 
     @Test
     void unknownEmailStillPerformsAPasswordHashComparison() {
         when(users.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
 
-        assertInvalidCredentials(() -> service.login("Ghost@Example.com", "whatever-password"));
+        assertInvalidCredentials(() -> service.login("Ghost@Example.com", "whatever-password", "203.0.113.7"));
 
         // Same expensive work as a real account, so response timing doesn't reveal account existence.
         verify(passwordEncoder).matches("whatever-password", "{bcrypt}dummy");
@@ -62,7 +63,7 @@ class AuthServiceTest {
         when(users.findByEmail("ada@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", user.getPasswordHash())).thenReturn(false);
 
-        assertInvalidCredentials(() -> service.login("ada@example.com", "wrong"));
+        assertInvalidCredentials(() -> service.login("ada@example.com", "wrong", "203.0.113.7"));
     }
 
     @Test
@@ -71,7 +72,7 @@ class AuthServiceTest {
         when(users.findByEmail("ada@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(eq("right"), anyString())).thenReturn(true);
 
-        assertInvalidCredentials(() -> service.login("ada@example.com", "right"));
+        assertInvalidCredentials(() -> service.login("ada@example.com", "right", "203.0.113.7"));
         verify(refreshTokens, never()).startSession(any());
     }
 

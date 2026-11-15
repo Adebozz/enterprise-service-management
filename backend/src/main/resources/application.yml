@@ -40,6 +40,9 @@ spring:
         max-page-size: 100   # a client can't ask for ?size=1000000
 
 server:
+  # Trust X-Forwarded-For only from proxies on private networks (Tomcat's RemoteIpValve), so the
+  # client's address reaches the login throttle through nginx (or a load balancer).
+  forward-headers-strategy: native
   error:
     include-stacktrace: never
     include-message: never

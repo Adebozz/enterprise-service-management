@@ -68,6 +68,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `INVALID_CREDENTIALS` | 401 | Wrong email/password, or inactive account (deliberately indistinguishable) |
 | `REFRESH_TOKEN_INVALID` | 401 | Session expired, revoked or reused: sign in again |
 | `ACCESS_DENIED` | 403 | Your role can't do this |
+| `TOO_MANY_LOGIN_ATTEMPTS` | 429 | Too many failed sign-ins for this account or from this address in 15 minutes; `Retry-After` says when to try again |
 | `INVALID_ORIGIN` | 403 | Cookie endpoint called from a foreign site |
 | `TRANSITION_NOT_PERMITTED` | 403 | Valid status change, but not for you (e.g. a requester resolving) |
 | `ASSIGNMENT_NOT_PERMITTED` | 403 | You can't make this ownership change |

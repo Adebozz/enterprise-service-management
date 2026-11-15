@@ -48,6 +48,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (ex instanceof InvalidFieldsException invalid) {
             response.getBody().setProperty("fieldErrors", invalid.fieldErrors());
         }
+        if (ex instanceof TooManyRequestsException tooMany) {
+            return ResponseEntity.status(response.getStatusCode())
+                    .header(
+                            HttpHeaders.RETRY_AFTER,
+                            String.valueOf(Math.max(1, tooMany.retryAfter().toSeconds())))
+                    .body(response.getBody());
+        }
         return response;
     }
 

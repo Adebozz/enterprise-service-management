@@ -290,7 +290,9 @@ enterprise-service-management/
 **Phase 3, done so far:**
 - reporting (M26): a *Reports* page for team leads (their teams) and admins: tickets raised and
   resolved per day, the open backlog by priority, SLA targets met and missed, median response and
-  resolution times, top categories and change outcomes, over 7, 30 or 90 days.
+  resolution times, top categories and change outcomes, over 7, 30 or 90 days;
+- sign-in throttling (M27): after 5 failed sign-ins for an account, or 20 from one address, within
+  15 minutes, further attempts wait (429 with `Retry-After`), whether or not the account exists.
 
 **Not built yet:**
 - **Phase 2 extensions (not scheduled):**
@@ -299,7 +301,7 @@ enterprise-service-management/
 - **Phase 3 (planned):**
   - load testing;
   - AWS deployment (ECS Fargate, RDS, S3, CloudFront) with Terraform;
-  - login rate limiting at the edge.
+  - a rate rule at the edge (AWS WAF) in front of the application's own sign-in throttling.
 
 Known limitations are listed in [docs/security.md](docs/security.md#known-limitations-security)
 and [docs/performance.md](docs/performance.md#known-future-work).

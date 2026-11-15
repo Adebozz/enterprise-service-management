@@ -1116,3 +1116,32 @@ teams, agents refused; change outcomes; the default period and invalid periods).
 tests (headline figures and tables, the chart's legend, hover readout and table view, the period and
 team sent to the API with a refusal shown, access for team leads only). Total: 405 unit + 284
 integration backend tests, 116 frontend tests. Checked in a browser as a team lead.
+
+## M27: Sign-in throttling (2026-11-15)
+
+**What was built**
+- After 5 failed sign-ins for one account, or 20 from one client address, within 15 minutes,
+  further attempts get 429 `TOO_MANY_LOGIN_ATTEMPTS` with `Retry-After`, until the oldest failure
+  ages out. The check runs before the password is verified, and unknown emails are treated exactly
+  like real ones. A successful sign-in clears the account's failures, not the address's.
+- Failures live in a PostgreSQL table, so the limits hold across backend instances; emails are
+  stored only as SHA-256 hashes and rows are deleted once they leave the window.
+- The client address reaches the backend safely: nginx overwrites `X-Forwarded-For` with the address
+  it sees, and Spring trusts the header only from private-network proxies.
+- The sign-in page says how long to wait.
+
+**What I learned (good interview material)**
+- **Two limits for two attacks.** Per account stops guessing one person's password; per address
+  stops one password being tried against many accounts. Either alone leaves the other open.
+- **`$proxy_add_x_forwarded_for` appends what the client sent.** With the edge appending, a client
+  could send `X-Forwarded-For: 8.8.8.8` and be counted as someone else. At the edge the header must
+  be overwritten; checked through the real proxy with a spoofed header.
+- **State that must be shared belongs in shared storage.** An in-memory counter is simpler but
+  resets on deploy and splits across instances; a small indexed table costs a few milliseconds per
+  sign-in and the test cleaner resets it for free.
+
+**Tests:** 5 new integration tests (`LoginThrottleIT`: five failures then a wait even with the right
+password and from another address, with `Retry-After`; success clearing failures; unknown emails
+alike; the per-address limit; hashed emails and pruning), 1 new frontend test. Total: 405 unit + 289
+integration backend tests, 117 frontend tests. Checked with curl through nginx, including a spoofed
+`X-Forwarded-For`.

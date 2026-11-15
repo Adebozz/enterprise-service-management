@@ -185,14 +185,27 @@ body.
 - Emails carry the message and a link, never a comment's text or a file. In the demo they go to
   Mailpit, never to real addresses. Deactivated accounts get no email.
 
+## Implemented (M27): sign-in throttling
+
+- After 5 failed sign-ins for one account, or 20 from one address, within 15 minutes, further
+  attempts get 429 `TOO_MANY_LOGIN_ATTEMPTS` with `Retry-After`, until the oldest failure ages out.
+  The check runs before the password is verified, so even the right password waits.
+- Unknown emails are throttled exactly like real ones, so throttling reveals nothing about which
+  accounts exist. A successful sign-in clears the account's failures but not the address's.
+- Failures are kept in PostgreSQL (`login_failures`), so the limit holds across backend instances;
+  emails are stored only as SHA-256 hashes, and rows older than the window are deleted.
+- The client address comes through nginx: nginx overwrites `X-Forwarded-For` with the address it
+  sees (a client can't claim another), and the backend trusts that header only from private-network
+  proxies (`server.forward-headers-strategy: native`).
+
 ## Known limitations (security)
 
 - **Uploaded files aren't scanned for malware.** Type checks stop disguised files, not infected
   documents. A deployment would add scanning (for example on S3 upload).
-
-
-- **No login rate limiting or lockout yet.** Planned at the edge (AWS WAF rate-based rule on
-  `/api/auth/login`) in Phase 3; an application-level limiter is an alternative.
+- **Sign-in throttling is per account and per address, not adaptive.** A large botnet spreading
+  guesses over many addresses stays under the per-address limit; the per-account limit still
+  protects each account. An edge rate rule (AWS WAF) is the next layer, planned with the AWS
+  deployment.
 - **Admin-set initial passwords** aren't flagged "must change at first login".
 - Expired and revoked refresh-token rows aren't purged yet (a scheduled cleanup comes with Phase 2
   scheduling).

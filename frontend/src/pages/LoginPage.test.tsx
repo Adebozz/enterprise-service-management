@@ -27,6 +27,17 @@ describe('login page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password.')
   })
 
+  it('says how long to wait after too many failed sign-ins', async () => {
+    server.use(http.post('/api/auth/login', () => problem(429, 'TOO_MANY_LOGIN_ATTEMPTS', 'Too many failed sign-ins. Try again in 15 minutes.')))
+    const { user } = renderApp('/login')
+
+    await user.type(await screen.findByLabelText('Email'), 'ada@example.com')
+    await user.type(screen.getByLabelText('Password'), 'another-guess')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Try again in 15 minutes.')
+  })
+
   it('signs in and returns to the page the user originally asked for', async () => {
     server.use(
       http.post('/api/auth/login', async ({ request }) => {

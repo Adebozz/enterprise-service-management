@@ -28,6 +28,7 @@ class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenService accessTokens;
     private final RefreshTokenService refreshTokens;
+    private final LoginThrottle throttle;
 
     /** Hash of a random password; checked against when the email is unknown (see login). */
     private final String dummyHash;
@@ -36,8 +37,10 @@ class AuthService {
             UserRepository users,
             PasswordEncoder passwordEncoder,
             AccessTokenService accessTokens,
-            RefreshTokenService refreshTokens) {
+            RefreshTokenService refreshTokens,
+            LoginThrottle throttle) {
         this.users = users;
+        this.throttle = throttle;
         this.passwordEncoder = passwordEncoder;
         this.accessTokens = accessTokens;
         this.refreshTokens = refreshTokens;
@@ -46,8 +49,11 @@ class AuthService {
 
     record Session(TokenResponse body, RefreshTokenService.IssuedToken refreshToken) {}
 
-    Session login(String email, String password) {
-        Optional<User> found = users.findByEmail(User.normaliseEmail(email));
+    /** @param address the client's address, for throttling guesses from one place */
+    Session login(String email, String password, String address) {
+        String normalised = User.normaliseEmail(email);
+        throttle.check(normalised, address);
+        Optional<User> found = users.findByEmail(normalised);
 
         // Always run exactly one BCrypt comparison, even for unknown emails. Otherwise "unknown
         // email" responses are measurably faster than "wrong password", revealing which emails
@@ -57,9 +63,11 @@ class AuthService {
 
         if (found.isEmpty() || !passwordMatches || !found.get().isActive()) {
             log.info("SECURITY login failed");
+            throttle.recordFailure(normalised, address);
             throw new BusinessRuleException(ErrorCode.INVALID_CREDENTIALS, "Invalid email or password");
         }
         User user = found.get();
+        throttle.recordSuccess(normalised);
         log.info("SECURITY login succeeded user={}", user.getId());
         return new Session(tokenResponse(user), refreshTokens.startSession(user.getId()));
     }
