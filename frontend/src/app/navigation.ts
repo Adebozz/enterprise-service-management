@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/problems', label: 'Problems', role: 'AGENT' },
   { to: '/changes', label: 'Changes', role: 'AGENT' },
   { to: '/approvals', label: 'Approvals', role: 'TEAM_LEAD' },
+  { to: '/reports', label: 'Reports', role: 'TEAM_LEAD' },
   { to: '/tickets', label: 'My tickets', role: 'REQUESTER' },
   { to: '/admin', label: 'Admin', role: 'ADMIN' },
 ]

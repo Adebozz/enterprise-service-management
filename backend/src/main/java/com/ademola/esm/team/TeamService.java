@@ -85,6 +85,12 @@ public class TeamService {
         return members.findActiveTeamsOf(userId);
     }
 
+    /** Every team's id, active or not (reports across the whole desk). */
+    @Transactional(readOnly = true)
+    public Set<UUID> allTeamIds() {
+        return teams.findAll().stream().map(Team::getId).collect(java.util.stream.Collectors.toSet());
+    }
+
     /** Active team leads of the team. Internal API (e.g. who to tell about a pending approval). */
     @Transactional(readOnly = true)
     public Set<UUID> activeLeadIdsOf(UUID teamId) {

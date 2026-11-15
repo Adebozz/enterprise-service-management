@@ -1082,3 +1082,37 @@ only open days, refusing an empty week, holidays, working-time wording). Total: 
 integration backend tests, 112 frontend tests. The `sla` package is at 97.7% line and 93.5% branch
 coverage; the backend overall at 96.9% and 89.5%. Checked in a browser: a P3 raised on Sunday
 evening was due at 13:00 on Monday.
+
+## M26: Reporting (2026-11-15)
+
+**What was built**
+- A `reporting` module with one read-only endpoint, `GET /api/reports/service-desk`: for incidents
+  and service requests over a period (default the last 30 days, at most 366), tickets raised and
+  resolved, the same per day, the open backlog by priority, open tickets with a breached target,
+  SLA targets met and missed, median first-response and resolution times per priority, the top
+  categories, and changes closed by outcome.
+- Team leads see their own teams (another team's report is a 403); admins see one team or the whole
+  desk. The team scope is a parameter of every query, not a filter applied afterwards.
+- Days are calendar days in the organisation's time zone (the business calendar's), so "Monday" means
+  Monday in London, not in UTC.
+- A *Reports* page: period presets, a team filter, headline figures, a raised-versus-resolved line
+  chart with a hover readout and a table view, the backlog as bars, and tables for the rest. The
+  two series colours were checked with a colour-vision-deficiency validator for both themes.
+
+**What I learned (good interview material)**
+- **Medians, not averages,** for response and resolution times: one ticket forgotten for a month
+  would drag an average far from what a typical requester experienced. PostgreSQL's
+  `percentile_cont` computes them in the query.
+- **Time boundaries need a zone.** The period is turned into instants at local midnight and grouped
+  with `AT TIME ZONE`, so the totals and the day-by-day series always add up.
+- **A chart needs a table view.** The same numbers are one click away as a table, which serves
+  keyboard and screen-reader users and anyone who wants exact values.
+- **Found a seam:** `created_at` is stamped by Hibernate from the JVM clock, not the injectable
+  application clock, so the report test sets creation times directly. Worth unifying later.
+
+**Tests:** 5 new integration tests (`ReportApiIT`: volumes, per-day series, backlog, medians and
+categories; SLA compliance and open breaches; team scoping for leads and admins, a lead without
+teams, agents refused; change outcomes; the default period and invalid periods). 4 new frontend
+tests (headline figures and tables, the chart's legend, hover readout and table view, the period and
+team sent to the API with a refusal shown, access for team leads only). Total: 405 unit + 284
+integration backend tests, 116 frontend tests. Checked in a browser as a team lead.

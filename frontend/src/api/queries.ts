@@ -1,6 +1,6 @@
 import { api } from './client'
 import { isApiError, unwrap } from './errors'
-import type { AdminUserSearch, TicketListParams, TicketType } from './types'
+import type { AdminUserSearch, ReportParams, TicketListParams, TicketType } from './types'
 
 /**
  * Query keys are hierarchical, so one invalidation of ['tickets'] after a change refreshes every
@@ -23,6 +23,8 @@ export const queryKeys = {
   changeSchedule: ['tickets', 'change-schedule'] as const,
   slaPolicies: ['sla-policies'] as const,
   businessHours: ['business-hours'] as const,
+  /** Under ['tickets'], so ticket changes refresh an open report. */
+  report: (params: ReportParams) => ['tickets', 'report', params] as const,
   notifications: ['notifications'] as const,
   unreadNotifications: ['notifications', 'unread'] as const,
   catalogue: ['catalogue'] as const,
@@ -102,6 +104,11 @@ export const slaPoliciesQuery = {
   queryKey: queryKeys.slaPolicies,
   queryFn: async () => unwrap(await api.GET('/api/admin/sla-policies')),
 }
+
+export const reportQuery = (params: ReportParams) => ({
+  queryKey: queryKeys.report(params),
+  queryFn: async () => unwrap(await api.GET('/api/reports/service-desk', { params: { query: params } })),
+})
 
 export const businessHoursQuery = {
   queryKey: queryKeys.businessHours,

@@ -42,7 +42,7 @@ Base package: `com.ademola.esm`
 | `catalogue` | Service catalogue: items with their own short forms, admin maintenance, ordering. Validates answers, then raises an ordinary service request through `ServiceRequestService`. Depends on `ticket`, never the reverse | Implemented (M18) |
 | `approval` | Sign-off for catalogue requests: pending approvals, the decision rules (`ApprovalPolicy`), the approvals inbox and decisions, which drive SYSTEM transitions on the request. Withdraws approvals of requests cancelled while waiting, through `TicketChangedEvent`. Depends on `ticket`, `team` and `user`; `catalogue` depends on it | Implemented (M19) |
 | `notification` | Tells people what happened to their tickets: listens to `AuditRecordedEvent` (published by `audit` for every entry, in the same transaction) and applies `NotificationRules`; each person's inbox API; an email outbox sent by a scheduled job through a `MailGateway`. Depends on `audit`, `ticket`, `team` and `user`; nothing depends on it | Implemented (M23) |
-| `reporting` | Read-only aggregate queries | Planned (Phase 3) |
+| `reporting` | The service desk report: read-only aggregate SQL (volumes per day, backlog, SLA compliance, median times, top categories, change outcomes) scoped to the caller's teams. Depends on `team` and `auth`; reads the ticket and SLA tables directly, nothing depends on it | Implemented (M26) |
 
 ### Module conventions
 

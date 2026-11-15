@@ -40,6 +40,9 @@ public enum ErrorCode {
     // service levels
     INVALID_BUSINESS_HOURS(HttpStatus.UNPROCESSABLE_CONTENT),
 
+    // reports
+    INVALID_REPORT_PERIOD(HttpStatus.UNPROCESSABLE_CONTENT),
+
     // service catalogue
     CATALOGUE_ITEM_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT),
     INVALID_CATALOGUE_FORM(HttpStatus.UNPROCESSABLE_CONTENT),

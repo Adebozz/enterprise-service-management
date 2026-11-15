@@ -2060,6 +2060,70 @@
         "tags" : [ "Problems" ]
       }
     },
+    "/api/reports/service-desk" : {
+      "get" : {
+        "operationId" : "getServiceDeskReport",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "teamId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceDeskReport"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Volumes, backlog, SLA compliance, response and resolution times for a period (team leads: own teams)",
+        "tags" : [ "Reports" ]
+      }
+    },
     "/api/service-requests" : {
       "post" : {
         "operationId" : "createServiceRequest",
@@ -3218,7 +3282,7 @@
           "code" : {
             "type" : "string",
             "description" : "Stable machine-readable code: branch on this, never on detail",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "INVALID_BUSINESS_HOURS", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "APPROVAL_NOT_PERMITTED", "APPROVAL_ALREADY_DECIDED", "APPROVAL_REASON_REQUIRED", "PROBLEM_NOT_OPEN", "PROBLEM_ANALYSIS_INCOMPLETE", "PROBLEM_UPDATE_NOT_PERMITTED", "INCIDENT_LINK_NOT_PERMITTED", "CHANGE_NOT_EDITABLE", "CHANGE_PLAN_INCOMPLETE", "CHANGE_PLAN_INVALID", "CHANGE_REVIEW_INCOMPLETE", "CHANGE_UPDATE_NOT_PERMITTED", "ATTACHMENT_EMPTY", "ATTACHMENT_TOO_LARGE", "ATTACHMENT_TYPE_NOT_ALLOWED", "ATTACHMENT_LIMIT_REACHED", "ATTACHMENT_DELETE_NOT_PERMITTED", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "INVALID_BUSINESS_HOURS", "INVALID_REPORT_PERIOD", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "APPROVAL_NOT_PERMITTED", "APPROVAL_ALREADY_DECIDED", "APPROVAL_REASON_REQUIRED", "PROBLEM_NOT_OPEN", "PROBLEM_ANALYSIS_INCOMPLETE", "PROBLEM_UPDATE_NOT_PERMITTED", "INCIDENT_LINK_NOT_PERMITTED", "CHANGE_NOT_EDITABLE", "CHANGE_PLAN_INCOMPLETE", "CHANGE_PLAN_INVALID", "CHANGE_REVIEW_INCOMPLETE", "CHANGE_UPDATE_NOT_PERMITTED", "ATTACHMENT_EMPTY", "ATTACHMENT_TOO_LARGE", "ATTACHMENT_TYPE_NOT_ALLOWED", "ATTACHMENT_LIMIT_REACHED", "ATTACHMENT_DELETE_NOT_PERMITTED", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
           },
           "correlationId" : {
             "type" : [ "string", "null" ],
@@ -3506,6 +3570,23 @@
           }
         },
         "required" : [ "active", "approvalRequired", "category", "description", "fields", "id", "name", "subcategory", "summary", "version" ]
+      },
+      "CategoryCount" : {
+        "type" : "object",
+        "properties" : {
+          "categoryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "categoryId", "count", "name" ]
       },
       "CategoryResponse" : {
         "type" : "object",
@@ -3916,6 +3997,24 @@
         },
         "required" : [ "displayName", "email", "initialPassword", "role" ]
       },
+      "DailyCount" : {
+        "type" : "object",
+        "properties" : {
+          "created" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "day" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "resolved" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "created", "day", "resolved" ]
+      },
       "FieldErrorDetail" : {
         "type" : "object",
         "properties" : {
@@ -4221,6 +4320,19 @@
         },
         "required" : [ "closesAt", "day", "opensAt" ]
       },
+      "OutcomeCount" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "outcome" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "count", "outcome" ]
+      },
       "PageResponseTicketSummary" : {
         "type" : "object",
         "properties" : {
@@ -4321,6 +4433,40 @@
           }
         },
         "required" : [ "description", "id", "priority", "reference", "requestedAt", "requester", "team", "ticketId", "title", "type", "version" ]
+      },
+      "PriorityCount" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "priority" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "count", "priority" ]
+      },
+      "PriorityTimes" : {
+        "type" : "object",
+        "properties" : {
+          "firstResponseMinutes" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "priority" : {
+            "type" : "string"
+          },
+          "resolutionMinutes" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "resolvedCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "firstResponseMinutes", "priority", "resolutionMinutes", "resolvedCount" ]
       },
       "ProblemDetails" : {
         "type" : "object",
@@ -4454,6 +4600,79 @@
         },
         "required" : [ "assignee", "changeType", "id", "plannedEnd", "plannedStart", "reference", "risk", "status", "team", "title" ]
       },
+      "ServiceDeskReport" : {
+        "type" : "object",
+        "properties" : {
+          "backlogByPriority" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PriorityCount"
+            }
+          },
+          "breachedOpen" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "changeOutcomes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OutcomeCount"
+            }
+          },
+          "created" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "daily" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DailyCount"
+            }
+          },
+          "from" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "openNow" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "resolved" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sla" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SlaCompliance"
+            }
+          },
+          "teamId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "times" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PriorityTimes"
+            }
+          },
+          "to" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "topCategories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CategoryCount"
+            }
+          },
+          "zone" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "backlogByPriority", "breachedOpen", "changeOutcomes", "created", "daily", "from", "openNow", "resolved", "sla", "teamId", "times", "to", "topCategories", "zone" ]
+      },
       "ServiceRequestDetails" : {
         "type" : "object",
         "properties" : {
@@ -4513,6 +4732,27 @@
           }
         },
         "required" : [ "breachedAt", "businessHours", "completedAt", "dueAt", "elapsedSeconds", "metric", "remainingSeconds", "status", "targetMinutes" ]
+      },
+      "SlaCompliance" : {
+        "type" : "object",
+        "properties" : {
+          "met" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "metric" : {
+            "type" : "string"
+          },
+          "missed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "percentMet" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          }
+        },
+        "required" : [ "met", "metric", "missed", "percentMet" ]
       },
       "SlaPolicyResponse" : {
         "type" : "object",

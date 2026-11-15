@@ -43,6 +43,7 @@ class ArchitectureTest {
                     "com.ademola.esm.catalogue..",
                     "com.ademola.esm.approval..",
                     "com.ademola.esm.notification..",
+                    "com.ademola.esm.reporting..",
                     "com.ademola.esm.demo..");
 
     /** Controllers translate HTTP; data access and rules belong to services. */

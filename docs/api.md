@@ -104,6 +104,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `CATEGORY_TEAM_REQUIRED` | 422 | Top-level categories must route to a team |
 | `INVALID_CATALOGUE_FORM` | 422 | The item's questions don't fit together (duplicate keys, a choice with fewer than two options...); see `fieldErrors` (`fields[i].…`) |
 | `ATTACHMENT_EMPTY` | 422 | The file is empty |
+| `INVALID_REPORT_PERIOD` | 422 | A report period must start on or before its last day and span at most 366 days |
 | `INVALID_BUSINESS_HOURS` | 422 | Opening hours that close before they open, a day listed twice, or a day that is already a holiday |
 | `APPROVAL_REASON_REQUIRED` | 422 | Rejecting a request needs a comment saying why |
 | `CHANGE_PLAN_INCOMPLETE` | 422 | Submitting needs an implementation plan, a backout plan and a planned window |
@@ -280,6 +281,19 @@ approval waiting for you. Nobody is notified of their own action. `kind` is `ASS
 STATUS_CHANGED | COMMENTED | FILE_ADDED | SLA_BREACHED | APPROVAL_REQUESTED`; `ticketId` links to the
 ticket. When email is enabled the same message is emailed by an outbox job (at least once, three
 attempts).
+
+### Reports
+
+| Method | Path | operationId | Who |
+|---|---|---|---|
+| GET | `/api/reports/service-desk?from=&to=&teamId=` | `getServiceDeskReport` | team leads (their teams), admins |
+
+For incidents and service requests in `[from, to]` (calendar days in the organisation's zone;
+default the last 30 days, at most 366): tickets raised and resolved, per-day counts, the open
+backlog by priority and how many open tickets have a breached target, SLA targets finished in the
+period (met, missed, percentage), median first-response and resolution minutes per priority, the
+top five categories, and changes closed in the period by outcome. A team lead asking for another
+team's report gets 403.
 
 ### Teams
 

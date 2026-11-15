@@ -66,6 +66,8 @@ its old data; `docker compose down -v` then `up` starts again with the current d
 - Internal notes and internal files that requesters never see. The filtering happens in SQL, not
   in the browser.
 - A readable history of every change, built from the audit trail.
+- Team leads see how their teams are doing on a *Reports* page: volumes, backlog, SLA compliance
+  and typical times.
 - Team leads approve or reject requests for their teams, from an *Approvals* inbox or the ticket
   itself; nobody approves their own request, and a rejection must say why.
 - Problem management: raise a problem from a recurring incident, record its root cause and
@@ -285,12 +287,16 @@ enterprise-service-management/
   and holidays (daylight-saving changes included), and moving the calendar moves open tickets'
   deadlines at once.
 
+**Phase 3, done so far:**
+- reporting (M26): a *Reports* page for team leads (their teams) and admins: tickets raised and
+  resolved per day, the open backlog by priority, SLA targets met and missed, median response and
+  resolution times, top categories and change outcomes, over 7, 30 or 90 days.
+
 **Not built yet:**
 - **Phase 2 extensions (not scheduled):**
   - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
   - notification preferences (everyone gets every notification that concerns them today);
 - **Phase 3 (planned):**
-  - reporting dashboards;
   - load testing;
   - AWS deployment (ECS Fargate, RDS, S3, CloudFront) with Terraform;
   - login rate limiting at the edge.

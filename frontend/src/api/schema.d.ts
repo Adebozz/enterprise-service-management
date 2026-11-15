@@ -623,6 +623,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports/service-desk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Volumes, backlog, SLA compliance, response and resolution times for a period (team leads: own teams) */
+        get: operations["getServiceDeskReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/service-requests": {
         parameters: {
             query?: never;
@@ -930,7 +947,7 @@ export interface components {
              * @description Stable machine-readable code: branch on this, never on detail
              * @enum {string}
              */
-            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "INVALID_BUSINESS_HOURS" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "PROBLEM_NOT_OPEN" | "PROBLEM_ANALYSIS_INCOMPLETE" | "PROBLEM_UPDATE_NOT_PERMITTED" | "INCIDENT_LINK_NOT_PERMITTED" | "CHANGE_NOT_EDITABLE" | "CHANGE_PLAN_INCOMPLETE" | "CHANGE_PLAN_INVALID" | "CHANGE_REVIEW_INCOMPLETE" | "CHANGE_UPDATE_NOT_PERMITTED" | "ATTACHMENT_EMPTY" | "ATTACHMENT_TOO_LARGE" | "ATTACHMENT_TYPE_NOT_ALLOWED" | "ATTACHMENT_LIMIT_REACHED" | "ATTACHMENT_DELETE_NOT_PERMITTED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "INVALID_BUSINESS_HOURS" | "INVALID_REPORT_PERIOD" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "PROBLEM_NOT_OPEN" | "PROBLEM_ANALYSIS_INCOMPLETE" | "PROBLEM_UPDATE_NOT_PERMITTED" | "INCIDENT_LINK_NOT_PERMITTED" | "CHANGE_NOT_EDITABLE" | "CHANGE_PLAN_INCOMPLETE" | "CHANGE_PLAN_INVALID" | "CHANGE_REVIEW_INCOMPLETE" | "CHANGE_UPDATE_NOT_PERMITTED" | "ATTACHMENT_EMPTY" | "ATTACHMENT_TOO_LARGE" | "ATTACHMENT_TYPE_NOT_ALLOWED" | "ATTACHMENT_LIMIT_REACHED" | "ATTACHMENT_DELETE_NOT_PERMITTED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
             /** @description Matches the X-Request-Id response header and server log lines */
             correlationId: string | null;
             /** @description Human-readable explanation; never contains internal details */
@@ -1042,6 +1059,13 @@ export interface components {
             summary: string;
             /** Format: int64 */
             version: number;
+        };
+        CategoryCount: {
+            /** Format: uuid */
+            categoryId: string;
+            /** Format: int64 */
+            count: number;
+            name: string;
         };
         CategoryResponse: {
             active: boolean;
@@ -1187,6 +1211,14 @@ export interface components {
             /** @enum {string} */
             role: "REQUESTER" | "AGENT" | "TEAM_LEAD" | "ADMIN";
         };
+        DailyCount: {
+            /** Format: int64 */
+            created: number;
+            /** Format: date */
+            day: string;
+            /** Format: int64 */
+            resolved: number;
+        };
         FieldErrorDetail: {
             field: string;
             message: string;
@@ -1299,6 +1331,11 @@ export interface components {
             /** Format: time-local */
             opensAt: string;
         };
+        OutcomeCount: {
+            /** Format: int64 */
+            count: number;
+            outcome: string;
+        };
         PageResponseTicketSummary: {
             content: components["schemas"]["TicketSummary"][];
             /** Format: int32 */
@@ -1339,6 +1376,20 @@ export interface components {
             type: "INCIDENT" | "SERVICE_REQUEST" | "PROBLEM" | "CHANGE";
             /** Format: int64 */
             version: number;
+        };
+        PriorityCount: {
+            /** Format: int64 */
+            count: number;
+            priority: string;
+        };
+        PriorityTimes: {
+            /** Format: double */
+            firstResponseMinutes: number | null;
+            priority: string;
+            /** Format: double */
+            resolutionMinutes: number | null;
+            /** Format: int64 */
+            resolvedCount: number;
         };
         ProblemDetails: {
             changes: components["schemas"]["LinkedTicket"][];
@@ -1388,6 +1439,29 @@ export interface components {
             team: components["schemas"]["NamedRef"];
             title: string;
         };
+        ServiceDeskReport: {
+            backlogByPriority: components["schemas"]["PriorityCount"][];
+            /** Format: int64 */
+            breachedOpen: number;
+            changeOutcomes: components["schemas"]["OutcomeCount"][];
+            /** Format: int64 */
+            created: number;
+            daily: components["schemas"]["DailyCount"][];
+            /** Format: date */
+            from: string;
+            /** Format: int64 */
+            openNow: number;
+            /** Format: int64 */
+            resolved: number;
+            sla: components["schemas"]["SlaCompliance"][];
+            /** Format: uuid */
+            teamId: string | null;
+            times: components["schemas"]["PriorityTimes"][];
+            /** Format: date */
+            to: string;
+            topCategories: components["schemas"]["CategoryCount"][];
+            zone: string;
+        };
         ServiceRequestDetails: {
             answers: components["schemas"]["RequestAnswer"][];
             /** Format: uuid */
@@ -1412,6 +1486,15 @@ export interface components {
             status: "ON_TRACK" | "AT_RISK" | "BREACHED" | "PAUSED" | "MET" | "MISSED" | "CANCELLED";
             /** Format: int32 */
             targetMinutes: number;
+        };
+        SlaCompliance: {
+            /** Format: int64 */
+            met: number;
+            metric: string;
+            /** Format: int64 */
+            missed: number;
+            /** Format: double */
+            percentMet: number | null;
         };
         SlaPolicyResponse: {
             businessHours: boolean;
@@ -3354,6 +3437,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    getServiceDeskReport: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                teamId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceDeskReport"];
+                };
             };
             /** @description Missing, invalid or expired access token */
             401: {
