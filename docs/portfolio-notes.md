@@ -1145,3 +1145,25 @@ password and from another address, with `Retry-After`; success clearing failures
 alike; the per-address limit; hashed emails and pruning), 1 new frontend test. Total: 405 unit + 289
 integration backend tests, 117 frontend tests. Checked with curl through nginx, including a spoofed
 `X-Forwarded-For`.
+
+## M28: Load testing (2026-11-15)
+
+**What was built**
+- `scripts/loadtest/`: a SQL seed adding 50,000 realistic incidents over 90 days (with SLA clocks
+  on open ones), a k6 script with three kinds of user (agents working their queue, requesters
+  raising and following tickets, team leads opening the report), and a runner that starts k6 in a
+  container on the Compose network so every request goes through nginx.
+- Measured on the full stack: 46 requests/s with 32 users and 166 requests/s with 102 users, no
+  errors in 29,000 requests, overall p95 59 ms and 71 ms. Per-endpoint tables and the method are in
+  `docs/performance.md`.
+
+**What I learned (good interview material)**
+- **Measure, then explain with the plan.** The SLA-sorted team queue was the slowest common request.
+  `EXPLAIN ANALYZE` showed the sort, not the filter, was the cost: 5,005 lateral clock lookups to
+  keep 20 rows. The fix (a stored, indexed next deadline per ticket) is written down rather than
+  built, because 50-100 ms at this load doesn't justify it yet.
+- **Closed-model tests with think time** say how the system behaves for a number of people, not its
+  maximum throughput; doubling the users and seeing p95 barely move says there is headroom, which
+  is the honest claim a laptop run supports.
+- **Report what happened, including the first run.** The first run after start-up was slower
+  (JIT warm-up); the docs say so instead of quoting only the best numbers.
