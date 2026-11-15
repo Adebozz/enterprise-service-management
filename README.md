@@ -84,7 +84,9 @@ its old data; `docker compose down -v` then `up` starts again with the current d
   choice or date), choose the category that routes them, mark items that need approval, and
   withdraw items. Requests already
   raised keep the questions as they were asked.
-- Set the SLA targets for each ticket type and priority; changes apply to tickets raised afterwards.
+- Set the SLA targets for each ticket type and priority, each counting around the clock or only in
+  business hours; maintain the opening hours and holidays. Target changes apply to tickets raised
+  afterwards; calendar changes move open deadlines at once.
 - Manage people (add accounts, change roles, deactivate), teams (create, rename, retire, choose
   members) and the category tree that routes tickets, all from an *Admin* area. The server keeps
   the rules: there is always an active administrator, and nobody leaves a team while they still
@@ -259,7 +261,7 @@ enterprise-service-management/
 **Phase 1 (done):** everything above except service levels. The milestone list is in
 [docs/architecture.md](docs/architecture.md#phase-1-milestones).
 
-**Phase 2, done so far:**
+**Phase 2 (done):**
 - the SLA engine (M15–M17): targets per type and priority, response and resolution clocks that
   pause and reopen, breach recording, auto-resume on the requester's reply, queue badges and
   sorting, and an admin screen for targets;
@@ -277,11 +279,14 @@ enterprise-service-management/
 - notifications (M23): created from the audit trail in the same transaction as each change, shown
   under a bell in the app and emailed through an outbox with retries (Mailpit in the demo);
 - admin screens (M24): people, teams and members, and the category tree, alongside the catalogue
-  and SLA targets in one *Admin* area.
+  and SLA targets in one *Admin* area;
+- business-hours SLAs (M25): each target counts around the clock or only in the desk's opening
+  hours, with a weekly calendar and holidays that admins maintain. Deadlines skip nights, weekends
+  and holidays (daylight-saving changes included), and moving the calendar moves open tickets'
+  deadlines at once.
 
 **Not built yet:**
-- **Phase 2 (planned):**
-  - business-hours SLA calendars (clocks run 24/7 today);
+- **Phase 2 extensions (not scheduled):**
   - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
   - notification preferences (everyone gets every notification that concerns them today);
 - **Phase 3 (planned):**

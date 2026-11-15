@@ -4,8 +4,13 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
-/** New targets in minutes. Up to 365 days, which is far beyond any real target. */
+/**
+ * New targets in minutes. Up to 365 days, which is far beyond any real target.
+ *
+ * @param businessHours count only business hours; {@code null} keeps the current choice
+ */
 record UpdateSlaPolicyRequest(
         @NotNull @Min(1) @Max(525_600) Integer responseMinutes,
         @NotNull @Min(1) @Max(525_600) Integer resolutionMinutes,
+        Boolean businessHours,
         @NotNull Long version) {}

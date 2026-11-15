@@ -134,7 +134,8 @@ class SlaApiIT {
         clock.advance(Duration.ofMinutes(50));
         String waiting = incident("MEDIUM", "HIGH");
         jdbc.update(
-                "update sla_clocks set state = 'PAUSED', elapsed_ms = 600000, running_since = null, due_at = null"
+                "update sla_clocks set state = 'PAUSED', elapsed_ms = 600000, running_since = null, due_at = null,"
+                        + " at_risk_at = null"
                         + " where work_item_id = ?::uuid",
                 waiting);
 

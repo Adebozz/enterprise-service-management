@@ -4,6 +4,74 @@
  */
 
 export interface paths {
+    "/api/admin/business-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The business calendar: time zone, opening hours and holidays */
+        get: operations["getBusinessHours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/business-hours/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close the desk for a whole day */
+        post: operations["addHoliday"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/business-hours/holidays/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Open the desk again on a former holiday */
+        delete: operations["removeHoliday"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/business-hours/week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the opening hours (one entry per open day); running business-hours clocks follow at once */
+        put: operations["updateBusinessWeek"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/catalogue": {
         parameters: {
             query?: never;
@@ -862,7 +930,7 @@ export interface components {
              * @description Stable machine-readable code: branch on this, never on detail
              * @enum {string}
              */
-            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "PROBLEM_NOT_OPEN" | "PROBLEM_ANALYSIS_INCOMPLETE" | "PROBLEM_UPDATE_NOT_PERMITTED" | "INCIDENT_LINK_NOT_PERMITTED" | "CHANGE_NOT_EDITABLE" | "CHANGE_PLAN_INCOMPLETE" | "CHANGE_PLAN_INVALID" | "CHANGE_REVIEW_INCOMPLETE" | "CHANGE_UPDATE_NOT_PERMITTED" | "ATTACHMENT_EMPTY" | "ATTACHMENT_TOO_LARGE" | "ATTACHMENT_TYPE_NOT_ALLOWED" | "ATTACHMENT_LIMIT_REACHED" | "ATTACHMENT_DELETE_NOT_PERMITTED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
+            code: "VALIDATION_FAILED" | "MALFORMED_REQUEST" | "AUTHENTICATION_REQUIRED" | "ACCESS_DENIED" | "RESOURCE_NOT_FOUND" | "METHOD_NOT_ALLOWED" | "UNSUPPORTED_MEDIA_TYPE" | "CONCURRENT_MODIFICATION" | "INVALID_SORT_PROPERTY" | "INVALID_CREDENTIALS" | "REFRESH_TOKEN_INVALID" | "INVALID_ORIGIN" | "CURRENT_PASSWORD_INCORRECT" | "EMAIL_ALREADY_EXISTS" | "LAST_ADMIN_REQUIRED" | "TEAM_NAME_ALREADY_EXISTS" | "TEAM_INACTIVE" | "USER_NOT_ELIGIBLE_FOR_TEAM" | "CATEGORY_CODE_ALREADY_EXISTS" | "CATEGORY_TEAM_REQUIRED" | "INVALID_CATEGORY" | "INVALID_BUSINESS_HOURS" | "CATALOGUE_ITEM_NAME_ALREADY_EXISTS" | "INVALID_CATALOGUE_FORM" | "CATALOGUE_ANSWERS_INVALID" | "APPROVAL_NOT_PERMITTED" | "APPROVAL_ALREADY_DECIDED" | "APPROVAL_REASON_REQUIRED" | "PROBLEM_NOT_OPEN" | "PROBLEM_ANALYSIS_INCOMPLETE" | "PROBLEM_UPDATE_NOT_PERMITTED" | "INCIDENT_LINK_NOT_PERMITTED" | "CHANGE_NOT_EDITABLE" | "CHANGE_PLAN_INCOMPLETE" | "CHANGE_PLAN_INVALID" | "CHANGE_REVIEW_INCOMPLETE" | "CHANGE_UPDATE_NOT_PERMITTED" | "ATTACHMENT_EMPTY" | "ATTACHMENT_TOO_LARGE" | "ATTACHMENT_TYPE_NOT_ALLOWED" | "ATTACHMENT_LIMIT_REACHED" | "ATTACHMENT_DELETE_NOT_PERMITTED" | "INVALID_STATUS_TRANSITION" | "TRANSITION_NOT_PERMITTED" | "TRANSITION_REQUIREMENT_MISSING" | "TICKET_NOT_ASSIGNED" | "ASSIGNMENT_NOT_PERMITTED" | "ASSIGNEE_NOT_IN_TEAM" | "TICKET_NOT_ASSIGNABLE" | "MEMBER_HAS_OPEN_TICKETS" | "COMMENT_NOT_PERMITTED" | "TICKET_CLOSED" | "REQUEST_FAILED" | "INTERNAL_ERROR";
             /** @description Matches the X-Request-Id response header and server log lines */
             correlationId: string | null;
             /** @description Human-readable explanation; never contains internal details */
@@ -955,6 +1023,11 @@ export interface components {
             label: string;
             requirements: ("REASON" | "RESOLUTION" | "FULFILMENT_NOTES" | "FIX_NOTES" | "ASSIGNEE")[];
             targetStatus: string;
+        };
+        BusinessHoursResponse: {
+            holidays: components["schemas"]["Holiday"][];
+            week: components["schemas"]["OpeningDay"][];
+            zone: string;
         };
         CatalogueItemResponse: {
             active: boolean;
@@ -1129,7 +1202,7 @@ export interface components {
         };
         HistoryEntryResponse: {
             /** @enum {string} */
-            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "ATTACHMENT_ADDED" | "ATTACHMENT_REMOVED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED" | "APPROVAL_REQUESTED" | "APPROVAL_DECIDED" | "APPROVAL_WITHDRAWN" | "PROBLEM_ANALYSIS_UPDATED" | "INCIDENT_PROBLEM_LINKED" | "INCIDENT_PROBLEM_UNLINKED" | "CHANGE_PLAN_UPDATED" | "CHANGE_OUTCOME_RECORDED";
+            action: "USER_CREATED" | "USER_UPDATED" | "PASSWORD_CHANGED" | "TEAM_CREATED" | "TEAM_UPDATED" | "TEAM_MEMBER_ADDED" | "TEAM_MEMBER_REMOVED" | "CATEGORY_CREATED" | "CATEGORY_UPDATED" | "TICKET_CREATED" | "TICKET_STATUS_CHANGED" | "TICKET_ASSIGNMENT_CHANGED" | "COMMENT_ADDED" | "ATTACHMENT_ADDED" | "ATTACHMENT_REMOVED" | "SLA_BREACHED" | "SLA_POLICY_UPDATED" | "BUSINESS_HOURS_UPDATED" | "CATALOGUE_ITEM_CREATED" | "CATALOGUE_ITEM_UPDATED" | "APPROVAL_REQUESTED" | "APPROVAL_DECIDED" | "APPROVAL_WITHDRAWN" | "PROBLEM_ANALYSIS_UPDATED" | "INCIDENT_PROBLEM_LINKED" | "INCIDENT_PROBLEM_UNLINKED" | "CHANGE_PLAN_UPDATED" | "CHANGE_OUTCOME_RECORDED";
             actor: components["schemas"]["NamedRef"] | null;
             /** @description Free-form JSON object */
             metadata: {
@@ -1148,6 +1221,11 @@ export interface components {
             oldValue: {
                 [key: string]: unknown;
             } | null;
+        };
+        Holiday: {
+            /** Format: date */
+            day: string;
+            name: string;
         };
         IncidentDetails: {
             affectedService: string | null;
@@ -1212,6 +1290,14 @@ export interface components {
             read: boolean;
             /** Format: uuid */
             ticketId: string;
+        };
+        OpeningDay: {
+            /** Format: time-local */
+            closesAt: string;
+            /** @enum {string} */
+            day: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+            /** Format: time-local */
+            opensAt: string;
         };
         PageResponseTicketSummary: {
             content: components["schemas"]["TicketSummary"][];
@@ -1311,6 +1397,7 @@ export interface components {
         SlaClockView: {
             /** Format: date-time */
             breachedAt: string | null;
+            businessHours: boolean;
             /** Format: date-time */
             completedAt: string | null;
             /** Format: date-time */
@@ -1327,6 +1414,7 @@ export interface components {
             targetMinutes: number;
         };
         SlaPolicyResponse: {
+            businessHours: boolean;
             /** Format: uuid */
             id: string;
             /** @enum {string} */
@@ -1471,6 +1559,9 @@ export interface components {
             /** Format: int64 */
             count: number;
         };
+        UpdateBusinessWeekRequest: {
+            days: components["schemas"]["OpeningDay"][];
+        };
         UpdateCatalogueItemRequest: {
             active: boolean;
             approvalRequired: boolean;
@@ -1514,6 +1605,7 @@ export interface components {
             workaround?: string | null;
         };
         UpdateSlaPolicyRequest: {
+            businessHours?: boolean;
             /** Format: int32 */
             resolutionMinutes: number;
             /** Format: int32 */
@@ -1560,6 +1652,168 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getBusinessHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessHoursResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    addHoliday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Holiday"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessHoursResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    removeHoliday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessHoursResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
+    updateBusinessWeek: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBusinessWeekRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessHoursResponse"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+        };
+    };
     listAllCatalogueItems: {
         parameters: {
             query?: never;

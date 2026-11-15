@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -21,6 +22,11 @@ import java.util.UUID;
  * <p><b>Breaches are recorded, not only computed</b> ({@code breachedAt}). A breach stays on record
  * even if the ticket is later paused, completed or given a longer target, which is what reporting
  * needs. The time is the moment the deadline passed, wherever that's known.
+ *
+ * <p><b>Business hours:</b> a clock started under a business-hours policy counts only the desk's
+ * working time ({@link BusinessCalendar}); {@code elapsedMs} is then working time, and {@code dueAt}
+ * the instant the remaining working time runs out. The calendar lives in the database, so the
+ * service attaches it ({@link #useCalendar}) before using such a clock; a 24/7 clock needs nothing.
  *
  * <p>Methods take {@code now} from the caller, which reads the injected {@code Clock}, so tests can
  * drive time exactly. A call in the wrong state is a programming error (the SLA reacts to ticket
@@ -59,19 +65,75 @@ class SlaClock extends BaseEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "business_hours", nullable = false, updatable = false)
+    private boolean businessHours;
+
+    /** When a running clock becomes at risk; kept current by {@link #refreshAtRisk}. */
+    @Column(name = "at_risk_at")
+    private Instant atRiskAt;
+
+    @Transient
+    private SlaSchedule calendar;
+
     protected SlaClock() {}
 
-    private SlaClock(UUID workItemId, SlaMetric metric, Duration target) {
+    private SlaClock(UUID workItemId, SlaMetric metric, Duration target, SlaSchedule schedule) {
         this.workItemId = workItemId;
         this.metric = metric;
         this.targetMinutes = toMinutes(target);
+        this.businessHours = schedule.isBusinessHours();
+        this.calendar = schedule;
     }
 
-    /** A clock that starts counting at {@code now}. */
+    /** A 24/7 clock that starts counting at {@code now}. */
     static SlaClock start(UUID workItemId, SlaMetric metric, Duration target, Instant now) {
-        SlaClock clock = new SlaClock(workItemId, metric, target);
+        return start(workItemId, metric, target, SlaSchedule.ALWAYS, now);
+    }
+
+    /** A clock counting time on {@code schedule}, starting at {@code now}. */
+    static SlaClock start(UUID workItemId, SlaMetric metric, Duration target, SlaSchedule schedule, Instant now) {
+        SlaClock clock = new SlaClock(workItemId, metric, target, schedule);
         clock.startStretch(now);
         return clock;
+    }
+
+    boolean isBusinessHours() {
+        return businessHours;
+    }
+
+    /** Gives a business-hours clock the calendar to count with. Ignored by 24/7 clocks. */
+    void useCalendar(SlaSchedule businessCalendar) {
+        if (businessHours) {
+            this.calendar = businessCalendar;
+        }
+    }
+
+    Instant getAtRiskAt() {
+        return atRiskAt;
+    }
+
+    /**
+     * Sets when a running clock crosses {@code atRiskFraction} of its target, so the queue can
+     * compare instants instead of counting working time. Stopped clocks have none.
+     */
+    void refreshAtRisk(double atRiskFraction) {
+        if (state != SlaClockState.RUNNING) {
+            atRiskAt = null;
+            return;
+        }
+        long untilAtRisk = Math.round(target().toMillis() * atRiskFraction) - elapsedMs;
+        atRiskAt = schedule().addWorkingTime(runningSince, Duration.ofMillis(untilAtRisk));
+    }
+
+    /**
+     * Recomputes a running clock's deadlines after the calendar changed. Time already folded into
+     * {@code elapsedMs} stays as counted; the current stretch is counted with the new hours.
+     */
+    void recalculate(double atRiskFraction) {
+        if (state == SlaClockState.RUNNING) {
+            dueAt = deadlineFrom(runningSince);
+            refreshAtRisk(atRiskFraction);
+        }
     }
 
     UUID getWorkItemId() {
@@ -106,7 +168,7 @@ class SlaClock extends BaseEntity {
     /** Time counted so far. */
     Duration elapsed(Instant now) {
         Duration counted = Duration.ofMillis(elapsedMs);
-        return state == SlaClockState.RUNNING ? counted.plus(Duration.between(runningSince, now)) : counted;
+        return state == SlaClockState.RUNNING ? counted.plus(schedule().workingTime(runningSince, now)) : counted;
     }
 
     /** Time left before the target; negative once overdue. */
@@ -213,13 +275,24 @@ class SlaClock extends BaseEntity {
     }
 
     private void endStretch(Instant now) {
-        elapsedMs += Duration.between(runningSince, now).toMillis();
+        elapsedMs += schedule().workingTime(runningSince, now).toMillis();
         runningSince = null;
         dueAt = null;
+        atRiskAt = null;
     }
 
     private Instant deadlineFrom(Instant stretchStart) {
-        return stretchStart.plus(target()).minusMillis(elapsedMs);
+        return schedule().addWorkingTime(stretchStart, target().minusMillis(elapsedMs));
+    }
+
+    private SlaSchedule schedule() {
+        if (!businessHours) {
+            return SlaSchedule.ALWAYS;
+        }
+        if (calendar == null) {
+            throw new IllegalStateException("Business-hours SLA clock " + metric + " used without its calendar");
+        }
+        return calendar;
     }
 
     private void requireState(SlaClockState... allowed) {

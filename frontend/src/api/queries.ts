@@ -22,6 +22,7 @@ export const queryKeys = {
   /** Under ['tickets'] too: planning, approving or cancelling a change moves it on the schedule. */
   changeSchedule: ['tickets', 'change-schedule'] as const,
   slaPolicies: ['sla-policies'] as const,
+  businessHours: ['business-hours'] as const,
   notifications: ['notifications'] as const,
   unreadNotifications: ['notifications', 'unread'] as const,
   catalogue: ['catalogue'] as const,
@@ -100,6 +101,11 @@ export const slaQuery = (id: string) => ({
 export const slaPoliciesQuery = {
   queryKey: queryKeys.slaPolicies,
   queryFn: async () => unwrap(await api.GET('/api/admin/sla-policies')),
+}
+
+export const businessHoursQuery = {
+  queryKey: queryKeys.businessHours,
+  queryFn: async () => unwrap(await api.GET('/api/admin/business-hours')),
 }
 
 export const teamsQuery = {

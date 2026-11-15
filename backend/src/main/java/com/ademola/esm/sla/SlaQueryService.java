@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +27,7 @@ class SlaQueryService {
     private final TicketAccessPolicy accessPolicy;
     private final SlaClockRepository clocks;
     private final SlaProperties properties;
+    private final BusinessCalendarService calendars;
     private final Clock clock;
 
     SlaQueryService(
@@ -33,11 +35,13 @@ class SlaQueryService {
             TicketAccessPolicy accessPolicy,
             SlaClockRepository clocks,
             SlaProperties properties,
+            BusinessCalendarService calendars,
             Clock clock) {
         this.workItems = workItems;
         this.accessPolicy = accessPolicy;
         this.clocks = clocks;
         this.properties = properties;
+        this.calendars = calendars;
         this.clock = clock;
     }
 
@@ -53,7 +57,12 @@ class SlaQueryService {
                     ErrorCode.ACCESS_DENIED, "Service levels are available to the support staff handling the ticket");
         }
         Instant now = clock.instant();
-        return new TicketSlaResponse(clocks.findByWorkItemId(ticketId).stream()
+        List<SlaClock> ticketClocks = clocks.findByWorkItemId(ticketId);
+        if (ticketClocks.stream().anyMatch(SlaClock::isBusinessHours)) {
+            BusinessCalendar calendar = calendars.calendar();
+            ticketClocks.forEach(slaClock -> slaClock.useCalendar(calendar));
+        }
+        return new TicketSlaResponse(ticketClocks.stream()
                 .sorted(Comparator.comparing(SlaClock::getMetric))
                 .map(slaClock -> view(slaClock, now))
                 .toList());
@@ -69,6 +78,7 @@ class SlaQueryService {
                 slaClock.remaining(now).toSeconds(),
                 slaClock.getDueAt(),
                 slaClock.getBreachedAt(),
-                slaClock.getCompletedAt());
+                slaClock.getCompletedAt(),
+                slaClock.isBusinessHours());
     }
 }

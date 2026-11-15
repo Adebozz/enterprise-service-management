@@ -69,10 +69,14 @@ class SlaPolicyService {
 
         SlaPolicyResponse before = SlaPolicyResponse.from(policy);
         policy.changeTargets(request.responseMinutes(), request.resolutionMinutes());
+        if (request.businessHours() != null) {
+            policy.countBusinessHours(request.businessHours());
+        }
         policies.flush(); // return the incremented version
         SlaPolicyResponse after = SlaPolicyResponse.from(policy);
         if (before.responseMinutes() != after.responseMinutes()
-                || before.resolutionMinutes() != after.resolutionMinutes()) {
+                || before.resolutionMinutes() != after.resolutionMinutes()
+                || before.businessHours() != after.businessHours()) {
             audit.record(AuditRecord.changed(
                     AuditAction.SLA_POLICY_UPDATED, AuditEntityType.SLA_POLICY, id, targets(before), targets(after)));
         }
@@ -84,6 +88,7 @@ class SlaPolicyService {
                 "ticketType", policy.ticketType(),
                 "priority", policy.priority(),
                 "responseMinutes", policy.responseMinutes(),
-                "resolutionMinutes", policy.resolutionMinutes());
+                "resolutionMinutes", policy.resolutionMinutes(),
+                "businessHours", policy.businessHours());
     }
 }

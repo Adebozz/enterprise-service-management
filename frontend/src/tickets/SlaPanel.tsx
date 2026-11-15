@@ -6,7 +6,7 @@ import { QueryError } from '@/components/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatAge, formatDateTime } from './labels'
 import { SlaBadge } from './badges'
-import { SLA_METRIC_LABEL, formatMinutes } from './sla'
+import { SLA_METRIC_LABEL, formatMinutes, formatWorkingMinutes } from './sla'
 
 /** The ticket's response and resolution clocks, for support staff handling it. */
 export function SlaPanel({ ticketId }: { ticketId: string }) {
@@ -35,7 +35,7 @@ export function SlaPanel({ ticketId }: { ticketId: string }) {
                 <SlaBadge status={clock.status} />
               </dt>
               <dd className="text-muted-foreground">
-                Target {formatMinutes(clock.targetMinutes)}. {progress(clock)}
+                Target {clock.businessHours ? formatWorkingMinutes(clock.targetMinutes) : formatMinutes(clock.targetMinutes)}. {progress(clock)}
               </dd>
             </div>
           ))}
@@ -46,7 +46,7 @@ export function SlaPanel({ ticketId }: { ticketId: string }) {
 }
 
 function progress(clock: SlaClock): string {
-  const remaining = formatMinutes(clock.remainingSeconds / 60)
+  const remaining = (clock.businessHours ? formatWorkingMinutes : formatMinutes)(clock.remainingSeconds / 60)
   switch (clock.status) {
     case 'ON_TRACK':
     case 'AT_RISK':

@@ -12,7 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { PriorityBadge } from '@/tickets/badges'
 import { TYPE_LABEL } from '@/tickets/labels'
-import { formatMinutes } from '@/tickets/sla'
+import { formatMinutes, formatWorkingMinutes } from '@/tickets/sla'
+import { NativeSelect } from '@/components/NativeSelect'
+import { BusinessHoursSection } from './BusinessHoursSection'
 import { AdminBackLink } from './AdminHomePage'
 
 /** Admins set the response and resolution targets for each ticket type and priority. */
@@ -25,8 +27,8 @@ export function SlaPoliciesPage() {
         <AdminBackLink />
         <h1 className="text-2xl font-semibold">SLA targets</h1>
         <p className="text-muted-foreground">
-          How long support has to first respond to, and to resolve, each kind of ticket. Times run around the clock and pause while
-          waiting for the requester. Changes apply to tickets raised afterwards.
+          How long support has to first respond to, and to resolve, each kind of ticket. Each target counts either around the clock or only in business hours
+          (below), and pauses while waiting for the requester. Changes apply to tickets raised afterwards.
         </p>
       </div>
       {policies.isPending && <Skeleton className="h-64 w-full" />}
@@ -40,6 +42,7 @@ export function SlaPoliciesPage() {
                 <TableHead>Priority</TableHead>
                 <TableHead>First response (minutes)</TableHead>
                 <TableHead>Resolution (minutes)</TableHead>
+                <TableHead>Counts</TableHead>
                 <TableHead>
                   <span className="sr-only">Save</span>
                 </TableHead>
@@ -53,6 +56,7 @@ export function SlaPoliciesPage() {
           </Table>
         </div>
       )}
+      <BusinessHoursSection />
     </section>
   )
 }
@@ -61,19 +65,19 @@ function PolicyRow({ policy }: { policy: SlaPolicy }) {
   const queryClient = useQueryClient()
   const [response, setResponse] = useState(String(policy.responseMinutes))
   const [resolution, setResolution] = useState(String(policy.resolutionMinutes))
+  const [businessHours, setBusinessHours] = useState(policy.businessHours)
   const [message, setMessage] = useState<string | null>(null)
   const name = `${TYPE_LABEL[policy.ticketType]} ${policy.priority}`
 
   const save = useMutation({
-    mutationFn: async (body: UpdateSlaPolicy) =>
-      unwrap(await api.PUT('/api/admin/sla-policies/{id}', { params: { path: { id: policy.id } }, body })),
+    mutationFn: async (body: UpdateSlaPolicy) => unwrap(await api.PUT('/api/admin/sla-policies/{id}', { params: { path: { id: policy.id } }, body })),
   })
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setMessage(null)
     try {
-      await save.mutateAsync({ responseMinutes: Number(response), resolutionMinutes: Number(resolution), version: policy.version })
+      await save.mutateAsync({ responseMinutes: Number(response), resolutionMinutes: Number(resolution), businessHours, version: policy.version })
       await queryClient.invalidateQueries({ queryKey: queryKeys.slaPolicies })
     } catch (error) {
       if (isApiError(error) && error.code === 'CONCURRENT_MODIFICATION') {
@@ -85,7 +89,7 @@ function PolicyRow({ policy }: { policy: SlaPolicy }) {
     }
   }
 
-  const unchanged = Number(response) === policy.responseMinutes && Number(resolution) === policy.resolutionMinutes
+  const unchanged = Number(response) === policy.responseMinutes && Number(resolution) === policy.resolutionMinutes && businessHours === policy.businessHours
   const formId = `sla-${policy.id}`
   return (
     <TableRow>
@@ -94,10 +98,22 @@ function PolicyRow({ policy }: { policy: SlaPolicy }) {
         <PriorityBadge priority={policy.priority} />
       </TableCell>
       <TableCell>
-        <MinutesInput form={formId} label={`${name} first response, in minutes`} value={response} onChange={setResponse} />
+        <MinutesInput form={formId} label={`${name} first response, in minutes`} value={response} businessHours={businessHours} onChange={setResponse} />
       </TableCell>
       <TableCell>
-        <MinutesInput form={formId} label={`${name} resolution, in minutes`} value={resolution} onChange={setResolution} />
+        <MinutesInput form={formId} label={`${name} resolution, in minutes`} value={resolution} businessHours={businessHours} onChange={setResolution} />
+      </TableCell>
+      <TableCell>
+        <NativeSelect
+          form={formId}
+          aria-label={`${name} counts`}
+          value={businessHours ? 'BUSINESS' : 'ALWAYS'}
+          onChange={(event) => setBusinessHours(event.target.value === 'BUSINESS')}
+          className="w-44"
+        >
+          <option value="ALWAYS">Around the clock</option>
+          <option value="BUSINESS">Business hours</option>
+        </NativeSelect>
       </TableCell>
       <TableCell>
         <form id={formId} onSubmit={(event) => void onSubmit(event)}>
@@ -115,7 +131,7 @@ function PolicyRow({ policy }: { policy: SlaPolicy }) {
   )
 }
 
-function MinutesInput(props: { form: string; label: string; value: string; onChange: (value: string) => void }) {
+function MinutesInput(props: { form: string; label: string; value: string; businessHours: boolean; onChange: (value: string) => void }) {
   const minutes = Number(props.value)
   return (
     <div className="grid gap-1">
@@ -130,7 +146,9 @@ function MinutesInput(props: { form: string; label: string; value: string; onCha
         onChange={(event) => props.onChange(event.target.value)}
         className="w-28"
       />
-      <span className="text-xs text-muted-foreground">{Number.isFinite(minutes) && minutes > 0 ? formatMinutes(minutes) : ' '}</span>
+      <span className="text-xs text-muted-foreground">
+        {Number.isFinite(minutes) && minutes > 0 ? (props.businessHours ? formatWorkingMinutes : formatMinutes)(minutes) : ' '}
+      </span>
     </div>
   )
 }

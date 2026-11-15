@@ -27,3 +27,15 @@ export function formatMinutes(total: number): string {
   const parts = [days > 0 && `${days} day${days === 1 ? '' : 's'}`, hours > 0 && `${hours} h`, rest > 0 && `${rest} min`].filter(Boolean)
   return parts.length > 0 ? parts.join(' ') : '0 min'
 }
+
+/**
+ * Working time is never shown in days: 3 × 24 hours of business hours is about two working weeks,
+ * so "3 days" would mislead. 4320 → "72 working hours".
+ */
+export function formatWorkingMinutes(total: number): string {
+  const minutes = Math.abs(Math.round(total))
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  const parts = [hours > 0 && `${hours} h`, rest > 0 && `${rest} min`].filter(Boolean)
+  return `${parts.length > 0 ? parts.join(' ') : '0 min'} of working time`
+}

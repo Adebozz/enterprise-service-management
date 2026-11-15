@@ -53,6 +53,13 @@ export function formatDateTime(iso: string): string {
   return dateTime.format(new Date(iso))
 }
 
+// A calendar day ("2027-01-11") has no time zone: format it as UTC so it never shifts a day.
+const calendarDay = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' })
+
+export function formatDate(day: string): string {
+  return calendarDay.format(new Date(`${day}T00:00:00Z`))
+}
+
 /**
  * Typed as Record<ResolutionCode, …>: if the backend adds a code, the generated type changes and this
  * file stops compiling until the new code has a label. Exhaustive by construction, no copied list.

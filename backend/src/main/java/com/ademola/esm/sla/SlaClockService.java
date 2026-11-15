@@ -32,11 +32,20 @@ class SlaClockService {
 
     private final SlaClockRepository clocks;
     private final SlaPolicyService policies;
+    private final BusinessCalendarService calendars;
+    private final SlaProperties properties;
     private final AuditService audit;
 
-    SlaClockService(SlaClockRepository clocks, SlaPolicyService policies, AuditService audit) {
+    SlaClockService(
+            SlaClockRepository clocks,
+            SlaPolicyService policies,
+            BusinessCalendarService calendars,
+            SlaProperties properties,
+            AuditService audit) {
         this.clocks = clocks;
         this.policies = policies;
+        this.calendars = calendars;
+        this.properties = properties;
         this.audit = audit;
     }
 
@@ -51,18 +60,27 @@ class SlaClockService {
         }
         if (event.created()) {
             SlaTargets targets = policies.targetsFor(event.type(), event.priority());
+            SlaSchedule schedule = targets.businessHours() ? calendars.calendar() : SlaSchedule.ALWAYS;
             for (SlaMetric metric : SlaMetric.values()) {
-                clocks.save(SlaClock.start(event.ticketId(), metric, targets.forMetric(metric), event.occurredAt()));
+                SlaClock clock = SlaClock.start(
+                        event.ticketId(), metric, targets.forMetric(metric), schedule, event.occurredAt());
+                clock.refreshAtRisk(properties.atRiskThreshold());
+                clocks.save(clock);
             }
             return;
         }
         // Tickets raised before the SLA engine existed have no clocks; they stay without an SLA rather
         // than getting a clock that pretends to know their history.
         List<SlaClock> ticketClocks = clocks.findByWorkItemId(event.ticketId());
+        if (ticketClocks.stream().anyMatch(SlaClock::isBusinessHours)) {
+            BusinessCalendar calendar = calendars.calendar();
+            ticketClocks.forEach(clock -> clock.useCalendar(calendar));
+        }
         SlaPhase phase = SlaPhase.of(event.type(), event.status());
         for (SlaClock clock : ticketClocks) {
             Instant breachedBefore = clock.getBreachedAt();
             reconcile(clock, phase, event.responded(), event.occurredAt());
+            clock.refreshAtRisk(properties.atRiskThreshold());
             if (breachedBefore == null && clock.getBreachedAt() != null) {
                 recordBreach(clock);
             }

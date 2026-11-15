@@ -15,6 +15,8 @@ record TicketSlaResponse(List<SlaClockView> clocks) {
      * @param dueAt the deadline while running; {@code null} when paused or finished
      * @param elapsedSeconds time counted so far
      * @param remainingSeconds time left before the target; negative once overdue
+     * @param businessHours whether only the desk's working hours count (elapsed and remaining are
+     *     then working time; {@code dueAt} is when that working time runs out)
      */
     record SlaClockView(
             SlaMetric metric,
@@ -24,5 +26,6 @@ record TicketSlaResponse(List<SlaClockView> clocks) {
             long remainingSeconds,
             @Nullable Instant dueAt,
             @Nullable Instant breachedAt,
-            @Nullable Instant completedAt) {}
+            @Nullable Instant completedAt,
+            boolean businessHours) {}
 }

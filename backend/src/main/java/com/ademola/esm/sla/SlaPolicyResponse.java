@@ -5,7 +5,13 @@ import com.ademola.esm.ticket.priority.Priority;
 import java.util.UUID;
 
 record SlaPolicyResponse(
-        UUID id, WorkItemType ticketType, Priority priority, int responseMinutes, int resolutionMinutes, long version) {
+        UUID id,
+        WorkItemType ticketType,
+        Priority priority,
+        int responseMinutes,
+        int resolutionMinutes,
+        boolean businessHours,
+        long version) {
 
     static SlaPolicyResponse from(SlaPolicy policy) {
         SlaTargets targets = policy.targets();
@@ -15,6 +21,7 @@ record SlaPolicyResponse(
                 policy.getPriority(),
                 Math.toIntExact(targets.response().toMinutes()),
                 Math.toIntExact(targets.resolution().toMinutes()),
+                targets.businessHours(),
                 policy.getVersion());
     }
 }

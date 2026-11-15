@@ -192,6 +192,6 @@ class SlaPersistenceIT {
     }
 
     private static SlaTargets targets(int responseMinutes, int resolutionMinutes) {
-        return new SlaTargets(Duration.ofMinutes(responseMinutes), Duration.ofMinutes(resolutionMinutes));
+        return new SlaTargets(Duration.ofMinutes(responseMinutes), Duration.ofMinutes(resolutionMinutes), false);
     }
 }

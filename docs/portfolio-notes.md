@@ -1036,3 +1036,49 @@ listing and role filter, a role change with its version and the last-admin refus
 and a taken email, adding members without offering requesters, a refused removal, creating a team,
 the category tree, adding a subcategory and retiring one). Total: 392 unit + 273 integration backend
 tests, 108 frontend tests. Checked in a browser against the Compose stack.
+
+## M25: Business-hours SLAs (2026-11-15)
+
+**What was built**
+- Each SLA target counts either around the clock or only in business hours, chosen per ticket type
+  and priority on the *SLA targets* page. Existing targets stay around the clock until an admin
+  switches them.
+- A business calendar: opening hours per weekday (Monday to Friday, 09:00 to 17:30 to start with)
+  and holidays, in one configured time zone, maintained on the same page. Changing it moves the
+  deadlines of open business-hours tickets at once.
+- `BusinessCalendar`, a pure class, does the working-time arithmetic: deadlines skip nights,
+  weekends and holidays, and daylight-saving changes are handled through the time zone. 24/7 is the
+  same interface with plain arithmetic.
+- The queue's SQL no longer adds up time: each running clock stores when it becomes at risk and when
+  it is due, and the query compares those instants with now, so badges are right for both kinds of
+  clock (ADR-016).
+- The ticket's SLA panel shows business-hours targets in working hours ("72 h of working time"),
+  never in days, which would mislead.
+
+**What I learned (good interview material)**
+- **Store derived instants when readers can't derive them.** The queue computed status from elapsed
+  wall time in SQL. Rather than teaching SQL the calendar, the clock stores `at_risk_at` beside
+  `due_at`; every reader then only compares timestamps, and the rule lives in one place (Java).
+- **Time zones belong at the edges of the arithmetic.** Opening hours are local times; turning each
+  day into instants through `ZoneId` makes the clock change in March a non-event, which a unit test
+  pins down (09:00 is 09:00 UTC on the Friday and 08:00 UTC on the Monday).
+- **Defaults that change behaviour are migrations too.** Making business hours the default would
+  have silently moved every running deadline; the flag defaults to off and admins opt in.
+- **A moving test clock needs care.** The integration tests' clock keeps running after it is set,
+  so deadlines are compared to the second; and my own expected "at risk" time was wrong until I
+  counted Friday's minutes properly (16:45 to 17:30 is 45, not 15).
+- **Units can mislead.** "3 days" of business hours is 72 working hours, about two working weeks;
+  the panel and the admin page say "72 h of working time" instead.
+
+**Tests:** 13 new unit tests (`BusinessCalendarTest`: hours outside opening, a whole week,
+weekends and holidays, zero and negative amounts, the change to summer time, invalid calendars, a
+calendar that never opens; `BusinessHoursClockTest`: Friday-evening deadlines, at-risk times in
+working time, pausing over a weekend, a new holiday moving a running deadline, refusing to count
+without the calendar, 24/7 clocks unaffected). 6 new integration tests (`BusinessHoursApiIT`:
+switching a policy and its audit, deadlines in the detail and the queue agreeing at every stage,
+24/7 tickets unaffected, holidays moving and restoring running deadlines, replacing the week and
+refusing broken weeks, admin only). 5 new frontend tests (switching a target, saving the week with
+only open days, refusing an empty week, holidays, working-time wording). Total: 405 unit + 279
+integration backend tests, 112 frontend tests. The `sla` package is at 97.7% line and 93.5% branch
+coverage; the backend overall at 96.9% and 89.5%. Checked in a browser: a P3 raised on Sunday
+evening was due at 13:00 on Monday.

@@ -62,10 +62,11 @@ final class TicketListQuery {
                    s.metric AS sla_metric, s.due_at AS sla_due_at,
                    CASE
                        WHEN s.state IS NULL THEN NULL
-                       WHEN s.breached_at IS NOT NULL OR s.elapsed_ms + %1$s >= s.target_minutes * 60000.0 THEN 'BREACHED'
+                       WHEN s.breached_at IS NOT NULL
+                           OR (s.state = 'RUNNING' AND s.due_at <= CAST(:slaNow AS timestamptz))
+                           OR (s.state = 'PAUSED' AND s.elapsed_ms >= s.target_minutes * 60000.0) THEN 'BREACHED'
                        WHEN s.state = 'PAUSED' THEN 'PAUSED'
-                       WHEN s.elapsed_ms + %1$s >= s.target_minutes * 60000.0 * CAST(:slaAtRisk AS double precision)
-                           THEN 'AT_RISK'
+                       WHEN s.at_risk_at <= CAST(:slaNow AS timestamptz) THEN 'AT_RISK'
                        ELSE 'ON_TRACK'
                    END AS sla_status
             FROM work_items w
@@ -74,16 +75,13 @@ final class TicketListQuery {
             JOIN users r ON r.id = w.requester_id
             LEFT JOIN users a ON a.id = w.assignee_id
             LEFT JOIN LATERAL (
-                SELECT sc.metric, sc.state, sc.elapsed_ms, sc.running_since, sc.due_at, sc.breached_at, sc.target_minutes
+                SELECT sc.metric, sc.state, sc.elapsed_ms, sc.due_at, sc.at_risk_at, sc.breached_at, sc.target_minutes
                 FROM sla_clocks sc
                 WHERE sc.work_item_id = w.id AND sc.state IN ('RUNNING', 'PAUSED')
                 ORDER BY sc.metric = 'RESPONSE' DESC
                 LIMIT 1
             ) s ON true
-            """.formatted(
-                    // milliseconds counted in the current running stretch (0 while paused)
-                    "CASE WHEN s.state = 'RUNNING'"
-                            + " THEN extract(epoch FROM CAST(:slaNow AS timestamptz) - s.running_since) * 1000 ELSE 0 END");
+            """;
 
     record Sql(String text, MapSqlParameterSource params) {}
 
@@ -99,16 +97,15 @@ final class TicketListQuery {
     private TicketListQuery() {
         // Defaults keep the SQL valid on its own (tests, EXPLAIN); the service sets real values.
         params.addValue("slaNow", null);
-        params.addValue("slaAtRisk", 1.0);
     }
 
     /**
-     * The moment SLA badges are computed for, and the share of a target after which it is at risk.
-     * Uses the application clock rather than the database's {@code now()}, so tests control it.
+     * The moment SLA badges are computed for. Uses the application clock rather than the database's
+     * {@code now()}, so tests control it. Deadlines are compared as stored instants ({@code due_at},
+     * {@code at_risk_at}), so the query works the same for 24/7 and business-hours clocks.
      */
-    TicketListQuery slaAsOf(Instant now, double atRiskFraction) {
+    TicketListQuery slaAsOf(Instant now) {
         params.addValue("slaNow", Timestamp.from(now));
-        params.addValue("slaAtRisk", atRiskFraction);
         return this;
     }
 

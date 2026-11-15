@@ -104,6 +104,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `CATEGORY_TEAM_REQUIRED` | 422 | Top-level categories must route to a team |
 | `INVALID_CATALOGUE_FORM` | 422 | The item's questions don't fit together (duplicate keys, a choice with fewer than two options...); see `fieldErrors` (`fields[i].…`) |
 | `ATTACHMENT_EMPTY` | 422 | The file is empty |
+| `INVALID_BUSINESS_HOURS` | 422 | Opening hours that close before they open, a day listed twice, or a day that is already a holiday |
 | `APPROVAL_REASON_REQUIRED` | 422 | Rejecting a request needs a comment saying why |
 | `CHANGE_PLAN_INCOMPLETE` | 422 | Submitting needs an implementation plan, a backout plan and a planned window |
 | `CHANGE_PLAN_INVALID` | 422 | The plan breaks a rule: a standard change must be low risk and is scheduled, not submitted; the window must end after it starts, and (except in an emergency) not have started yet |
@@ -168,6 +169,9 @@ format does. Downloads are sent with `Content-Disposition: attachment`, `nosniff
 
 `getTicketSla` returns both clocks with status `ON_TRACK | AT_RISK | BREACHED | PAUSED | MET |
 MISSED | CANCELLED`, target, elapsed and remaining seconds, and due, breach and completion times.
+`businessHours` says whether the clock counts only the desk's opening hours (set per SLA policy):
+elapsed and remaining are then working time, and `dueAt` is the moment that working time runs out,
+skipping nights, closed days and holidays. Changing the calendar moves running deadlines at once.
 
 ### Service catalogue
 
@@ -297,7 +301,10 @@ attempts).
 | GET / POST | `/api/admin/categories` | `listAllCategories` / `createCategory` (201) |
 | PATCH | `/api/admin/categories/{id}` | `updateCategory` |
 | GET | `/api/admin/sla-policies` | `listSlaPolicies` |
-| PUT | `/api/admin/sla-policies/{id}` | `updateSlaPolicy` (needs `version`; applies to tickets raised afterwards) |
+| PUT | `/api/admin/sla-policies/{id}` | `updateSlaPolicy` (needs `version`; optional `businessHours`; applies to tickets raised afterwards) |
+| GET | `/api/admin/business-hours` | `getBusinessHours` (time zone, open days, holidays) |
+| PUT | `/api/admin/business-hours/week` | `updateBusinessWeek` (the whole week: one entry per open day) |
+| POST / DELETE | `/api/admin/business-hours/holidays[/{day}]` | `addHoliday` / `removeHoliday` |
 | GET / POST | `/api/admin/catalogue` | `listAllCatalogueItems` / `createCatalogueItem` (201) |
 | PUT | `/api/admin/catalogue/{id}` | `updateCatalogueItem` (whole item incl. `active`; needs `version`) |
 

@@ -23,6 +23,7 @@ public enum AuditAction {
     // service levels
     SLA_BREACHED,
     SLA_POLICY_UPDATED,
+    BUSINESS_HOURS_UPDATED,
     // service catalogue
     CATALOGUE_ITEM_CREATED,
     CATALOGUE_ITEM_UPDATED,

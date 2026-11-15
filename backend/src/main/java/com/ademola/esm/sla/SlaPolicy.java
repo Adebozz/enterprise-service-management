@@ -35,6 +35,9 @@ class SlaPolicy extends BaseEntity {
     @Column(name = "resolution_minutes", nullable = false)
     private int resolutionMinutes;
 
+    @Column(name = "business_hours", nullable = false)
+    private boolean businessHours;
+
     protected SlaPolicy() {}
 
     WorkItemType getTicketType() {
@@ -51,7 +54,13 @@ class SlaPolicy extends BaseEntity {
         this.resolutionMinutes = resolutionMinutes;
     }
 
+    /** Whether tickets raised from now on count only business hours. */
+    void countBusinessHours(boolean businessHours) {
+        this.businessHours = businessHours;
+    }
+
     SlaTargets targets() {
-        return new SlaTargets(Duration.ofMinutes(responseMinutes), Duration.ofMinutes(resolutionMinutes));
+        return new SlaTargets(
+                Duration.ofMinutes(responseMinutes), Duration.ofMinutes(resolutionMinutes), businessHours);
     }
 }

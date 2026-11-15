@@ -119,7 +119,8 @@ timelines and `(actor_id, occurred_at)`.
 One row per `ticket_type` × `priority` (UNIQUE), seeded by V8 with the default targets:
 `response_minutes` and `resolution_minutes`, both positive, response no later than resolution
 (CHECK). Reference data rather than demo data: every ticket must find its policy, so admins change
-the numbers but never the rows. The integration-test cleaner keeps this table.
+the numbers but never the rows. The integration-test cleaner keeps this table. Since V15,
+`business_hours` (boolean) says whether the policy's targets count only business hours.
 
 ### sla_clocks (Phase 2, M15)
 
@@ -130,6 +131,20 @@ work_items, `ON DELETE CASCADE`). Time is stored as `elapsed_ms` (finished runni
 `RUNNING` and `completed_at` to `COMPLETED`. `breached_at` records a breach permanently. The
 partial index `(due_at) WHERE state = 'RUNNING' AND breached_at IS NULL` is what the breach job
 scans. See [ADR-010](adr/010-sla-clocks.md).
+
+Since V15 a clock also stores `business_hours` (copied from its policy when it starts, like the
+target) and `at_risk_at`, the moment a running clock crosses the at-risk share of its target
+(CHECK: only running clocks have one). For a business-hours clock `elapsed_ms` is working time and
+`due_at` / `at_risk_at` are the instants that working time runs out, so the queue compares stored
+instants and never needs the calendar.
+
+### business_hours, business_holidays (Phase 2, M25)
+
+`business_hours`: one row per open weekday (`day_of_week` 1–7, ISO; `opens_at`, `closes_at` local
+times, CHECK closing after opening); a missing day is closed. V15 seeds Monday to Friday, 09:00 to
+17:30; it is reference data, kept by the test cleaner. `business_holidays`: whole days the desk is
+closed (`day` primary key, `name`). The time zone is configuration
+(`esm.sla.business-hours.zone`). See [ADR-016](adr/016-business-hours-slas.md).
 
 ### catalogue_items (Phase 2, M18)
 

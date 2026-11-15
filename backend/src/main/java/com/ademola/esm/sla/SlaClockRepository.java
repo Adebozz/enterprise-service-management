@@ -13,6 +13,8 @@ interface SlaClockRepository extends JpaRepository<SlaClock, UUID> {
 
     List<SlaClock> findByWorkItemId(UUID workItemId);
 
+    List<SlaClock> findByStateAndBusinessHoursTrue(SlaClockState state);
+
     /**
      * Running, unbreached clocks whose deadline has passed, locked for this transaction.
      *

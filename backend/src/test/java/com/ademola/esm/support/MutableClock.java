@@ -18,6 +18,11 @@ public class MutableClock extends Clock {
         offset = offset.plus(amount);
     }
 
+    /** Jumps to a given moment (from then on, time moves on from there). */
+    public void setTo(Instant moment) {
+        offset = Duration.between(Instant.now(), moment);
+    }
+
     public void reset() {
         offset = Duration.ZERO;
     }

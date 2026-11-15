@@ -222,7 +222,7 @@ class SlaClockTest {
 
     @Test
     void targetsMapToTheirMetric() {
-        SlaTargets targets = new SlaTargets(Duration.ofMinutes(15), FOUR_HOURS);
+        SlaTargets targets = new SlaTargets(Duration.ofMinutes(15), FOUR_HOURS, false);
 
         assertThat(targets.forMetric(SlaMetric.RESPONSE)).isEqualTo(Duration.ofMinutes(15));
         assertThat(targets.forMetric(SlaMetric.RESOLUTION)).isEqualTo(FOUR_HOURS);

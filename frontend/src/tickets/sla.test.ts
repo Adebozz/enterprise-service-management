@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatMinutes } from './sla'
+import { formatMinutes, formatWorkingMinutes } from './sla'
 
 describe('SLA durations', () => {
   it('reads like people say targets', () => {
     expect(formatMinutes(15)).toBe('15 min')
     expect(formatMinutes(60)).toBe('1 h')
+    expect(formatWorkingMinutes(4320)).toBe('72 h of working time')
+    expect(formatWorkingMinutes(-90)).toBe('1 h 30 min of working time')
+    expect(formatWorkingMinutes(0)).toBe('0 min of working time')
     expect(formatMinutes(90)).toBe('1 h 30 min')
     expect(formatMinutes(1440)).toBe('1 day')
     expect(formatMinutes(4320)).toBe('3 days')
