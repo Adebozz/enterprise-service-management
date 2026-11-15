@@ -1,5 +1,6 @@
 package com.ademola.esm.support;
 
+import com.ademola.esm.notification.RecordingMailGateway;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -9,7 +10,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 
 /**
- * Full application context + MockMvc + real PostgreSQL via Testcontainers + a controllable clock.
+ * Full application context + MockMvc + real PostgreSQL via Testcontainers + a controllable clock +
+ * a mail gateway that records emails instead of sending them.
  *
  * <p>All integration tests use this single annotation so they share one cached Spring context (and
  * therefore one database container). Name integration test classes {@code *IT} so Failsafe runs
@@ -29,5 +31,5 @@ import org.springframework.context.annotation.Import;
             "esm.sla.breach-check.enabled=false"
         })
 @AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestClockConfiguration.class})
+@Import({TestcontainersConfiguration.class, TestClockConfiguration.class, RecordingMailGateway.class})
 public @interface IntegrationTest {}

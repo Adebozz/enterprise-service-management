@@ -176,6 +176,15 @@ body.
 - 10 MB per file is enforced by the multipart limit, the service and a database CHECK; nginx caps
   the request body at 11 MB. Audit entries carry the file name and size, never the content.
 
+## Implemented (M23): notifications
+
+- People are only told about tickets they are already involved in (requester, assignee, the
+  team's leads), and internal notes and files only reach the assignee, so a notification never
+  shows more than its recipient could see on the ticket.
+- Each person's notifications are theirs alone: reading or marking someone else's is a 404.
+- Emails carry the message and a link, never a comment's text or a file. In the demo they go to
+  Mailpit, never to real addresses. Deactivated accounts get no email.
+
 ## Known limitations (security)
 
 - **Uploaded files aren't scanned for malware.** Type checks stop disguised files, not infected

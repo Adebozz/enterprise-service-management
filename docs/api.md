@@ -260,6 +260,23 @@ reload the ticket. On a change, `change` in the ticket holds the plan, the revie
 fixes and its `clashes`: other changes awaiting approval, approved or under way whose windows overlap
 its own. The schedule lists those same changes whose window hasn't ended, soonest first.
 
+### Notifications
+
+| Method | Path | operationId | Who |
+|---|---|---|---|
+| GET | `/api/notifications` | `listNotifications` | signed in; your own, latest 50 + `unreadCount` |
+| GET | `/api/notifications/unread-count` | `countUnreadNotifications` | signed in |
+| POST | `/api/notifications/{id}/read` | `markNotificationRead` | the recipient → 204 (anyone else: 404) |
+| POST | `/api/notifications/read-all` | `markAllNotificationsRead` | signed in → 204 |
+
+Notifications are created from the audit trail in the same transaction as the change: being
+assigned a ticket; a status change on a ticket you raised or own; a reply or file (internal ones
+only for the assignee); an SLA breach (the assignee, or the team's leads while unassigned); an
+approval waiting for you. Nobody is notified of their own action. `kind` is `ASSIGNED |
+STATUS_CHANGED | COMMENTED | FILE_ADDED | SLA_BREACHED | APPROVAL_REQUESTED`; `ticketId` links to the
+ticket. When email is enabled the same message is emailed by an outbox job (at least once, three
+attempts).
+
 ### Teams
 
 | Method | Path | operationId | Who |

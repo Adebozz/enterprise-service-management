@@ -24,7 +24,8 @@ cp .env.example .env && docker compose up --build
 ```
 
 Open **http://localhost:3000** and sign in with a demo account. The password for every account is
-the `ESM_DEMO_PASSWORD` value in `.env` (local demos only).
+the `ESM_DEMO_PASSWORD` value in `.env` (local demos only). Notification emails are caught by
+Mailpit at **http://localhost:8025**; nothing is sent to real addresses.
 
 | Email | Role | Try |
 |---|---|---|
@@ -53,6 +54,8 @@ its old data; `docker compose down -v` then `up` starts again with the current d
 - Priority is derived from impact × urgency through a configurable matrix, never typed in.
 - Follow their own tickets, reply in the conversation, confirm a resolution or reopen it.
 - Attach screenshots, logs or documents (up to 10 MB each) and download support's replies.
+- Notifications in the app (a bell with the unread count) and by email when support replies,
+  changes the status or needs something from them.
 
 **For support staff**
 - Queues: *mine*, *team*, *unassigned* and *all*, with full-text search, filters and priority-first
@@ -266,13 +269,15 @@ enterprise-service-management/
   went, and links to the problem a change fixes;
 - attachments (M22): files on tickets with the conversation's visibility rules (requester-visible
   or internal), type and content checks on the server, 10 MB per file, stored in PostgreSQL behind
-  a small interface that an S3 store can replace.
+  a small interface that an S3 store can replace;
+- notifications (M23): created from the audit trail in the same transaction as each change, shown
+  under a bell in the app and emailed through an outbox with retries (Mailpit in the demo).
 
 **Not built yet:**
 - **Phase 2 (planned):**
   - business-hours SLA calendars (clocks run 24/7 today);
   - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
-  - notifications (breaches are recorded and shown, but nobody is alerted yet);
+  - notification preferences (everyone gets every notification that concerns them today);
   - admin screens for users, teams and categories (managed through the API today).
 - **Phase 3 (planned):**
   - reporting dashboards;

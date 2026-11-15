@@ -85,6 +85,12 @@ public class TeamService {
         return members.findActiveTeamsOf(userId);
     }
 
+    /** Active team leads of the team. Internal API (e.g. who to tell about a pending approval). */
+    @Transactional(readOnly = true)
+    public Set<UUID> activeLeadIdsOf(UUID teamId) {
+        return Set.copyOf(members.findActiveLeadIds(teamId));
+    }
+
     /** Ids of every team (active or not) the user belongs to; used for ticket visibility. */
     @Transactional(readOnly = true)
     public Set<UUID> teamIdsOf(UUID userId) {

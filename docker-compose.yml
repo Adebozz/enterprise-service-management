@@ -2,6 +2,7 @@
 #
 #   cp .env.example .env
 #   docker compose up --build        # whole stack: http://localhost:3000 (demo data, demo accounts)
+#                                    # notification emails: http://localhost:8025 (Mailpit)
 #   docker compose up -d postgres    # database only, for running the backend from an IDE
 #
 # Start-up order follows health, not just container start: postgres (accepting connections)
@@ -36,10 +37,17 @@ services:
       ESM_JWT_SECRET: ${ESM_JWT_SECRET:?set ESM_JWT_SECRET in .env}
       ESM_ALLOWED_ORIGINS: http://localhost:${ESM_WEB_PORT:-3000}
       ESM_DEMO_PASSWORD: ${ESM_DEMO_PASSWORD:?set ESM_DEMO_PASSWORD in .env}
+      # Notification emails go to Mailpit, which catches them instead of delivering them.
+      ESM_NOTIFICATION_EMAIL: "true"
+      ESM_APP_URL: http://localhost:${ESM_WEB_PORT:-3000}
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: "1025"
     # No published port: only the web container is reachable, as in production.
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     healthcheck:
       # The JRE image has no curl; bash's /dev/tcp is enough for a plain HTTP probe.
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
@@ -60,6 +68,13 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  # A fake mail server for the demo: every notification email lands in its inbox at
+  # http://localhost:8025 (nothing is sent to real addresses).
+  mailpit:
+    image: axllent/mailpit:v1.27.10
+    ports:
+      - "127.0.0.1:${ESM_MAIL_UI_PORT:-8025}:8025"
 
 volumes:
   postgres-data:

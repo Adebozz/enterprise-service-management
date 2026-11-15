@@ -969,3 +969,41 @@ tickets), plus demo seeder checks. 7 new frontend tests (listing and uploading, 
 the size check before sending, internal files for staff, removing and downloading, closed tickets,
 history text). Total: 380 unit + 267 integration backend tests, 95 frontend tests. The `attachment`
 package is at 98.4% line and 96.9% branch coverage; the backend overall at 96.6% and 88.7%.
+
+## M23: Notifications (2026-11-15)
+
+**What was built**
+- Notifications for the people involved in a ticket: being assigned, a status change on a ticket
+  you raised or own, a reply or file (internal ones only reach the assignee), an SLA breach (the
+  assignee, or the team's leads while unassigned), and an approval waiting for a team lead. Nobody
+  is told about their own action, and one change notifies each person once.
+- They are created from the audit trail: `AuditService` publishes an event for every entry, in the
+  same transaction, and a pure `NotificationRules` function decides who hears what (ADR-015).
+- A bell in the header with the unread count (refreshed every 30 seconds) and a notifications page:
+  opening one marks it read and goes to the ticket; "Mark all as read".
+- Email through an outbox: each notification records its email state; a scheduled job locks a batch
+  with `FOR UPDATE SKIP LOCKED`, sends it over SMTP, and retries up to three times. The Compose demo
+  adds Mailpit, which catches every email in a web inbox at port 8025.
+
+**What I learned (good interview material)**
+- **The audit trail was already the event log.** Every change worth telling someone about was
+  audited, with its actor, in the change's transaction. Publishing one event from the audit service
+  gave notifications for every feature, without any feature knowing notifications exist.
+- **Never send email inside the business transaction.** A slow SMTP server would hold the ticket's
+  transaction open, and a rollback after sending tells people about something that didn't happen.
+  The outbox makes delivery at-least-once and keeps ticket changes independent of the mail server.
+- **Deduplicate at the rule level.** A "waiting for user" move writes both a status change and a
+  comment (the reason), and a requester's reply both comments and resumes the ticket. Without care,
+  each would notify twice; the rules let one entry speak for both.
+- **Tests that share a database share its sequences.** The first run failed because ticket
+  references kept counting across tests; the test now reads the reference it was given.
+
+**Tests:** 12 new unit tests (`NotificationRulesTest`: each rule, no self-notification, the
+deduplication cases, internal notes and files, breaches with and without an assignee, approvals
+never to the requester; `NotificationEmailDeliveryTest`: the SMTP message, failing without a mail
+server, the job's batching, long messages). 6 new integration tests (`NotificationApiIT`: a ticket's
+whole life checked per person, the inbox and read marks only for their owner, email off, the outbox
+sending with a link, retries then giving up, deactivated people), plus demo seeder checks. 4 new
+frontend tests (the bell's count, listing and marking all read, opening a notification, the empty
+state). Total: 392 unit + 273 integration backend tests, 99 frontend tests. Checked in a browser and
+in Mailpit with the Compose stack.

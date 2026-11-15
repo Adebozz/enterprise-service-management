@@ -64,6 +64,17 @@ class DemoDataSeederIT {
         assertThat(jdbc.queryForList("select visibility from attachments order by created_at", String.class))
                 .containsExactly("PUBLIC", "INTERNAL");
         assertThat(count("attachment_contents")).isEqualTo(2);
+        // The demo's own activity left people notifications: Leo has approvals waiting, Rita has news.
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from notifications n join users u on u.id = n.recipient_id"
+                                + " where u.email = 'lead@demo.local' and n.kind = 'APPROVAL_REQUESTED'",
+                        Integer.class))
+                .isPositive();
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from notifications n join users u on u.id = n.recipient_id"
+                                + " where u.email = 'rita@demo.local' and n.kind = 'STATUS_CHANGED'",
+                        Integer.class))
+                .isPositive();
         // The catalogue has items; requests ordered from it keep their answers, and the one that
         // needs sign-off is waiting for it.
         assertThat(count("catalogue_items")).isEqualTo(3);

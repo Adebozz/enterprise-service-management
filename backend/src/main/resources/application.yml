@@ -70,6 +70,14 @@ esm:
     breach-check:
       enabled: true                    # records breaches of SLA clocks nobody is touching
       interval: 1m
+  notifications:
+    app-url: ${ESM_APP_URL:http://localhost:5173}   # the link in notification emails
+    email:
+      # Off unless a mail server is configured (spring.mail.host, e.g. SPRING_MAIL_HOST): the
+      # notifications are still shown in the app.
+      enabled: ${ESM_NOTIFICATION_EMAIL:false}
+      from: "Service Desk <no-reply@esm.local>"
+      interval: 30s
   demo:
     password: ${ESM_DEMO_PASSWORD:}   # only read when the "demo" profile is active
   bootstrap:

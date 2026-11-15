@@ -1624,6 +1624,157 @@
         "tags" : [ "Problems" ]
       }
     },
+    "/api/notifications" : {
+      "get" : {
+        "operationId" : "listNotifications",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationInbox"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Your latest 50 notifications, newest first, and your unread count",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/notifications/read-all" : {
+      "post" : {
+        "operationId" : "markAllNotificationsRead",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Mark all your notifications as read",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/notifications/unread-count" : {
+      "get" : {
+        "operationId" : "countUnreadNotifications",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UnreadCount"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "How many of your notifications are unread",
+        "tags" : [ "Notifications" ]
+      }
+    },
+    "/api/notifications/{id}/read" : {
+      "post" : {
+        "operationId" : "markNotificationRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Mark one of your notifications as read",
+        "tags" : [ "Notifications" ]
+      }
+    },
     "/api/problems" : {
       "post" : {
         "operationId" : "createProblem",
@@ -3787,6 +3938,50 @@
         },
         "required" : [ "id", "name" ]
       },
+      "NotificationInbox" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationResponse"
+            }
+          },
+          "unreadCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "items", "unreadCount" ]
+      },
+      "NotificationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "ASSIGNED", "STATUS_CHANGED", "COMMENTED", "FILE_ADDED", "SLA_BREACHED", "APPROVAL_REQUESTED" ]
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "read" : {
+            "type" : "boolean"
+          },
+          "ticketId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "createdAt", "id", "kind", "message", "read", "ticketId" ]
+      },
       "PageResponseTicketSummary" : {
         "type" : "object",
         "properties" : {
@@ -4459,6 +4654,16 @@
           }
         },
         "required" : [ "targetStatus", "version" ]
+      },
+      "UnreadCount" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "count" ]
       },
       "UpdateCatalogueItemRequest" : {
         "type" : "object",

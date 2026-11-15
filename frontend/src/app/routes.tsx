@@ -28,6 +28,7 @@ export const routes: RouteObject[] = [
             path: 'tickets/new/request',
             lazy: async () => ({ Component: (await import('@/tickets/NewServiceRequestPage')).NewServiceRequestPage }),
           },
+          { path: 'notifications', lazy: async () => ({ Component: (await import('@/notifications/NotificationsPage')).NotificationsPage }) },
           { path: 'tickets/:id', lazy: async () => ({ Component: (await import('@/tickets/TicketPage')).TicketPage }) },
           {
             element: <RequireAuth role="AGENT" />,

@@ -22,6 +22,8 @@ export const queryKeys = {
   /** Under ['tickets'] too: planning, approving or cancelling a change moves it on the schedule. */
   changeSchedule: ['tickets', 'change-schedule'] as const,
   slaPolicies: ['sla-policies'] as const,
+  notifications: ['notifications'] as const,
+  unreadNotifications: ['notifications', 'unread'] as const,
   catalogue: ['catalogue'] as const,
   catalogueItem: (id: string) => ['catalogue', 'item', id] as const,
   adminCatalogue: ['catalogue', 'admin'] as const,
@@ -54,6 +56,18 @@ export const attachmentsQuery = (id: string) => ({
   queryKey: queryKeys.attachments(id),
   queryFn: async () => unwrap(await api.GET('/api/tickets/{id}/attachments', { params: { path: { id } } })),
 })
+
+export const notificationsQuery = {
+  queryKey: queryKeys.notifications,
+  queryFn: async () => unwrap(await api.GET('/api/notifications')),
+}
+
+/** Polled, so the bell picks up news without a reload. */
+export const unreadNotificationsQuery = {
+  queryKey: queryKeys.unreadNotifications,
+  queryFn: async () => unwrap(await api.GET('/api/notifications/unread-count')),
+  refetchInterval: 30_000,
+}
 
 export const transitionsQuery = (id: string) => ({
   queryKey: queryKeys.transitions(id),

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { navigationFor } from './navigation'
+import { NotificationBell } from './NotificationBell'
 
 export function AppLayout() {
   const user = useCurrentUser()
@@ -47,6 +48,7 @@ export function AppLayout() {
               </NavLink>
             ))}
           </nav>
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" aria-label={`Account menu for ${user.displayName}`}>

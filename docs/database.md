@@ -186,6 +186,18 @@ separators, 1 byte to 10 MB, a 64-character lowercase hex hash. `attachments_wor
 bytes (`attachment_id` → attachments, `ON DELETE CASCADE`, `content bytea`), apart from the
 metadata so listing never reads them; it is the part an S3 store replaces (ADR-014).
 
+### notifications (Phase 2, M23)
+
+One row per message to one person: `recipient_id` (→ users), `work_item_id` (→ work_items,
+`ON DELETE CASCADE`), `actor_id` (→ users, null for system actions), `kind`, `message` (the text
+as written at the time), `created_at`, `read_at`, and the outbox columns `email_status`
+(`PENDING | SENT | FAILED | SKIPPED`), `email_attempts`, `emailed_at`. CHECKs: nobody is notified of
+their own action (`actor_id <> recipient_id`), and a notification can't be read before it exists.
+`notifications_recipient_idx (recipient_id, created_at DESC, id)` serves the inbox,
+`notifications_unread_idx` (partial, `read_at IS NULL`) the unread count, and
+`notifications_pending_email_idx` (partial, `PENDING`) the email job, which locks its batch with
+`FOR UPDATE SKIP LOCKED`.
+
 ## Conventions
 
 - Migrations are **immutable once merged**. A fix is a new migration.
@@ -216,5 +228,4 @@ erDiagram
 ```
 
 Added in Phase 2 so far: `sla_policies`, `sla_clocks`, `catalogue_items`, `approvals`, `problems`,
-`changes`, `attachments`, `attachment_contents` (described above). Still to come in Phase 2:
-`notifications`.
+`changes`, `attachments`, `attachment_contents` (described above). `notifications` (described above).

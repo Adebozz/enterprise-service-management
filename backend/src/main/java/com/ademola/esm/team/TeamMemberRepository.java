@@ -27,6 +27,12 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, TeamMemb
             """)
     List<TeamSummary> findActiveTeamsOf(UUID userId);
 
+    @Query("""
+            select u.id from TeamMember m join User u on u.id = m.id.userId
+            where m.id.teamId = :teamId and u.role = com.ademola.esm.user.Role.TEAM_LEAD and u.active = true
+            """)
+    List<UUID> findActiveLeadIds(UUID teamId);
+
     @Query("select m.id.teamId from TeamMember m where m.id.userId = :userId")
     List<UUID> findTeamIdsOf(UUID userId);
 }

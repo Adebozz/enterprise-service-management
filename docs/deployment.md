@@ -43,6 +43,7 @@ postgres (pg_isready) ──healthy──▶ backend (/actuator/health/readiness
 | `postgres` | `127.0.0.1:5432` | Databases `esm` (IDE development) and `esm_demo` (containerised stack), created by `docker/postgres-init` on first volume creation |
 | `backend` | **not published** | Profiles `prod,demo`: JSON logs, no Swagger, demo seed. Health check uses bash `/dev/tcp` because the JRE image has no curl |
 | `web` | `127.0.0.1:3000` | The only entry point |
+| `mailpit` | `127.0.0.1:8025` | Catches notification emails (SMTP on 1025 inside the network); its web inbox shows what would have been sent |
 
 - Ports bind to `127.0.0.1` only, so nothing is reachable from your network.
 - **Existing volumes:** the init script only runs when the Postgres volume is created. On a volume

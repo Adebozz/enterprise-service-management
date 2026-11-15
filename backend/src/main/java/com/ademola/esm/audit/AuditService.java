@@ -2,9 +2,11 @@ package com.ademola.esm.audit;
 
 import com.ademola.esm.common.web.CorrelationIdFilter;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.MDC;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,9 @@ import tools.jackson.databind.json.JsonMapper;
  * transaction that makes the change, and calling it without one throws. The change and its audit
  * record therefore commit or roll back together: no audited change that didn't happen, and no
  * change without its audit record.
+ *
+ * <p>Each entry is also published as an {@link AuditRecordedEvent}, in the same transaction, so other
+ * modules (notifications) can react to what happened without every feature calling them.
  */
 @Service
 public class AuditService {
@@ -24,12 +29,19 @@ public class AuditService {
     private final AuditEventRepository events;
     private final ActorProvider actorProvider;
     private final JsonMapper json;
+    private final ApplicationEventPublisher publisher;
     private final Clock clock;
 
-    public AuditService(AuditEventRepository events, ActorProvider actorProvider, JsonMapper json, Clock clock) {
+    public AuditService(
+            AuditEventRepository events,
+            ActorProvider actorProvider,
+            JsonMapper json,
+            ApplicationEventPublisher publisher,
+            Clock clock) {
         this.events = events;
         this.actorProvider = actorProvider;
         this.json = json;
+        this.publisher = publisher;
         this.clock = clock;
     }
 
@@ -48,8 +60,9 @@ public class AuditService {
     }
 
     private void save(AuditRecord record, UUID actorId) {
+        Instant now = clock.instant();
         events.save(new AuditEvent(
-                clock.instant(),
+                now,
                 actorId,
                 record.action(),
                 record.entityType(),
@@ -58,6 +71,7 @@ public class AuditService {
                 toJson(record.newValue()),
                 toJson(record.metadata()),
                 MDC.get(CorrelationIdFilter.MDC_KEY)));
+        publisher.publishEvent(new AuditRecordedEvent(record, actorId, now));
     }
 
     private String toJson(Map<String, ?> value) {
