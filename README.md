@@ -52,6 +52,7 @@ its old data; `docker compose down -v` then `up` starts again with the current d
   requester sees who decided and why.
 - Priority is derived from impact × urgency through a configurable matrix, never typed in.
 - Follow their own tickets, reply in the conversation, confirm a resolution or reopen it.
+- Attach screenshots, logs or documents (up to 10 MB each) and download support's replies.
 
 **For support staff**
 - Queues: *mine*, *team*, *unassigned* and *all*, with full-text search, filters and priority-first
@@ -59,7 +60,8 @@ its old data; `docker compose down -v` then `up` starts again with the current d
 - Take, release, assign (team leads) and transfer tickets between teams.
 - Workflow actions with the inputs each move requires: a reason to cancel or reopen, a resolution
   code and notes to resolve, delivery notes to fulfil.
-- Internal notes that requesters never see. The filtering happens in SQL, not in the browser.
+- Internal notes and internal files that requesters never see. The filtering happens in SQL, not
+  in the browser.
 - A readable history of every change, built from the audit trail.
 - Team leads approve or reject requests for their teams, from an *Approvals* inbox or the ticket
   itself; nobody approves their own request, and a rejection must say why.
@@ -261,13 +263,15 @@ enterprise-service-management/
   error, incidents linked to the problem behind them, and a note on each when it is fixed;
 - change management (M21): changes as a fourth ticket type with standard, normal and emergency
   types, approval through the approvals inbox, a schedule with clash warnings, a review of how each
-  went, and links to the problem a change fixes.
+  went, and links to the problem a change fixes;
+- attachments (M22): files on tickets with the conversation's visibility rules (requester-visible
+  or internal), type and content checks on the server, 10 MB per file, stored in PostgreSQL behind
+  a small interface that an S3 store can replace.
 
 **Not built yet:**
 - **Phase 2 (planned):**
   - business-hours SLA calendars (clocks run 24/7 today);
   - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
-  - attachments (S3);
   - notifications (breaches are recorded and shown, but nobody is alerted yet);
   - admin screens for users, teams and categories (managed through the API today).
 - **Phase 3 (planned):**

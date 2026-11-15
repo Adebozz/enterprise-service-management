@@ -60,6 +60,13 @@ public enum ErrorCode {
     CHANGE_REVIEW_INCOMPLETE(HttpStatus.UNPROCESSABLE_CONTENT),
     CHANGE_UPDATE_NOT_PERMITTED(HttpStatus.FORBIDDEN),
 
+    // attachments
+    ATTACHMENT_EMPTY(HttpStatus.UNPROCESSABLE_CONTENT),
+    ATTACHMENT_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE),
+    ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    ATTACHMENT_LIMIT_REACHED(HttpStatus.CONFLICT),
+    ATTACHMENT_DELETE_NOT_PERMITTED(HttpStatus.FORBIDDEN),
+
     // workflow
     INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT),
     TRANSITION_NOT_PERMITTED(HttpStatus.FORBIDDEN),
@@ -97,6 +104,7 @@ public enum ErrorCode {
             case 403 -> ACCESS_DENIED;
             case 404 -> RESOURCE_NOT_FOUND;
             case 405 -> METHOD_NOT_ALLOWED;
+            case 413 -> ATTACHMENT_TOO_LARGE; // the only uploads are attachments
             case 415 -> UNSUPPORTED_MEDIA_TYPE;
             default -> status >= 500 ? INTERNAL_ERROR : REQUEST_FAILED;
         };

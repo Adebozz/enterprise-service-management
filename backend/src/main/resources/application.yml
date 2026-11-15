@@ -26,6 +26,11 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      # Attachments: 10 MB per file (UploadedFile.MAX_BYTES and a database check say the same).
+      max-file-size: 10MB
+      max-request-size: 11MB
   mvc:
     problemdetails:
       enabled: true

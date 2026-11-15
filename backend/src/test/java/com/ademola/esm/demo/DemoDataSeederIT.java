@@ -60,6 +60,10 @@ class DemoDataSeederIT {
                 .isZero();
         assertThat(jdbc.queryForObject("select count(*) from comments where visibility = 'INTERNAL'", Integer.class))
                 .isPositive();
+        // The Wi-Fi incident has the requester's log and support's internal channel scan.
+        assertThat(jdbc.queryForList("select visibility from attachments order by created_at", String.class))
+                .containsExactly("PUBLIC", "INTERNAL");
+        assertThat(count("attachment_contents")).isEqualTo(2);
         // The catalogue has items; requests ordered from it keep their answers, and the one that
         // needs sign-off is waiting for it.
         assertThat(count("catalogue_items")).isEqualTo(3);

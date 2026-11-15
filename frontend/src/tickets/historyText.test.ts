@@ -92,6 +92,11 @@ suite('history sentences', () => {
   it('distinguishes internal notes from messages', () => {
     expect(describe(entry({ action: 'COMMENT_ADDED', metadata: { visibility: 'INTERNAL' } }))).toBe('added an internal note')
     expect(describe(entry({ action: 'COMMENT_ADDED', metadata: { visibility: 'PUBLIC' } }))).toBe('added a message')
+    expect(describe(entry({ action: 'ATTACHMENT_ADDED', metadata: { visibility: 'INTERNAL', fileName: 'scan.csv' } }))).toBe(
+      'attached an internal file (scan.csv)',
+    )
+    expect(describe(entry({ action: 'ATTACHMENT_ADDED', metadata: { visibility: 'PUBLIC' } }))).toBe('attached a file')
+    expect(describe(entry({ action: 'ATTACHMENT_REMOVED', metadata: { fileName: 'a.txt' } }))).toBe('removed a file (a.txt)')
   })
 
   it('describes problem analysis and incident links', () => {

@@ -176,6 +176,16 @@ application, since it depends on status. The partial index `changes_window_idx (
 planned_end)` serves the schedule and clash lookups, and `changes_problem_idx` lists a problem's
 changes. Approvals reuse the `approvals` table.
 
+### attachments, attachment_contents (Phase 2, M22)
+
+`attachments`: one row per file on a ticket (`work_item_id` → work_items, `ON DELETE CASCADE`):
+`uploaded_by` (→ users), `visibility` (`PUBLIC | INTERNAL`), `file_name`, `content_type` (decided
+by the server), `size_bytes`, `sha256` and `created_at`. CHECKs: a non-blank name with no path
+separators, 1 byte to 10 MB, a 64-character lowercase hex hash. `attachments_work_item_idx
+(work_item_id, created_at, id)` lists a ticket's files in order. `attachment_contents` holds the
+bytes (`attachment_id` → attachments, `ON DELETE CASCADE`, `content bytea`), apart from the
+metadata so listing never reads them; it is the part an S3 store replaces (ADR-014).
+
 ## Conventions
 
 - Migrations are **immutable once merged**. A fix is a new migration.
@@ -206,4 +216,5 @@ erDiagram
 ```
 
 Added in Phase 2 so far: `sla_policies`, `sla_clocks`, `catalogue_items`, `approvals`, `problems`,
-`changes` (described above). Tables still to come in Phase 2: `attachments`, `notifications`.
+`changes`, `attachments`, `attachment_contents` (described above). Still to come in Phase 2:
+`notifications`.

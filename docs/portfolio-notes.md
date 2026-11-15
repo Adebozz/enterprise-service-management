@@ -927,3 +927,45 @@ tests (schedule and overlap flag, plan and clashes with editing, the fixed plan,
 a change for a problem, a problem's changes, history text). Total: 363 unit + 259 integration
 backend tests, 89 frontend tests. The `change` package is at 100% line and 92.0% branch coverage;
 the backend overall at 96.6% and 88.4%.
+
+## M22: Attachments (2026-11-15)
+
+**What was built**
+- Files on tickets: screenshots, logs and documents up to 10 MB each, 20 per ticket. Like comments,
+  a file is either part of the conversation or internal to the staff handling the ticket; the
+  query never returns internal files to anyone else, and they are a 404 for them.
+- The server decides what a file is: an allow-list of extensions (nothing a browser would run),
+  a signature check for binary formats (a script renamed `photo.png` is refused), safe file names
+  (`../../etc/passwd.txt` becomes `passwd.txt`) and a SHA-256 of every file.
+- Downloads are always downloads (`attachment`, `nosniff`, `no-store`). Whoever added a file, or an
+  admin, can remove it while the ticket is open; adding and removing are audited without content.
+- Bytes are stored in PostgreSQL behind a three-method `AttachmentContentStore` interface, so a file
+  and its record commit together today and S3 can replace the store in Phase 3 (ADR-014).
+- Web app: a *Files* section on every ticket with upload (checked for size before sending),
+  download, removal and, for staff, internal files. Demo: the Wi-Fi incident has the requester's log
+  and support's internal channel scan.
+
+**What I learned (good interview material)**
+- **Don't trust the client's content type.** Browsers send whatever the OS guesses, and other
+  clients send anything. Deciding the type from an allow-listed extension, checking the file's
+  first bytes, and serving everything as a download closes the "upload HTML, get it rendered on our
+  origin" hole without a separate download domain.
+- **Limits have to agree at every layer.** The 10 MB limit is set in Spring's multipart config, the
+  service, a database CHECK and nginx (slightly higher, so the backend returns a precise error
+  rather than nginx's HTML page). An over-limit upload was checked through the real proxy.
+- **Token-in-memory has a cost.** A plain `<a href>` can't download a protected file because the
+  access token isn't a cookie. The app fetches the file and hands the browser an object URL.
+- **Test environments have their own bugs.** In jsdom, a `File` passed to Node's `FormData` loses its
+  name. Passing the name explicitly (`append('file', file, file.name)`) is correct everywhere; the
+  real upload was then checked in a browser.
+
+**Tests:** 17 new unit tests (`UploadedFileTest`: content type from the extension, signatures for
+binary formats including WebP's two markers, text with NUL bytes, refused types, empty and oversized
+files, path and control-character stripping, long names keeping their extension). 8 new integration
+tests (`AttachmentApiIT`: upload and byte-exact download with headers, internal files hidden from
+requesters and other teams, files reachable only through their own ticket, disguised and refused
+files, the multipart size limit, the 20-file limit, who removes and the audit trail, closed
+tickets), plus demo seeder checks. 7 new frontend tests (listing and uploading, server refusals,
+the size check before sending, internal files for staff, removing and downloading, closed tickets,
+history text). Total: 380 unit + 267 integration backend tests, 95 frontend tests. The `attachment`
+package is at 98.4% line and 96.9% branch coverage; the backend overall at 96.6% and 88.7%.

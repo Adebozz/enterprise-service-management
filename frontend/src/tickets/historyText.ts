@@ -66,6 +66,14 @@ export function describe(entry: HistoryEntry): string {
       const outcome = text(entry.newValue, 'outcome')
       return `recorded the outcome${outcome ? `: ${(OUTCOME_LABEL[outcome as ChangeOutcome] ?? statusLabel(outcome)).toLowerCase()}` : ''}`
     }
+    case 'ATTACHMENT_ADDED': {
+      const name = text(entry.metadata, 'fileName')
+      return `attached ${text(entry.metadata, 'visibility') === 'INTERNAL' ? 'an internal file' : 'a file'}${name ? ` (${name})` : ''}`
+    }
+    case 'ATTACHMENT_REMOVED': {
+      const name = text(entry.metadata, 'fileName')
+      return `removed a file${name ? ` (${name})` : ''}`
+    }
     case 'COMMENT_ADDED':
       return text(entry.metadata, 'visibility') === 'INTERNAL' ? 'added an internal note' : 'added a message'
     default:

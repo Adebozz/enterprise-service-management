@@ -15,6 +15,7 @@ import { IncidentProblemPanel } from '@/problems/IncidentProblemPanel'
 import { LinkedIncidents, ProblemAnalysis } from '@/problems/ProblemAnalysis'
 import { PriorityBadge, StatusBadge } from './badges'
 import { AssignmentPanel } from './AssignmentPanel'
+import { Attachments } from './Attachments'
 import { Conversation } from './Conversation'
 import { History } from './History'
 import { SlaPanel } from './SlaPanel'
@@ -91,6 +92,7 @@ export function TicketPage() {
           {t.problem && <ProblemChanges ticket={t} />}
           {t.change && <ChangePlan ticket={t} change={t.change} />}
           {t.change && <ChangeReview ticket={t} change={t.change} />}
+          <Attachments ticketId={t.id} closed={isClosed(t.status)} canAddInternal={isStaff} staffOnly={staffWork} />
           <Conversation ticketId={t.id} closed={isClosed(t.status)} canWriteInternal={isStaff} staffOnly={staffWork} />
           {isStaff && <History ticketId={t.id} />}
         </div>

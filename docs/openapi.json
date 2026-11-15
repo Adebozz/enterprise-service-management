@@ -2235,6 +2235,234 @@
         "tags" : [ "Ticket assignment" ]
       }
     },
+    "/api/tickets/{id}/attachments" : {
+      "get" : {
+        "operationId" : "listAttachments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AttachmentResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "The ticket's files, oldest first. Internal files only for support staff handling it",
+        "tags" : [ "Ticket attachments" ]
+      },
+      "post" : {
+        "operationId" : "addAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "visibility",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "PUBLIC",
+            "enum" : [ "PUBLIC", "INTERNAL" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttachmentResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Attach a file (up to 10 MB; png, jpg, jpeg, gif, webp, pdf, zip, docx, xlsx, pptx, txt, log, csv, json). Internal: support staff only",
+        "tags" : [ "Ticket attachments" ]
+      }
+    },
+    "/api/tickets/{id}/attachments/{attachmentId}" : {
+      "delete" : {
+        "operationId" : "deleteAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "attachmentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Remove a file (whoever added it, or an admin)",
+        "tags" : [ "Ticket attachments" ]
+      }
+    },
+    "/api/tickets/{id}/attachments/{attachmentId}/content" : {
+      "get" : {
+        "operationId" : "downloadAttachment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "attachmentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "binary"
+                }
+              }
+            },
+            "description" : "The file"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Missing, invalid or expired access token"
+          },
+          "default" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "description" : "Error: see `code` (validation 400, forbidden 403, not found 404, conflict 409, rule violation 422)"
+          }
+        },
+        "summary" : "Download a file",
+        "tags" : [ "Ticket attachments" ]
+      }
+    },
     "/api/tickets/{id}/comments" : {
       "get" : {
         "operationId" : "listComments",
@@ -2654,7 +2882,7 @@
           "code" : {
             "type" : "string",
             "description" : "Stable machine-readable code: branch on this, never on detail",
-            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "APPROVAL_NOT_PERMITTED", "APPROVAL_ALREADY_DECIDED", "APPROVAL_REASON_REQUIRED", "PROBLEM_NOT_OPEN", "PROBLEM_ANALYSIS_INCOMPLETE", "PROBLEM_UPDATE_NOT_PERMITTED", "INCIDENT_LINK_NOT_PERMITTED", "CHANGE_NOT_EDITABLE", "CHANGE_PLAN_INCOMPLETE", "CHANGE_PLAN_INVALID", "CHANGE_REVIEW_INCOMPLETE", "CHANGE_UPDATE_NOT_PERMITTED", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
+            "enum" : [ "VALIDATION_FAILED", "MALFORMED_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "RESOURCE_NOT_FOUND", "METHOD_NOT_ALLOWED", "UNSUPPORTED_MEDIA_TYPE", "CONCURRENT_MODIFICATION", "INVALID_SORT_PROPERTY", "INVALID_CREDENTIALS", "REFRESH_TOKEN_INVALID", "INVALID_ORIGIN", "CURRENT_PASSWORD_INCORRECT", "EMAIL_ALREADY_EXISTS", "LAST_ADMIN_REQUIRED", "TEAM_NAME_ALREADY_EXISTS", "TEAM_INACTIVE", "USER_NOT_ELIGIBLE_FOR_TEAM", "CATEGORY_CODE_ALREADY_EXISTS", "CATEGORY_TEAM_REQUIRED", "INVALID_CATEGORY", "CATALOGUE_ITEM_NAME_ALREADY_EXISTS", "INVALID_CATALOGUE_FORM", "CATALOGUE_ANSWERS_INVALID", "APPROVAL_NOT_PERMITTED", "APPROVAL_ALREADY_DECIDED", "APPROVAL_REASON_REQUIRED", "PROBLEM_NOT_OPEN", "PROBLEM_ANALYSIS_INCOMPLETE", "PROBLEM_UPDATE_NOT_PERMITTED", "INCIDENT_LINK_NOT_PERMITTED", "CHANGE_NOT_EDITABLE", "CHANGE_PLAN_INCOMPLETE", "CHANGE_PLAN_INVALID", "CHANGE_REVIEW_INCOMPLETE", "CHANGE_UPDATE_NOT_PERMITTED", "ATTACHMENT_EMPTY", "ATTACHMENT_TOO_LARGE", "ATTACHMENT_TYPE_NOT_ALLOWED", "ATTACHMENT_LIMIT_REACHED", "ATTACHMENT_DELETE_NOT_PERMITTED", "INVALID_STATUS_TRANSITION", "TRANSITION_NOT_PERMITTED", "TRANSITION_REQUIREMENT_MISSING", "TICKET_NOT_ASSIGNED", "ASSIGNMENT_NOT_PERMITTED", "ASSIGNEE_NOT_IN_TEAM", "TICKET_NOT_ASSIGNABLE", "MEMBER_HAS_OPEN_TICKETS", "COMMENT_NOT_PERMITTED", "TICKET_CLOSED", "REQUEST_FAILED", "INTERNAL_ERROR" ]
           },
           "correlationId" : {
             "type" : [ "string", "null" ],
@@ -2802,6 +3030,40 @@
           }
         },
         "required" : [ "assignedTeam", "assignee", "reference", "status", "ticketId", "version" ]
+      },
+      "AttachmentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "canDelete" : {
+            "type" : "boolean"
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "sizeBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "uploadedBy" : {
+            "$ref" : "#/components/schemas/NamedRef"
+          },
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "PUBLIC", "INTERNAL" ]
+          }
+        },
+        "required" : [ "canDelete", "contentType", "createdAt", "fileName", "id", "sizeBytes", "uploadedBy", "visibility" ]
       },
       "AuthenticatedUser" : {
         "type" : "object",
@@ -3352,7 +3614,7 @@
         "properties" : {
           "action" : {
             "type" : "string",
-            "enum" : [ "USER_CREATED", "USER_UPDATED", "PASSWORD_CHANGED", "TEAM_CREATED", "TEAM_UPDATED", "TEAM_MEMBER_ADDED", "TEAM_MEMBER_REMOVED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "TICKET_CREATED", "TICKET_STATUS_CHANGED", "TICKET_ASSIGNMENT_CHANGED", "COMMENT_ADDED", "SLA_BREACHED", "SLA_POLICY_UPDATED", "CATALOGUE_ITEM_CREATED", "CATALOGUE_ITEM_UPDATED", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "APPROVAL_WITHDRAWN", "PROBLEM_ANALYSIS_UPDATED", "INCIDENT_PROBLEM_LINKED", "INCIDENT_PROBLEM_UNLINKED", "CHANGE_PLAN_UPDATED", "CHANGE_OUTCOME_RECORDED" ]
+            "enum" : [ "USER_CREATED", "USER_UPDATED", "PASSWORD_CHANGED", "TEAM_CREATED", "TEAM_UPDATED", "TEAM_MEMBER_ADDED", "TEAM_MEMBER_REMOVED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "TICKET_CREATED", "TICKET_STATUS_CHANGED", "TICKET_ASSIGNMENT_CHANGED", "COMMENT_ADDED", "ATTACHMENT_ADDED", "ATTACHMENT_REMOVED", "SLA_BREACHED", "SLA_POLICY_UPDATED", "CATALOGUE_ITEM_CREATED", "CATALOGUE_ITEM_UPDATED", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "APPROVAL_WITHDRAWN", "PROBLEM_ANALYSIS_UPDATED", "INCIDENT_PROBLEM_LINKED", "INCIDENT_PROBLEM_UNLINKED", "CHANGE_PLAN_UPDATED", "CHANGE_OUTCOME_RECORDED" ]
           },
           "actor" : {
             "oneOf" : [ {

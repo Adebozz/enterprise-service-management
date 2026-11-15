@@ -123,6 +123,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             } else if (code == ErrorCode.RESOURCE_NOT_FOUND) {
                 // The default detail mentions "static resource", which is an implementation detail.
                 problem.setDetail("No endpoint exists at this path");
+            } else if (code == ErrorCode.ATTACHMENT_TOO_LARGE) {
+                problem.setDetail("Files can be up to 10 MB");
             }
             addExtensions(problem, code, path(request));
         }

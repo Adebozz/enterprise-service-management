@@ -14,7 +14,7 @@ flowchart LR
     Edge -->|"/*"| SPA["React SPA (static files)"]
     Edge -->|"/api/*"| API["Spring Boot API<br/>ECS Fargate: planned"]
     API --> DB[(PostgreSQL 17<br/>RDS: planned)]
-    API --> S3[(S3 attachments<br/>Phase 2, planned)]
+    API --> S3[(S3 for attachments<br/>Phase 3, planned; PostgreSQL today)]
     API -.secrets.-> SM[Secrets Manager: planned]
 ```
 
@@ -36,12 +36,12 @@ Base package: `com.ademola.esm`
 | `auth` | Security filter chain, role hierarchy, JWT issue/validation, refresh-token rotation, login/refresh/logout, `/api/users/me` | Implemented (M0–M2) |
 | `user` | Users, roles, password hashing and change, first-admin bootstrap, admin user API | Implemented (M1–M2) |
 | `team` | Teams, membership, admin team API, team read API | Implemented (M1) |
-| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `problem` (M20), `change` (M21), `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7, M20) |
+| `ticket` | Work-item kernel (`WorkItem`, references) plus `priority`, `category`, `intake`, `incident`, `request`, `problem` (M20), `change` (M21), `attachment` (M22), `access`, `query`, `workflow` (engine), `transition` (API), `assignment`, `comment`, `history`, `queue` sub-packages | Implemented (M3–M7, M20–M22) |
 | `audit` | Append-only audit trail; `ActorProvider` port implemented by `auth` | Implemented (M3) |
 | `sla` | SLA policies per ticket type and priority; response/resolution clocks kept in line with tickets through `TicketChangedEvent`; scheduled breach check; ticket SLA and admin target APIs. Depends on `ticket`, never the reverse | Implemented (M15–M17) |
 | `catalogue` | Service catalogue: items with their own short forms, admin maintenance, ordering. Validates answers, then raises an ordinary service request through `ServiceRequestService`. Depends on `ticket`, never the reverse | Implemented (M18) |
 | `approval` | Sign-off for catalogue requests: pending approvals, the decision rules (`ApprovalPolicy`), the approvals inbox and decisions, which drive SYSTEM transitions on the request. Withdraws approvals of requests cancelled while waiting, through `TicketChangedEvent`. Depends on `ticket`, `team` and `user`; `catalogue` depends on it | Implemented (M19) |
-| `attachment`, `notification` | Phase 2 | Planned |
+| `notification` | Phase 2 | Planned |
 | `reporting` | Read-only aggregate queries | Planned (Phase 3) |
 
 ### Module conventions

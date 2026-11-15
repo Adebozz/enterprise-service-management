@@ -29,6 +29,7 @@ class DemoDataSeederTest {
                     null,
                     null,
                     null,
+                    null,
                     null);
 
             assertThatThrownBy(() -> seeder.run(null))

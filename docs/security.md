@@ -162,7 +162,25 @@ body.
   necessary rather than assumed; see deployment.md.
 - Demo accounts exist only under the `demo` profile and require an explicit password.
 
+## Implemented (M22): attachments
+
+- Files follow the conversation's rules: internal files are returned only to admins and staff
+  supporting the ticket (filtered in the query), and an internal file, or one belonging to another
+  ticket, is a 404 for anyone else. Tested for requesters, other requesters and other teams.
+- The server ignores the declared content type. Extensions are allow-listed (no HTML, SVG or
+  scripts) and binary formats must carry their format's signature; tested with a script named
+  `photo.png` and a `.pdf` that is really HTML.
+- File names are cut to their last path segment and stripped of control characters, so
+  `../../etc/passwd` and header-splitting names can't do harm; the bytes are never written to disk.
+- Downloads are sent as `attachment` with `nosniff` and `no-store`; the CSP stays unchanged.
+- 10 MB per file is enforced by the multipart limit, the service and a database CHECK; nginx caps
+  the request body at 11 MB. Audit entries carry the file name and size, never the content.
+
 ## Known limitations (security)
+
+- **Uploaded files aren't scanned for malware.** Type checks stop disguised files, not infected
+  documents. A deployment would add scanning (for example on S3 upload).
+
 
 - **No login rate limiting or lockout yet.** Planned at the edge (AWS WAF rate-based rule on
   `/api/auth/login`) in Phase 3; an application-level limiter is an alternative.

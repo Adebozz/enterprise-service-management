@@ -75,14 +75,18 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `PROBLEM_UPDATE_NOT_PERMITTED` | 403 | Only the team working on a problem (or an admin) records its analysis |
 | `INCIDENT_LINK_NOT_PERMITTED` | 403 | Only staff handling the incident or the problem can link them |
 | `CHANGE_UPDATE_NOT_PERMITTED` | 403 | Only the team carrying out a change (or an admin) writes its plan or records its outcome |
+| `ATTACHMENT_DELETE_NOT_PERMITTED` | 403 | Only whoever added a file, or an admin, removes it |
 | `APPROVAL_NOT_PERMITTED` | 403 | Only team leads of the request's team, and admins, decide approvals; never the requester |
 | `RESOURCE_NOT_FOUND` | 404 | Doesn't exist, or you may not see it |
 | `METHOD_NOT_ALLOWED` | 405 | Wrong HTTP method for this path |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Send `application/json` |
+| `ATTACHMENT_TYPE_NOT_ALLOWED` | 415 | The file's extension isn't accepted, or its content doesn't match it |
+| `ATTACHMENT_TOO_LARGE` | 413 | Files can be up to 10 MB |
 | `CONCURRENT_MODIFICATION` | 409 | Your `version` is stale: reload |
 | `INVALID_STATUS_TRANSITION` | 409 | Not a move in this ticket type's lifecycle |
 | `TICKET_NOT_ASSIGNABLE` | 409 | Resolved/closed tickets can't change owner |
-| `TICKET_CLOSED` | 409 | Closed tickets accept no comments |
+| `TICKET_CLOSED` | 409 | Closed tickets accept no comments or files, and keep the files they have |
+| `ATTACHMENT_LIMIT_REACHED` | 409 | A ticket holds up to 20 files |
 | `PROBLEM_NOT_OPEN` | 409 | The problem is resolved, closed or cancelled: its analysis is final and it takes no more incidents |
 | `CHANGE_NOT_EDITABLE` | 409 | The plan is fixed once submitted; the outcome is recorded only once implementation has started |
 | `APPROVAL_ALREADY_DECIDED` | 409 | The approval was already approved, rejected or withdrawn |
@@ -99,6 +103,7 @@ you may not see is reported as `RESOURCE_NOT_FOUND`, exactly like one that doesn
 | `INVALID_CATEGORY` | 422 | Category not available for this ticket type / wrong parent |
 | `CATEGORY_TEAM_REQUIRED` | 422 | Top-level categories must route to a team |
 | `INVALID_CATALOGUE_FORM` | 422 | The item's questions don't fit together (duplicate keys, a choice with fewer than two options...); see `fieldErrors` (`fields[i].…`) |
+| `ATTACHMENT_EMPTY` | 422 | The file is empty |
 | `APPROVAL_REASON_REQUIRED` | 422 | Rejecting a request needs a comment saying why |
 | `CHANGE_PLAN_INCOMPLETE` | 422 | Submitting needs an implementation plan, a backout plan and a planned window |
 | `CHANGE_PLAN_INVALID` | 422 | The plan breaks a rule: a standard change must be low risk and is scheduled, not submitted; the window must end after it starts, and (except in an emergency) not have started yet |
@@ -140,6 +145,10 @@ in the generated client.
 | PUT | `/api/tickets/{id}/assignment` | `assignTicket` | agents and above, per assignment rules |
 | GET | `/api/tickets/{id}/comments` | `listComments` | anyone who can see it (internal notes: support/admin) |
 | POST | `/api/tickets/{id}/comments` | `addComment` | anyone who can see it → 201 |
+| GET | `/api/tickets/{id}/attachments` | `listAttachments` | anyone who can see it (internal files: support/admin) |
+| POST | `/api/tickets/{id}/attachments` | `addAttachment` | anyone who can see it, multipart `file` + `?visibility=` → 201 |
+| GET | `/api/tickets/{id}/attachments/{attachmentId}/content` | `downloadAttachment` | as listing; always a download |
+| DELETE | `/api/tickets/{id}/attachments/{attachmentId}` | `deleteAttachment` | whoever added it, admin; open tickets → 204 |
 | GET | `/api/tickets/{id}/history` | `getTicketHistory` | support, admin |
 | GET | `/api/tickets/{id}/sla` | `getTicketSla` | support, admin |
 | GET | `/api/categories?type=` | `listCategories` | signed in |
@@ -151,6 +160,11 @@ such as `printer -office`, or requester/category name). Sortable: `createdAt, up
 reference, status, title, slaDueAt` (the next SLA deadline; paused and finished targets last).
 For staff, each row's `sla` is the open target (response until support responds, then resolution)
 with status `ON_TRACK | AT_RISK | BREACHED | PAUSED`; it is always `null` for requesters.
+
+Attachments are up to 10 MB each (20 per ticket) and must be one of png, jpg, jpeg, gif, webp,
+pdf, zip, docx, xlsx, pptx, txt, log, csv or json. The server ignores the declared content type:
+it takes the type from the extension and, for binary formats, checks the file starts the way that
+format does. Downloads are sent with `Content-Disposition: attachment`, `nosniff` and `no-store`.
 
 `getTicketSla` returns both clocks with status `ON_TRACK | AT_RISK | BREACHED | PAUSED | MET |
 MISSED | CANCELLED`, target, elapsed and remaining seconds, and due, breach and completion times.

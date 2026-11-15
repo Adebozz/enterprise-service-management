@@ -12,6 +12,7 @@ export const queryKeys = {
   ticketList: (params: TicketListParams) => ['tickets', 'list', params] as const,
   ticket: (id: string) => ['tickets', 'detail', id] as const,
   comments: (id: string) => ['tickets', 'detail', id, 'comments'] as const,
+  attachments: (id: string) => ['tickets', 'detail', id, 'attachments'] as const,
   transitions: (id: string) => ['tickets', 'detail', id, 'transitions'] as const,
   history: (id: string) => ['tickets', 'detail', id, 'history'] as const,
   sla: (id: string) => ['tickets', 'detail', id, 'sla'] as const,
@@ -47,6 +48,11 @@ export const ticketQuery = (id: string) => ({
 export const commentsQuery = (id: string) => ({
   queryKey: queryKeys.comments(id),
   queryFn: async () => unwrap(await api.GET('/api/tickets/{id}/comments', { params: { path: { id } } })),
+})
+
+export const attachmentsQuery = (id: string) => ({
+  queryKey: queryKeys.attachments(id),
+  queryFn: async () => unwrap(await api.GET('/api/tickets/{id}/attachments', { params: { path: { id } } })),
 })
 
 export const transitionsQuery = (id: string) => ({

@@ -17,6 +17,7 @@ import com.ademola.esm.team.CreateTeamRequest;
 import com.ademola.esm.team.TeamService;
 import com.ademola.esm.ticket.assignment.AssignmentRequest;
 import com.ademola.esm.ticket.assignment.TicketAssignmentService;
+import com.ademola.esm.ticket.attachment.AttachmentService;
 import com.ademola.esm.ticket.category.CategoryScope;
 import com.ademola.esm.ticket.category.CategoryService;
 import com.ademola.esm.ticket.category.CreateCategoryRequest;
@@ -48,6 +49,7 @@ import com.ademola.esm.user.Role;
 import com.ademola.esm.user.User;
 import com.ademola.esm.user.UserRepository;
 import com.ademola.esm.user.UserService;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -101,6 +103,7 @@ class DemoDataSeeder implements ApplicationRunner {
     private final TicketAssignmentService assignments;
     private final TicketTransitionService transitions;
     private final CommentService comments;
+    private final AttachmentService attachments;
     private final CatalogueService catalogue;
     private final CatalogueRequestService catalogueRequests;
     private final ProblemService problems;
@@ -123,6 +126,7 @@ class DemoDataSeeder implements ApplicationRunner {
             TicketAssignmentService assignments,
             TicketTransitionService transitions,
             CommentService comments,
+            AttachmentService attachments,
             CatalogueService catalogue,
             CatalogueRequestService catalogueRequests,
             ProblemService problems,
@@ -143,6 +147,7 @@ class DemoDataSeeder implements ApplicationRunner {
         this.assignments = assignments;
         this.transitions = transitions;
         this.comments = comments;
+        this.attachments = attachments;
         this.catalogue = catalogue;
         this.catalogueRequests = catalogueRequests;
         this.problems = problems;
@@ -235,7 +240,19 @@ class DemoDataSeeder implements ApplicationRunner {
                 Urgency.HIGH);
         long v = assign(nina, wifiTicket, network, nina.id(), 0);
         v = move(nina, wifiTicket, v, "IN_PROGRESS", null, null, null);
+        attach(
+                rita,
+                wifiTicket,
+                "wifi-drops.txt",
+                "09:12 disconnected (SSID corp-wifi)\n09:19 disconnected\n09:31 disconnected, reconnected after 40s\n",
+                CommentVisibility.PUBLIC);
         comment(nina, wifiTicket, "Access point AP-3F-02 shows interference on channel 6.", CommentVisibility.INTERNAL);
+        attach(
+                nina,
+                wifiTicket,
+                "ap-3f-02-channel-scan.csv",
+                "channel,networks,utilisation\n1,2,31%\n6,9,88%\n11,3,40%\n",
+                CommentVisibility.INTERNAL);
         move(
                 nina,
                 wifiTicket,
@@ -669,6 +686,10 @@ class DemoDataSeeder implements ApplicationRunner {
 
     private void comment(CurrentUser who, UUID ticket, String body, CommentVisibility visibility) {
         as(who, () -> comments.add(who, ticket, new AddCommentRequest(body, visibility)));
+    }
+
+    private void attach(CurrentUser who, UUID ticket, String fileName, String text, CommentVisibility visibility) {
+        as(who, () -> attachments.add(who, ticket, visibility, fileName, text.getBytes(StandardCharsets.UTF_8)));
     }
 
     /** Runs a step signed in as {@code user}, so permissions and audit actors are real. */
