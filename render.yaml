@@ -1,0 +1,27 @@
+# Render Blueprint: the whole app as one free web service (root Dockerfile), with the database on
+# Neon's free plan. Steps and limits: docs/deployment.md#free-hosting-render--neon.
+services:
+  - type: web
+    name: esm-service-desk
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health/readiness
+    autoDeploy: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod,demo
+      # Neon connection, e.g. jdbc:postgresql://<host>/<database>?sslmode=require
+      - key: ESM_DB_URL
+        sync: false
+      - key: ESM_DB_USERNAME
+        sync: false
+      - key: ESM_DB_PASSWORD
+        sync: false
+      # Signs access tokens: 32 random bytes, base64 (openssl rand -base64 32).
+      - key: ESM_JWT_SECRET
+        sync: false
+      # Every demo account's password; you choose it and share it privately.
+      - key: ESM_DEMO_PASSWORD
+        sync: false

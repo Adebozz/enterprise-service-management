@@ -1,0 +1,12 @@
+# Build context for the root Dockerfile (single-container image). Keep secrets and build output out.
+.env
+.git
+**/node_modules
+**/dist
+**/target
+**/.idea
+**/.vscode
+docs
+scripts
+docker
+frontend/scripts/*.log

@@ -1,4 +1,13 @@
 # Production profile (activated with SPRING_PROFILES_ACTIVE=prod in the container).
+spring:
+  datasource:
+    # Serverless PostgreSQL (e.g. Neon) suspends after a few idle minutes: hold no idle connections,
+    # so a quiet app lets the database sleep. Five is plenty for one small instance.
+    hikari:
+      minimum-idle: 0
+      idle-timeout: 60000   # milliseconds
+      maximum-pool-size: 5
+
 # Database credentials and secrets are injected as environment variables from AWS Secrets Manager.
 logging:
   structured:

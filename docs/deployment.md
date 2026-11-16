@@ -60,8 +60,54 @@ The `demo` profile runs `DemoDataSeeder` at startup:
   therefore obeys every business rule and has a real audit history.
 - It's idempotent (skips if `admin@demo.local` exists) and refuses to start without
   `ESM_DEMO_PASSWORD` of at least 12 characters.
-- **It is a local-demo feature only.** A public deployment must not enable the `demo` profile
-  with documented passwords.
+- **Public demos use a private password.** The free deployment below enables it with a password
+  you choose and share privately, never one written in the repository. Password changes are switched
+  off under this profile (`application-demo.yml`), because everyone shares the accounts.
+
+## Free hosting: Render + Neon
+
+The whole app as one free web service: the root `Dockerfile` builds the web app into the backend,
+so Spring Boot serves the site and the API from one origin (as nginx does in Compose: the refresh
+cookie stays first-party and `SameSite=Strict`, and the same security headers are sent). The
+database is Neon's free PostgreSQL. `render.yaml` describes the service.
+
+**Measured locally**, with Render's free limits simulated (`docker run --memory=512m --cpus=0.1`)
+against PostgreSQL 17:
+
+| | Start until ready | Memory after start |
+|---|---|---|
+| Without CDS, first start (migrations + demo data) | 226 s | 386 MB |
+| Without CDS, restart | 208 s | 386 MB |
+| **With the CDS archive, restart** | **143 s** | **287 MB** |
+
+The image records a Class Data Sharing archive during its build (a training run that starts the
+application context without a database), which cut both start time and memory by about a quarter
+to a third. Docker's CPU limit is strict; Render's free instances may start faster. A restart is
+what a visitor waits for after the service has slept.
+
+**What free means here**
+- Render's free web service sleeps after 15 minutes without visitors; the next visit wakes it
+  (about 2–3 minutes, see above). Its free Postgres expires after 30 days, so Neon is used instead.
+- Neon's free database suspends after a few idle minutes; connections are released after one idle
+  minute (`application-prod.yml`) so it can.
+- No email: notifications are shown in the app only. Scheduled work (the SLA breach check) runs
+  while the service is awake; badges are computed from stored deadlines whenever a page loads.
+
+**Set up (once)**
+1. **Neon:** create a project (region: AWS Europe West 2, London) and copy its connection details.
+   The JDBC URL is `jdbc:postgresql://<host>/<database>?sslmode=require`.
+2. **Render:** New → Blueprint, pick this GitHub repository; Render reads `render.yaml`. Fill in
+   the variables it asks for:
+   - `ESM_DB_URL`, `ESM_DB_USERNAME`, `ESM_DB_PASSWORD` from Neon;
+   - `ESM_JWT_SECRET`: the output of `openssl rand -base64 32`;
+   - `ESM_DEMO_PASSWORD`: at least 12 characters; you share it with whoever you show the demo to.
+   The allowed origin defaults to the service's own address (`RENDER_EXTERNAL_URL`).
+3. Wait for the first deploy (the first start also runs the migrations and creates the demo data),
+   then open the `onrender.com` address and sign in as any demo account.
+
+**Reset the demo** (if visitors change too much): in Neon's SQL editor run
+`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`, then *Manual Deploy → Restart service* on
+Render. The app recreates the schema and the demo data on start.
 
 ## Production target (Phase 3, planned)
 

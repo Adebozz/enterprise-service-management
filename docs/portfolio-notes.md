@@ -1167,3 +1167,33 @@ integration backend tests, 117 frontend tests. Checked with curl through nginx, 
   is the honest claim a laptop run supports.
 - **Report what happened, including the first run.** The first run after start-up was slower
   (JIT warm-up); the docs say so instead of quoting only the best numbers.
+
+## M29: Free hosting on Render and Neon (2026-11-16)
+
+**What was built**
+- A root `Dockerfile` that builds the React app into the Spring Boot image, so one free container
+  serves the whole site from one origin, like nginx does in Compose. Spring now sends the same
+  CSP and security headers as nginx, caches hashed assets for a year, revalidates everything
+  else, and serves `index.html` for client-side routes without ever doing so under `/api`.
+- `render.yaml` (a Render Blueprint) and Neon-friendly database settings (no idle connections, so
+  the free database can suspend); the allowed origin defaults to Render's own address.
+- A Class Data Sharing archive recorded during the image build, with password changes switched off
+  in the shared demo, and a step-by-step guide including how to reset the demo.
+- CI now builds this image too, so it can't quietly break.
+
+**What I learned (good interview material)**
+- **Choose hosting by what the audience needs.** The AWS design (about £20–60 a month) stays
+  documented; a free host gives recruiters a working demo, which is what a portfolio needs. The
+  trade-off, a 2–3 minute wake-up, is stated on the project card.
+- **Measure start-up on the target's limits.** At 0.1 CPU and 512 MB, a restart took 208 s. A CDS
+  archive (a training run that starts the context without a database) brought it to 143 s and
+  memory from 386 MB to 287 MB. Making beans lazy would have saved more but could silently stop
+  scheduled jobs, so it wasn't done.
+- **An empty environment variable is still set.** While testing, `ESM_ALLOWED_ORIGINS=` (empty)
+  overrode the fallback to Render's URL and broke session restore; on Render the variable is simply
+  absent. Checked in a browser with sign-in and reload.
+
+**Tests:** 10 new unit tests (which paths fall back to the app) and 2 for the demo password guard;
+4 new integration tests (`BundledWebAppIT`: client routes, caching, the API never falling back,
+security headers). Not yet done: the deployment itself, which needs the owner's Render and Neon
+accounts.

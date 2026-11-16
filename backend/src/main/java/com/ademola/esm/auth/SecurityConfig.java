@@ -15,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 /**
@@ -43,6 +44,16 @@ public class SecurityConfig {
         "/swagger-ui.html"
     };
 
+    /**
+     * The same policy nginx sends in Docker Compose (frontend/nginx/security-headers.conf), for when
+     * the backend serves the web app itself. Scripts only from this origin; inline styles are needed
+     * by the dialog's scroll lock.
+     */
+    static final String CONTENT_SECURITY_POLICY =
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+                    + " img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self';"
+                    + " form-action 'self'; object-src 'none'";
+
     // Authenticated by credentials (login) or by the refresh cookie, not by an access token.
     private static final String[] AUTH_ENDPOINTS = {"/api/auth/login", "/api/auth/refresh", "/api/auth/logout"};
 
@@ -66,6 +77,13 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY))
+                        .referrerPolicy(referrer -> referrer.policy(
+                                ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .permissionsPolicyHeader(
+                                permissions -> permissions.policy("camera=(), microphone=(), geolocation=()")))
+                // Cache-Control stays Spring Security's no-store, except where a response sets its own
+                // (the web app's files, see SpaWebConfig): the header writer never overrides it.
                 .authorizeHttpRequests(auth -> auth.requestMatchers(PUBLIC_ENDPOINTS)
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, AUTH_ENDPOINTS)
@@ -73,6 +91,15 @@ public class SecurityConfig {
                         // Coarse URL rule as a first layer; services repeat the check with @PreAuthorize.
                         .requestMatchers("/api/admin/**")
                         .hasRole(Role.ADMIN.name())
+                        .requestMatchers("/api/**")
+                        .authenticated()
+                        // Other actuator endpoints aren't exposed, and stay closed if one ever is.
+                        .requestMatchers("/actuator/**")
+                        .denyAll()
+                        // The bundled web app (index.html, assets, client-side routes) is public, like
+                        // any website's files; every piece of data behind it is under /api.
+                        .requestMatchers(HttpMethod.GET, "/**")
+                        .permitAll()
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(

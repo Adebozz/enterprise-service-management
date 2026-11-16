@@ -295,14 +295,18 @@ enterprise-service-management/
   15 minutes, further attempts wait (429 with `Retry-After`), whether or not the account exists;
 - load testing (M28): k6 scenarios for agents, requesters and team leads against the Compose stack
   with 50,000 seeded incidents; results and the one slow query they found are in
-  [docs/performance.md](docs/performance.md).
+  [docs/performance.md](docs/performance.md);
+- free hosting (M29): one container (web app bundled into the backend) for Render's free tier with
+  Neon's free PostgreSQL, measured under the free tier's limits; guide in
+  [docs/deployment.md](docs/deployment.md#free-hosting-render--neon).
 
 **Not built yet:**
 - **Phase 2 extensions (not scheduled):**
   - multi-stage approvals and a requester's line manager as approver (single-stage by team lead today);
   - notification preferences (everyone gets every notification that concerns them today);
 - **Phase 3 (planned):**
-  - AWS deployment (ECS Fargate, RDS, S3, CloudFront) with Terraform;
+  - AWS deployment (ECS Fargate, RDS, S3, CloudFront) with Terraform, designed in
+    [docs/aws-deployment-plan.md](docs/aws-deployment-plan.md) and paused for cost;
   - a rate rule at the edge (AWS WAF) in front of the application's own sign-in throttling.
 
 Known limitations are listed in [docs/security.md](docs/security.md#known-limitations-security)

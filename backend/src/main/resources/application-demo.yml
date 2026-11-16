@@ -1,0 +1,5 @@
+# Demo profile: sample people and tickets (DemoDataSeeder), for local demos and the public demo.
+esm:
+  security:
+    # Everyone shares the demo accounts; one visitor changing a password would lock out the rest.
+    password-change-enabled: false

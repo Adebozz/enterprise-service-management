@@ -40,6 +40,10 @@ spring:
         max-page-size: 100   # a client can't ask for ?size=1000000
 
 server:
+  # Hosts such as Render say which port to use through PORT.
+  port: ${PORT:8080}
+  compression:
+    enabled: true   # JSON and the web app's files, when the backend serves them itself
   # Trust X-Forwarded-For only from proxies on private networks (Tomcat's RemoteIpValve), so the
   # client's address reaches the login throttle through nginx (or a load balancer).
   forward-headers-strategy: native
@@ -60,7 +64,7 @@ esm:
       cookie-name: esm_refresh
       cookie-secure: true
     # Browser origins allowed to call the cookie-authenticated endpoints (refresh/logout).
-    allowed-origins: ${ESM_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}
+    allowed-origins: ${ESM_ALLOWED_ORIGINS:${RENDER_EXTERNAL_URL:http://localhost:5173,http://localhost:8080}}  # Render sets RENDER_EXTERNAL_URL itself
   # Ticket priority = f(impact, urgency). Change the policy here, not in code. Every cell is
   # required; startup fails if one is missing. Documented in docs/architecture.md.
   priority:

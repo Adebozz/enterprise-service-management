@@ -82,6 +82,9 @@ jobs:
       - name: Build images and start the stack (waits for every health check)
         run: docker compose up --build --wait --wait-timeout 300
       - run: ./scripts/smoke-test.sh
+      # The single-container image (Render) builds from the same sources; make sure it still does.
+      - name: Build the single-container image
+        run: docker build -t esm-single .
       - name: Container logs
         if: ${{ failure() }}
         run: docker compose logs --no-color
